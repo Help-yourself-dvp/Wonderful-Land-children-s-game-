@@ -130,3 +130,17 @@ export function play(name) {
   const fn = SFX[name];
   if (fn) fn();
 }
+
+// Голосовые реплики NPC (заранее сгенерированные файлы, локальные, офлайн)
+const voiceCache = {};
+export function speak(file) {
+  if (!ctx || muted || ctx.state !== 'running') return;
+  try {
+    let a = voiceCache[file];
+    if (!a) { a = new Audio(file); voiceCache[file] = a; }
+    a.pause();
+    a.currentTime = 0;
+    a.volume = 0.95;
+    a.play().catch(() => {});
+  } catch (e) {}
+}

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, setNight, toggleMute, isMuted } from './audio.js';
+import { initAudio, play, setNight, toggleMute, isMuted, speak } from './audio.js';
 
 // ============ БАЗА ============
 const scene = new THREE.Scene();
@@ -555,6 +555,7 @@ function startDialog() {
   gameState = 'dialog';
   setBubble(bubTex.work);
   play('pop');
+  speak('voice/hedge_hello.mp3');
   // герой здоровается — смотрит на ёжика
   const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
@@ -653,6 +654,7 @@ function celebrate() {
   refreshDrops(true);
   play('fanfare');
   setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/hedge_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
   spawnBurst(new THREE.Vector3(MG_CENTER.x, 1.4, MG_CENTER.z), 18);
   hedgeBubble.material.map = bubTex.star;
