@@ -150,11 +150,23 @@
     }
     #drops.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
     @keyframes dropPop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+    /* кнопка звука */
+    #muteBtn {
+      position: fixed; z-index: 10;
+      top: calc(12px + env(safe-area-inset-top)); left: 14px;
+      width: 46px; height: 46px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
+      font-size: 22px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(61,92,68,0.18);
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    #muteBtn:active { transform: scale(.9); }
   </style>
 </head>
 <body>
   <div id="hint">👆 Нажми на полянку — зверёк побежит туда</div>
   <div id="drops">💧 <b id="dropsNum">0</b></div>
+  <button id="muteBtn" aria-label="звук">🔊</button>
 
   <div id="splash">
     <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">

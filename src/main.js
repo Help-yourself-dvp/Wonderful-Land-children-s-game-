@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { initAudio, play, setNight, toggleMute, isMuted } from './audio.js';
 
 // ============ БАЗА ============
 const scene = new THREE.Scene();
@@ -473,6 +474,7 @@ function makeWolf() {
   return g;
 }
 function spawnWolf() {
+  play('whoosh');
   const a = rand() * Math.PI * 2;
   const g = makeWolf();
   g.position.set(Math.cos(a) * (ISLAND_R - 1), 0, Math.sin(a) * (ISLAND_R - 1));
@@ -552,6 +554,7 @@ function makeFruit(color) {
 function startDialog() {
   gameState = 'dialog';
   setBubble(bubTex.work);
+  play('pop');
   // герой здоровается — смотрит на ёжика
   const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
@@ -614,6 +617,7 @@ function onFruitDrop(fruit) {
   }
   if (best && best.userData.color === fruit.userData.color) {
     // ВЕРНО: фрукт ныряет в корзину
+    play('good');
     fruit.userData.busy = true;
     const inBasket = best.position.clone(); inBasket.y = 0.55;
     flyTo(fruit, inBasket, {
@@ -627,6 +631,7 @@ function onFruitDrop(fruit) {
     });
   } else {
     // «Без проигрыша»: мягко возвращаем на место (плинг)
+    play('bad');
     fruit.userData.busy = true;
     flyTo(fruit, fruit.userData.home, {
       arc: 0.7, dur: 0.45,
@@ -646,6 +651,8 @@ function celebrate() {
   mg.active = false;
   dropsCount++;
   refreshDrops(true);
+  play('fanfare');
+  setTimeout(() => play('drop'), 450);
   spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
   spawnBurst(new THREE.Vector3(MG_CENTER.x, 1.4, MG_CENTER.z), 18);
   hedgeBubble.material.map = bubTex.star;
@@ -797,12 +804,14 @@ function tapGround(clientX, clientY) {
     const last = path[path.length - 1];
     marker.position.set(last.x, 0.06, last.z);
     markerLife = 1;
+    play('tap');
     hideHint();
   }
 }
 
 let downX = 0, downY = 0, downT = 0;
 window.addEventListener('pointerdown', (e) => {
+  initAudio();
   downX = e.clientX; downY = e.clientY; downT = performance.now();
   if (!hero) return;
   // мини-игра: подхват фрукта
@@ -813,6 +822,7 @@ window.addEventListener('pointerdown', (e) => {
       let g = hits[0].object;
       while (g.parent && !mg.fruits.includes(g)) g = g.parent;
       dragging = g;
+      play('pickup');
       hideHint();
     }
   }
@@ -867,6 +877,14 @@ function smoothstep(a, b, x) { const t = Math.max(0, Math.min(1, (x - a) / (b - 
 // ============ ЗАСТАВКА / ВЫБОР ============
 const splashEl = document.getElementById('splash');
 const selectEl = document.getElementById('select');
+const muteBtn = document.getElementById('muteBtn');
+if (muteBtn) {
+  muteBtn.textContent = isMuted() ? '🔇' : '🔊';
+  muteBtn.addEventListener('click', () => {
+    initAudio();
+    muteBtn.textContent = toggleMute() ? '🔇' : '🔊';
+  });
+}
 setTimeout(() => {
   splashEl.classList.add('fade-out');
   setTimeout(() => { splashEl.style.display = 'none'; selectEl.style.display = 'flex'; }, 900);
@@ -897,6 +915,7 @@ function animate() {
   // --- ДЕНЬ/НОЧЬ ---
   dayT = (dayT + dt / DAY_LEN) % 1;
   nightness = smoothstep(0.36, 0.5, dayT) - smoothstep(0.86, 1.0, dayT);
+  setNight(nightness);
   tmpColor.copy(skyDay).lerp(skyNight, nightness);
   scene.background.copy(tmpColor);
   scene.fog.color.copy(tmpColor);
@@ -1003,6 +1022,7 @@ function animate() {
         if (d < 0.75 && tickleCooldown <= 0) {
           tickling = 2.6;
           w.mode = 'flee'; w.cooldown = 18;
+          play('tickle');
           spawnBurst(hero.position);
         } else if (d > 0.001) {
           const sp = 2.6 * dt;
