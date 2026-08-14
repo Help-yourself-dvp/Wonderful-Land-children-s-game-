@@ -136,10 +136,25 @@
     .char:active { transform: scale(.88); }
 
     .fade-out { opacity: 0; pointer-events: none; }
+
+    /* ================= HUD: КАПЕЛЬКИ ================= */
+    #drops {
+      position: fixed; z-index: 10;
+      top: calc(12px + env(safe-area-inset-top)); right: 14px;
+      display: none; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
+      border-radius: 99px; padding: 8px 16px;
+      color: #2e6f8e; font-size: 20px; font-weight: 700;
+      box-shadow: 0 4px 14px rgba(46,111,142,0.18);
+      pointer-events: none;
+    }
+    #drops.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes dropPop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
   <div id="hint">👆 Нажми на полянку — зверёк побежит туда</div>
+  <div id="drops">💧 <b id="dropsNum">0</b></div>
 
   <div id="splash">
     <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
