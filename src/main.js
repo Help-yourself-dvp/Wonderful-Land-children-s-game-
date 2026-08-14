@@ -5,7 +5,14 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xaee3f5);
 scene.fog = new THREE.Fog(0xaee3f5, 30, 60);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  const el = document.getElementById('hint');
+  if (el) { el.style.opacity = '1'; el.textContent = '⚠️ Это устройство/просмотрщик не поддерживает WebGL — откройте игру в браузере телефона'; }
+  throw e;
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
