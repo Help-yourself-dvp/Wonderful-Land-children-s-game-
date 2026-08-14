@@ -44,6 +44,16 @@ jobs:
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > android/app/debug.keystore
           mkdir -p "$HOME/.android"
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > "$HOME/.android/debug.keystore"
+          # защита: если ключ не восстановился — падаем вместо случайной подписи
+          python3 - <<'PY'
+          import os, sys
+          ks = os.path.expanduser('~/.android/debug.keystore')
+          size = os.path.getsize(ks) if os.path.exists(ks) else 0
+          print('keystore size:', size)
+          if size < 1000:
+              print('KEystore EMPTY — сборка остановлена, чтобы не подписать случайным ключом!')
+              sys.exit(1)
+          PY
 
       - name: Sync web build into Android project
         run: npx cap sync android
@@ -61,6 +71,15 @@ jobs:
       - name: Build APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Log APK signature fingerprint (контроль постоянства подписи)
+        run: |
+          python3 - <<'PY'
+          import zipfile, hashlib
+          z = zipfile.ZipFile('android/app/build/outputs/apk/debug/app-debug.apk')
+          n = [x for x in z.namelist() if x.startswith('META-INF/') and x.endswith('.RSA')][0]
+          print('CERT SHA256:', hashlib.sha256(z.read(n)).hexdigest())
+          PY
 
       - name: Prepare APK artifact
         run: cp android/app/build/outputs/apk/debug/app-debug.apk "wonder-meadow-${{ steps.ver.outputs.APP_VERSION }}-b${{ github.run_number }}.apk"

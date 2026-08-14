@@ -136,6 +136,19 @@
     }
     #albumBtn:active { transform: scale(.9); }
     #albumBtn.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
+    #skipIntro {
+      position: fixed; z-index: 12; display: none;
+      bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px;
+      width: 62px; height: 62px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.85); font-size: 28px;
+      box-shadow: 0 6px 18px rgba(61,92,68,0.28); cursor: pointer;
+      -webkit-tap-highlight-color: transparent; animation: hintPulse 2s ease-in-out infinite;
+    }
+    #skipIntro:active { transform: scale(.9); }
+    #verTag {
+      position: absolute; left: 14px; bottom: calc(10px + env(safe-area-inset-bottom));
+      color: rgba(61,92,68,0.55); font-size: 13px; font-weight: 600;
+    }
     #album {
       position: fixed; inset: 0; z-index: 30; display: none;
       background: rgba(61,92,68,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -150,9 +163,11 @@
     }
     #album h3 { margin: 4px 0 10px; text-align: center; color: #4a6b52; font-size: 22px; }
     #albumField { position: relative; flex: 1; border-radius: 18px; background: repeating-linear-gradient(0deg, #f7f1de 0 34px, #f0e8d0 34px 36px); overflow: hidden; }
-    .sticker { position: absolute; font-size: 46px; line-height: 1; touch-action: none; cursor: grab; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); transition: transform .15s cubic-bezier(.34,1.56,.64,1); -webkit-tap-highlight-color: transparent; }
-    .sticker:active { transform: scale(1.2); }
+    .sticker { position: absolute; font-size: 46px; line-height: 1; touch-action: none; cursor: pointer; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); transition: left .25s ease, top .25s ease, transform .25s ease; -webkit-tap-highlight-color: transparent; }
+    .sticker.picked { animation: stickerPicked .8s ease-in-out infinite; filter: drop-shadow(0 0 12px rgba(255,209,102,0.95)); }
+    @keyframes stickerPicked { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18) rotate(-6deg); } }
     .sticker.locked { filter: grayscale(1); opacity: 0.25; cursor: default; }
+    .album-cap { text-align: center; color: #8fa08f; font-size: 15px; margin: -4px 0 8px; }
     #albumClose {
       position: absolute; top: 10px; right: 10px;
       width: 44px; height: 44px; border-radius: 50%; border: none;
@@ -355,11 +370,13 @@
   <button id="muteBtn" aria-label="звук">🔊</button>
   <button id="pauseBtn" aria-label="пауза">⏸</button>
   <button id="albumBtn" aria-label="альбом">📖</button>
+  <button id="skipIntro" aria-label="пропустить">⏭</button>
 
   <div id="album">
     <div class="sheet">
       <button id="albumClose">✖</button>
       <h3>Мой альбом наклеек</h3>
+      <div class="album-cap">Нужна наклейка? Нажми на неё — потом на место на странице!</div>
       <div id="albumField"></div>
     </div>
   </div>
@@ -450,6 +467,7 @@
       <p class="sub">Добрые приключения с пользой</p>
     </div>
     <div class="bar"><i></i></div>
+    <div id="verTag">v0.9.0</div>
   </div>
 
   <div id="select">

@@ -132,24 +132,43 @@ export function play(name) {
 }
 
 // Голосовые реплики NPC (заранее сгенерированные файлы, локальные, офлайн)
-// Реплики встают в очередь: новая начнётся только когда закончится предыдущая.
+// Правило: голос следует за ДЕЙСТВИЕМ ребёнка. Новая реплика сразу гасит старую
+// (stopVoice внутри speak). Исключение — speak(file, {after:true}): реплика
+// дождётся конца текущей, но отменяется, если контекст сменился (voiceGen).
 const voiceCache = {};
-export function speak(file) {
+let lastVoice = null;
+let voiceGen = 0;
+export function speak(file, opts = {}) {
   if (!ctx || muted || ctx.state !== 'running') return;
   try {
     let a = voiceCache[file];
     if (!a) { a = new Audio(file); voiceCache[file] = a; }
-    const anyPlaying = Object.values(voiceCache).some(x => !x.paused && !x.ended);
-    if (anyPlaying) { setTimeout(() => speak(file), 350); return; }
-    a.pause();
+    a.volume = opts.vol != null ? opts.vol : 0.95;
+    const gen = voiceGen;
+    if (opts.after && lastVoice && !lastVoice.paused && !lastVoice.ended) {
+      const cur = lastVoice;
+      const onEnd = () => {
+        cur.removeEventListener('ended', onEnd);
+        if (gen === voiceGen) {
+          try { a.currentTime = 0; a.play().catch(() => {}); lastVoice = a; } catch (e) {}
+        }
+      };
+      cur.addEventListener('ended', onEnd);
+      return;
+    }
+    stopVoice();
     a.currentTime = 0;
-    a.volume = 0.95;
     a.play().catch(() => {});
+    lastVoice = a;
   } catch (e) {}
 }
 export function stopVoice() {
+  voiceGen++;
+  lastVoice = null;
   for (const k in voiceCache) { try { voiceCache[k].pause(); voiceCache[k].currentTime = 0; } catch (e) {} }
 }
+// Уже слышно ли что-то
+export function voicePlaying() { return !!(lastVoice && !lastVoice.paused && !lastVoice.ended); }
 // Пауза всей игры: глушим Web Audio и ставим реплики на паузу
 export function setGamePaused(p) {
   try { Object.values(voiceCache).forEach(a => { if (p) a.pause(); else if (a.duration && a.currentTime > 0 && a.currentTime < a.duration) a.play().catch(() => {}); }); } catch (e) {}

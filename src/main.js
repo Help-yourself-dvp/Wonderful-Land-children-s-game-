@@ -630,6 +630,38 @@ treeRoot.position.set(TREE_POS.x, 0, TREE_POS.z);
 scene.add(treeRoot);
 obstacles.push({ x: TREE_POS.x, z: TREE_POS.z, r: 0.5 });
 
+// Древо должно сразу бросаться в глаза: золотая оградка, волшебные искры,
+// а ночью — мягкое тёплое свечение (не перебивающее ночную сцену)
+{
+  const goldM = L(0xf2c14e);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + 0.4;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.42, 8), goldM);
+    const px = TREE_POS.x + Math.cos(a) * 1.15, pz = TREE_POS.z + Math.sin(a) * 1.15;
+    post.position.set(px, 0.21, pz);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), goldM);
+    ball.position.set(px, 0.48, pz);
+    scene.add(post, ball);
+  }
+}
+const TREE_SPARKS = 26;
+const treeSparkGeo = new THREE.BufferGeometry();
+const tsPos = new Float32Array(TREE_SPARKS * 3);
+for (let i = 0; i < TREE_SPARKS; i++) {
+  const a = rand() * Math.PI * 2, r = 0.6 + rand() * 1.3;
+  tsPos.set([TREE_POS.x + Math.cos(a) * r, 0.4 + rand() * 2.2, TREE_POS.z + Math.sin(a) * r], i * 3);
+}
+treeSparkGeo.setAttribute('position', new THREE.BufferAttribute(tsPos, 3));
+const treeSparkMat = new THREE.PointsMaterial({
+  color: 0xffe9a3, size: 0.09, transparent: true, opacity: 0.85,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+});
+const treeSparks = new THREE.Points(treeSparkGeo, treeSparkMat);
+scene.add(treeSparks);
+// материалы Дерева для ночного свечения
+const treeGlowMats = new Set();
+treeStages.forEach(g => g && g.traverse(m => { if (m.material && m.material.isMeshLambertMaterial) treeGlowMats.add(m.material); }));
+
 const treeBubble = makeBubbleSprite('💧', 0.95);
 treeBubble.position.set(TREE_POS.x, 2.6, TREE_POS.z);
 scene.add(treeBubble);
@@ -777,6 +809,7 @@ sleepBubble.visible = false;
 sleepBubble.position.set(-6.4, 4.1, -5.6);
 scene.add(sleepBubble);
 const HOUSE_DOOR = { x: -6.45, z: -5.49 };
+const HOUSE_APPR = { x: -5.52, z: -3.78 }; // точка подхода — гарантированно вне зоны дома
 let hiding = false;
 let sleptNight = false;
 function enterHouse() {
@@ -828,9 +861,9 @@ function spawnWolf() {
   if (!wolfWarned) { wolfWarned = true; speak('voice/wolf_warn.mp3'); }
   const a = rand() * Math.PI * 2;
   const g = makeWolf();
-  g.position.set(Math.cos(a) * (ISLAND_R - 1), 0, Math.sin(a) * (ISLAND_R - 1));
+  g.position.set(Math.cos(a) * (ISLAND_R - 2), 0, Math.sin(a) * (ISLAND_R - 2));
   scene.add(g);
-  wolves.push({ g, mode: 'hunt', cooldown: 0 });
+  wolves.push({ g, mode: 'hunt', cooldown: 0, fadeT: 0 });
 }
 
 const bursts = [];
@@ -915,47 +948,58 @@ const albumBtn = document.getElementById('albumBtn');
 let albumPos = {};
 try { albumPos = JSON.parse(localStorage.getItem('wm_album') || '{}'); } catch (e) {}
 
+// Альбом: наклеивание ДВУМЯ тапами — сначала выбрать наклейку (она подпрыгнет
+// и засветится), потом тапнуть место на странице — наклейка «пришлёпнется»
+// туда с лёгким случайным наклоном, как настоящая.
+let stickerEls = [];
+let pickedSticker = null;
 function buildAlbum() {
   albumField.innerHTML = '';
+  stickerEls = [];
+  pickedSticker = null;
   const unlocked = unlockedCount();
   STICKERS.forEach((s, i) => {
     const el = document.createElement('div');
     el.className = 'sticker' + (i < unlocked ? '' : ' locked');
     el.textContent = s;
     const col = i % 4, row = Math.floor(i / 4);
-    const p = albumPos[i] || { x: 6 + col * 24, y: 6 + row * 30 };
+    const p = albumPos[i] || { x: 6 + col * 24, y: 6 + row * 30, r: 0 };
     el.style.left = p.x + '%';
     el.style.top = p.y + '%';
-    if (i < unlocked) enableStickerDrag(el, i);
+    el.style.transform = 'rotate(' + (p.r || 0) + 'deg)';
+    if (i < unlocked) {
+      el.addEventListener('pointerdown', (e) => e.stopPropagation());
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pickedSticker = (pickedSticker === i) ? null : i;
+        stickerEls.forEach(x => x && x.classList.remove('picked'));
+        if (pickedSticker !== null) { el.classList.add('picked'); play('pickup'); }
+      });
+      stickerEls[i] = el;
+    }
     albumField.appendChild(el);
   });
 }
-function enableStickerDrag(el, idx) {
-  let sx = 0, sy = 0, startL = 0, startT = 0, drag = false;
-  el.addEventListener('pointerdown', (e) => {
-    drag = true; sx = e.clientX; sy = e.clientY;
-    startL = parseFloat(el.style.left); startT = parseFloat(el.style.top);
-    el.setPointerCapture(e.pointerId);
-    e.stopPropagation();
-  });
-  el.addEventListener('pointermove', (e) => {
-    if (!drag) return;
-    const rect = albumField.getBoundingClientRect();
-    let l = startL + ((e.clientX - sx) / rect.width) * 100;
-    let t = startT + ((e.clientY - sy) / rect.height) * 100;
-    const maxL = ((rect.width - el.offsetWidth) / rect.width) * 100;
-    const maxT = ((rect.height - el.offsetHeight) / rect.height) * 100;
-    l = Math.max(0, Math.min(maxL, l)); t = Math.max(0, Math.min(maxT, t));
-    el.style.left = l + '%'; el.style.top = t + '%';
-  });
-  el.addEventListener('pointerup', () => {
-    if (!drag) return;
-    drag = false;
-    albumPos[idx] = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) };
-    localStorage.setItem('wm_album', JSON.stringify(albumPos));
-    play('tap');
-  });
-}
+albumField.addEventListener('click', (e) => {
+  if (pickedSticker === null || !stickerEls[pickedSticker]) return;
+  const el = stickerEls[pickedSticker];
+  const rect = albumField.getBoundingClientRect();
+  const halfW = (el.offsetWidth / rect.width) * 50;
+  const halfH = (el.offsetHeight / rect.height) * 50;
+  let l = ((e.clientX - rect.left) / rect.width) * 100 - halfW;
+  let t = ((e.clientY - rect.top) / rect.height) * 100 - halfH;
+  l = Math.max(0, Math.min(100 - halfW * 2, l));
+  t = Math.max(0, Math.min(100 - halfH * 2, t));
+  const rot = Math.round(rand() * 24 - 12);
+  el.style.left = l + '%';
+  el.style.top = t + '%';
+  el.style.transform = 'rotate(' + rot + 'deg)';
+  albumPos[pickedSticker] = { x: l, y: t, r: rot };
+  localStorage.setItem('wm_album', JSON.stringify(albumPos));
+  play('drop');
+  el.classList.remove('picked');
+  pickedSticker = null;
+});
 if (albumBtn) {
   albumBtn.addEventListener('click', () => {
     buildAlbum();
@@ -1179,6 +1223,10 @@ const cgAnswers = document.getElementById('cgAnswers');
 const cgFinger = document.getElementById('cgFinger');
 const cg = { round: 0, total: 2, correct: 0, lastAction: 0, answered: false, fingerShown: false };
 const CG_SETS = ['🍓', '🌼', '🍄', '⭐', '🐞', '🍒'];
+const CG_ASKS = {
+  '🍓': 'voice/ask_berry.mp3', '🌼': 'voice/ask_flower.mp3', '🍄': 'voice/ask_mushroom.mp3',
+  '⭐': 'voice/ask_star.mp3', '🐞': 'voice/ask_bug.mp3', '🍒': 'voice/ask_cherry.mp3',
+};
 
 function startOwlDialog() {
   gameState = 'dialog';
@@ -1197,7 +1245,6 @@ function openCountGame() {
   gameState = 'countgame';
   cg.round = 0;
   cgEl.style.display = 'flex';
-  speak('voice/sova_ask.mp3'); // встанет в очередь после приветствия
   buildCountRound();
 }
 
@@ -1218,6 +1265,8 @@ function buildCountRound() {
   const n = cg.round === 1 ? 2 + Math.floor(rand() * 3) : 3 + Math.floor(rand() * 3); // 2..4, 3..5
   cg.correct = n;
   const emoji = CG_SETS[Math.floor(rand() * CG_SETS.length)];
+  // Сова называет именно те картинки, что на экране (договаривает после приветствия)
+  speak((CG_ASKS[emoji] || 'voice/sova_ask.mp3'), { after: true });
 
   const W = cgItems.clientWidth, H = cgItems.clientHeight;
   const size = Math.max(44, Math.min(64, W * 0.14));
@@ -1267,7 +1316,7 @@ function answerCount(v, btn) {
     Array.from(cgItems.children).forEach(it => { it.classList.remove('jump'); void it.offsetWidth; it.classList.add('jump'); });
     setTimeout(() => {
       if (cg.round >= cg.total) { closeCountGame(); celebrateOwl(); }
-      else { buildCountRound(); speak('voice/sova_ask.mp3'); }
+      else { buildCountRound(); }
     }, 850);
   } else {
     // Zero Fail: мягкий звук и лёгкое покачивание, попыток бесконечно
@@ -1323,7 +1372,7 @@ function openBridgeGame() {
   gameState = 'bridgegame';
   bg.round = 0;
   bgEl.style.display = 'flex';
-  speak('voice/frog_ask.mp3');
+  speak('voice/frog_ask.mp3', { after: true });
   buildBridgeRound();
 }
 function closeBridgeGame() {
@@ -1575,6 +1624,7 @@ let pendingFrog = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
+let gone = 0; // пройденный путь — двигает анимацию прыжков
 let noProgT = 0, lastFinalDist = Infinity;
 const SPEED = 4;
 let elapsed = 0;
@@ -1619,8 +1669,9 @@ window.addEventListener('pointerup', (e) => {
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
   const dt = performance.now() - downT;
   if (!hero) return;
-  // пропуск вступления
-  if (gameState === 'intro') { finishIntro(); return; }
+  // во время вступления тапы по экрану ничего не делают — история не обрывается
+  // (пропустить можно специальной кнопкой ⏭)
+  if (gameState === 'intro') return;
   if (moved >= 24 || dt >= 500 || tickling > 0) return;
   if (gameState !== 'explore') return;
   if (albumEl.style.display === 'block') return;
@@ -1662,10 +1713,10 @@ window.addEventListener('pointerup', (e) => {
     else { pendingTree = true; givePath(TREE_POS.x - 1.4, TREE_POS.z - 1.1); }
     return;
   }
-  // тап по домику — войти/переждать ночь
+  // тап по дому — подойти к двери и войти
   if (rc.intersectObject(house, true).length) {
     pendingHouse = true;
-    givePath(HOUSE_DOOR.x, HOUSE_DOOR.z);
+    givePath(HOUSE_APPR.x, HOUSE_APPR.z);
     return;
   }
   tapGround(e.clientX, e.clientY);
@@ -1757,14 +1808,17 @@ function startIntro() {
   treeBubble.visible = true;
   play('pop');
   speak('voice/intro.mp3');
+  document.getElementById('skipIntro').style.display = 'block';
 }
 function finishIntro() {
   if (gameState !== 'intro') return;
   gameState = 'explore';
   stopVoice();
+  document.getElementById('skipIntro').style.display = 'none';
   const hint = document.getElementById('hint');
   if (hint) hint.style.opacity = '1';
 }
+document.getElementById('skipIntro').addEventListener('click', finishIntro);
 
 // ============ ЦИКЛ ============
 buildNavGrid();
@@ -1832,50 +1886,43 @@ function animate() {
       laughBubble.position.set(hero.position.x, 2.1, hero.position.z);
       if (tickling <= 0) { hero.rotation.z = 0; tickleCooldown = 6; laughBubble.visible = false; }
     } else if (gameState !== 'intro' && path && path.length) {
-      // Идём строго по точкам маршрута; препятствия обходим скольжением вдоль них,
-      // корпус поворачиваем по ФАКТИЧЕСКОМУ смещению (никакого «краба» и дёрганья).
-      const target = path[0];
+      // Идём к самой дальней ВИДИМОЙ точке маршрута — плавные дуги без рывков по углам.
+      // Прыжки — только от пройденного пути (стоим на месте — не подпрыгиваем),
+      // корпус поворачивается по фактическому смещению, маршрут не «хлопает» сторонами.
+      let ti = 0;
+      for (let i = path.length - 1; i >= 1; i--) {
+        if (lineFree({ x: hero.position.x, z: hero.position.z }, path[i])) { ti = i; break; }
+      }
+      const target = path[ti];
       const dx = target.x - hero.position.x, dz = target.z - hero.position.z;
       const d = Math.hypot(dx, dz);
-      // детектор залипания по расстоянию до финала
       const finalPt = path[path.length - 1];
       const finalDist = Math.hypot(finalPt.x - hero.position.x, finalPt.z - hero.position.z);
-      if (lastFinalDist === Infinity || finalDist < lastFinalDist - 0.004) {
-        lastFinalDist = finalDist; noProgT = 0;
-      } else {
-        noProgT += dt;
-      }
-      const arrived = path.length === 1 && finalDist < 0.4;
-      if (path.length > 1 && d < 0.32) {
-        path.shift(); // прошли точку — к следующей
-      } else if (arrived) {
-        path = null; finalTarget = null; squashT = 1;
-      } else if (noProgT > 1.0) {
-        if (repathCount < 2 && finalTarget) {
-          repathCount++;
-          noProgT = 0; lastFinalDist = Infinity;
-          const np = findPath(hero.position.x, hero.position.z, finalTarget.x, finalTarget.z);
-          if (np) path = np; else { path = null; finalTarget = null; squashT = 1; }
-        } else {
-          path = null; finalTarget = null; squashT = 1; // тихая остановка, без конвульсий
-        }
+      if (lastFinalDist === Infinity || finalDist < lastFinalDist - 0.004) { lastFinalDist = finalDist; noProgT = 0; }
+      else noProgT += dt;
+      if (d < 0.25 && ti < path.length - 1) {
+        path = path.slice(ti + 1); // точка пройдена
+      } else if (finalDist < 0.4 || noProgT > 1.2) {
+        path = null; finalTarget = null; noProgT = 0; squashT = 1; // пришли / тихая остановка
       } else if (d > 0.001) {
         const step = Math.min(SPEED * dt, d);
         const sl = slideCollide(hero.position.x + (dx / d) * step, hero.position.z + (dz / d) * step);
         const mdx = sl[0] - hero.position.x, mdz = sl[1] - hero.position.z;
         hero.position.x = sl[0]; hero.position.z = sl[1];
-        if (Math.hypot(mdx, mdz) > 0.0005) {
+        const moved = Math.hypot(mdx, mdz);
+        gone += moved;
+        const hop = Math.abs(Math.sin(gone * 9)) * 0.13;
+        hero.position.y = hop;
+        charData.bodyG.rotation.x = 0.1 + hop * 0.8;
+        if (moved > 0.0008) {
           const wantYaw = Math.atan2(mdx, mdz);
           let dyy = wantYaw - hero.rotation.y;
           while (dyy > Math.PI) dyy -= Math.PI * 2;
           while (dyy < -Math.PI) dyy += Math.PI * 2;
-          hero.rotation.y += dyy * 0.25;
-          const hop = Math.abs(Math.sin(elapsed * 10)) * 0.14;
-          hero.position.y = hop;
-          charData.bodyG.rotation.x = 0.1 + hop * 0.15;
-          charData.ears.forEach(e => e.rotation.x = -hop * 0.9);
-          if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hop * 0.9);
+          hero.rotation.y += dyy * 0.3;
         }
+        charData.ears.forEach(e => e.rotation.x = -hop * 6);
+        if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hop * 6);
       }
     } else {
       hero.position.y += (0 - hero.position.y) * 0.25;
@@ -1960,6 +2007,9 @@ function animate() {
           const sp = 2.6 * dt;
           w.g.position.x += (dx / d) * sp; w.g.position.z += (dz / d) * sp;
           resolveCollision(w.g.position);
+          // волк никогда не уходит за видимый край полянки
+          const dc = Math.hypot(w.g.position.x, w.g.position.z);
+          if (dc > 13.4) { const k = 13.4 / dc; w.g.position.x *= k; w.g.position.z *= k; }
           w.g.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
           w.g.position.y = Math.abs(Math.sin(elapsed * 8)) * 0.08;
         } else {
@@ -1968,21 +2018,45 @@ function animate() {
       } else {
         w.cooldown -= dt;
         w.g.position.y = 0;
-        // убегая, волк действительно уходит к краю острова и растворяется
+        w.fadeT = (w.fadeT || 0) + dt;
         const d = Math.hypot(w.g.position.x, w.g.position.z);
-        if (d > ISLAND_R - 0.3) {
-          spawnBurst(new THREE.Vector3(w.g.position.x, 0.7, w.g.position.z), 8);
-          play('whoosh');
-          scene.remove(w.g); wolves.splice(wi, 1);
-          continue;
-        }
         if (d > 0.001) {
           const ex = w.g.position.x / d, ez = w.g.position.z / d;
           w.g.position.x += ex * 3 * dt;
           w.g.position.z += ez * 3 * dt;
           w.g.rotation.y = Math.atan2(ex, ez) - Math.PI / 2;
         }
-        if (w.cooldown <= 0 && !hiding) w.mode = 'hunt';
+        // растворение: волк тает прямо на глазах, не дойдя до края
+        if (w.fadeT > 1.2) {
+          const o = Math.max(0, 1 - (w.fadeT - 1.2) * 1.3);
+          w.g.traverse(m => { if (m.material) { m.material.transparent = true; m.material.opacity = o; } });
+          w.g.scale.setScalar(0.55 + 0.45 * o);
+          if (o <= 0 || d > ISLAND_R - 0.5) {
+            spawnBurst(new THREE.Vector3(w.g.position.x, 0.7, w.g.position.z), 8);
+            play('whoosh');
+            scene.remove(w.g); wolves.splice(wi, 1);
+            continue;
+          }
+        }
+        if (w.cooldown <= 0 && !hiding) {
+          w.mode = 'hunt'; w.fadeT = 0;
+          w.g.traverse(m => { if (m.material) m.material.opacity = 1; });
+          w.g.scale.setScalar(1);
+        }
+      }
+    }
+  }
+
+  // --- ВОЛКИ: не сталкиваются друг с другом ---
+  for (let i = 0; i < wolves.length; i++) {
+    for (let j = i + 1; j < wolves.length; j++) {
+      const a = wolves[i], b = wolves[j];
+      const sx = b.g.position.x - a.g.position.x, sz = b.g.position.z - a.g.position.z;
+      const sd = Math.hypot(sx, sz);
+      if (sd > 0.01 && sd < 1.3) {
+        const push = (1.3 - sd) * 0.09;
+        a.g.position.x -= sx / sd * push; a.g.position.z -= sz / sd * push;
+        b.g.position.x += sx / sd * push; b.g.position.z += sz / sd * push;
       }
     }
   }
@@ -2010,6 +2084,11 @@ function animate() {
     const sp = 1 + Math.sin(elapsed * 3) * 0.08;
     st.scale.set(sp, 1.35 * sp, sp);
   }
+  // мягкое золотое свечение Дерева ночью + медленный хоровод искр
+  const tglow = nightness * (0.16 + Math.sin(elapsed * 2) * 0.05);
+  treeGlowMats.forEach(m => m.emissive.setRGB(tglow, tglow * 0.82, tglow * 0.25));
+  treeSparks.rotation.y = elapsed * 0.5;
+  treeSparkMat.opacity = 0.5 + nightness * 0.5;
   if (watering > 0) watering -= dt;
   for (let i = waterDrops.length - 1; i >= 0; i--) {
     const d = waterDrops[i];
