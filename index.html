@@ -223,6 +223,7 @@
       background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     }
     .mg-card {
+      position: relative;
       pointer-events: auto;
       width: min(96vw, 900px);
       background: linear-gradient(180deg, #fffdf4, #f3f8e8);
@@ -309,6 +310,32 @@
     }
     @keyframes fingerBob { from { transform: translateY(0); } to { transform: translateY(10px); } }
 
+    /* ================= ПОДСКАЗКА КНОПКОЙ / СЮЖЕТНЫЕ КАРТОЧКИ ================= */
+    .mg-hint {
+      position: absolute; top: 6px; right: 6px; z-index: 5;
+      width: 52px; height: 52px; border-radius: 50%; border: none;
+      background: #ffe9a3; font-size: 26px; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(61,92,68,0.25); -webkit-tap-highlight-color: transparent;
+      animation: hintPulse 2.2s ease-in-out infinite;
+    }
+    @keyframes hintPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    .mg-hint:active { transform: scale(.9); }
+    #storyOv {
+      position: fixed; inset: 0; z-index: 33; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(40,40,70,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .story-card { text-align: center; padding: 28px 26px; }
+    .story-emoji { font-size: clamp(60px, 13vh, 92px); animation: cgItemIn .6s cubic-bezier(.34,1.56,.64,1) both; }
+    .story-text { margin: 14px 0 20px; color: #3d5c44; font-size: clamp(19px, 4vh, 26px); font-weight: 700; line-height: 1.35; }
+    .story-btn {
+      border: none; border-radius: 99px; padding: 14px 34px;
+      background: linear-gradient(180deg, #8ed081, #6cbf6f); color: #fff;
+      font-size: 22px; font-weight: 800; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(61,92,68,0.3); -webkit-tap-highlight-color: transparent;
+    }
+    .story-btn:active { transform: scale(.93); }
+
     /* ================= ПОВЕРНИ УСТРОЙСТВО ================= */
     #rotate {
       position: fixed; inset: 0; z-index: 40; display: none;
@@ -339,9 +366,10 @@
 
   <div id="minigame">
     <div class="mg-card">
+      <button class="mg-hint" id="hintHedgeBtn" aria-label="подсказка">💡</button>
       <div class="mg-head">
-        <div class="mg-rule">🍎 ➜ <span class="mg-dot" style="background:#e26d5c"></span></div>
-        <div class="mg-rule">🍏 ➜ <span class="mg-dot" style="background:#7fb069"></span></div>
+        <div class="mg-rule"><span id="mgEmojiA">🍎</span> ➜ <span class="mg-dot" id="mgDotA" style="background:#e26d5c"></span></div>
+        <div class="mg-rule"><span id="mgEmojiB">🍏</span> ➜ <span class="mg-dot" id="mgDotB" style="background:#7fb069"></span></div>
       </div>
       <div class="mg-field" id="mgField">
         <div class="mg-baskets">
@@ -355,24 +383,34 @@
 
   <div id="countgame">
     <div class="mg-card">
+      <button class="mg-hint" id="hintCountBtn" aria-label="подсказка">💡</button>
       <div class="cg-title">🦉 Считай-ка!</div>
       <div class="cg-field">
         <div class="cg-items" id="cgItems"></div>
         <div class="cg-answers" id="cgAnswers"></div>
       </div>
     </div>
-    <div class="cg-finger" id="cgFinger" style="display:none">👆</div>
+    <div class="cg-finger" id="cgFinger" style="display:none">👇</div>
   </div>
 
   <div id="bridgegame">
     <div class="mg-card">
+      <button class="mg-hint" id="hintBridgeBtn" aria-label="подсказка">💡</button>
       <div class="cg-title">🐸 Волшебный мостик</div>
       <div class="bg-field">
         <div class="bg-row" id="bgRow"></div>
         <div class="cg-answers" id="bgAnswers"></div>
       </div>
     </div>
-    <div class="cg-finger" id="bgFinger" style="display:none">👆</div>
+    <div class="cg-finger" id="bgFinger" style="display:none">👇</div>
+  </div>
+
+  <div id="storyOv">
+    <div class="mg-card story-card">
+      <div class="story-emoji" id="storyEmoji">🌟</div>
+      <div class="story-text" id="storyText"></div>
+      <button class="story-btn" id="storyNext">Дальше ▶</button>
+    </div>
   </div>
 
   <div id="pauseOv"><button class="big" id="pauseResume">▶</button></div>

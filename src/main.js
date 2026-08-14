@@ -198,22 +198,82 @@ for (let i = 0; i < 70; i++) {
 }
 
 // ============ ДОМИК / ОГОРОД / ДЫМОК ============
+// Процедурная текстура «дощатая обшивка» — офлайн, рисуется на canvas
+function plankTex(base, seam, planks = 4) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 64;
+  const c = cv.getContext('2d');
+  c.fillStyle = base; c.fillRect(0, 0, 64, 64);
+  c.fillStyle = seam;
+  const h = 64 / planks;
+  for (let i = 0; i <= planks; i++) c.fillRect(0, i * h - 1, 64, 2);
+  for (let i = 0; i < planks; i++) c.fillRect(i % 2 ? 40 : 14, i * h, 2, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const wallsTex = plankTex('#f7e7c3', 'rgba(170,130,80,0.4)', 4);
+const roofTex = plankTex('#e08e79', 'rgba(120,60,50,0.4)', 5);
+
 const house = new THREE.Group();
-const walls = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 2.2), L(0xf7e7c3));
+const walls = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 2.2),
+  new THREE.MeshLambertMaterial({ map: wallsTex }));
 walls.position.y = 0.9; walls.castShadow = true;
-const roof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.5, 4), L(0xe08e79));
+const roof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.5, 4),
+  new THREE.MeshLambertMaterial({ map: roofTex }));
 roof.position.y = 2.55; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
+// конёк крыши
+const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 3.1), L(0x8a5a3b));
+ridge.position.y = 3.32; ridge.rotation.y = Math.PI / 4 + Math.PI / 2;
+// дверь с рамой, ручкой и порогом
+const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.08), L(0xffffff));
+doorFrame.position.set(0, 0.55, 1.12);
 const door = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.0, 0.1), L(0x9a6b4f));
-door.position.set(0, 0.5, 1.15);
+door.position.set(0, 0.5, 1.16);
+const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), L(0xffd166));
+knob.position.set(0.2, 0.5, 1.22);
+const doorstep = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.35), L(0xb9c1c9));
+doorstep.position.set(0, 0.04, 1.32);
+// круглое окно с рамой + цветочный ящик
 const winMat = new THREE.MeshLambertMaterial({ color: 0xfff7cc });
 const win = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.1, 24), winMat);
 win.rotation.x = Math.PI / 2; win.position.set(-0.8, 1.15, 1.12);
+const winRing = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 8, 24), L(0xffffff));
+winRing.position.set(-0.8, 1.15, 1.13);
+const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.05, 0.04), L(0xffffff));
+crossH.position.set(-0.8, 1.15, 1.15);
+const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.56, 0.04), L(0xffffff));
+crossV.position.set(-0.8, 1.15, 1.15);
+const flowerBox = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 0.16), L(0x9a6b4f));
+flowerBox.position.set(-0.8, 0.72, 1.14);
+const fbGeo = new THREE.SphereGeometry(0.07, 8, 8);
+for (const fx of [-1.0, -0.8, -0.6]) {
+  const fl = new THREE.Mesh(fbGeo, L([0xf2a0b5, 0xffd166, 0xff8fa3][Math.round((fx + 1) * 5) % 3]));
+  fl.position.set(fx, 0.85, 1.14);
+  house.add(fl);
+}
+// мансардное оконце
+const attic = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 16), winMat);
+attic.rotation.x = Math.PI / 2; attic.position.set(0, 1.7, 1.05);
 const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.35), L(0xc98a6d));
 chimney.position.set(0.8, 2.9, -0.4);
-house.add(walls, roof, door, win, chimney);
+const chimneyCap = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.1, 0.48), L(0x8a5a3b));
+chimneyCap.position.set(0.8, 3.32, -0.4);
+house.add(walls, roof, ridge, doorFrame, door, knob, doorstep, win, winRing, crossH, crossV, flowerBox, attic, chimney, chimneyCap);
 house.position.set(-7, 0.7, -6.5); house.rotation.y = 0.5;
 scene.add(house);
-obstacles.push({ x: -7, z: -6.5, r: 2.5 });
+obstacles.push({ x: -7, z: -6.5, r: 2.2 });
+
+// Дорожка из камешков от домика к центру полянки
+for (let i = 0; i < 4; i++) {
+  const t = i / 3;
+  const st = new THREE.Mesh(new THREE.CircleGeometry(0.3 - t * 0.04, 14), L(0xd8d0bc));
+  st.rotation.x = -Math.PI / 2;
+  st.position.set(-6.3 + t * 2.6, 0.045, -5.2 + t * 2.6);
+  st.receiveShadow = true;
+  scene.add(st);
+}
 
 const garden = new THREE.Group();
 for (let i = 0; i < 3; i++) {
@@ -228,7 +288,25 @@ for (let i = 0; i < 3; i++) {
 }
 garden.position.set(2.5, 0, -6); garden.rotation.y = -0.3;
 scene.add(garden);
-obstacles.push({ x: 2.5, z: -6, r: 2.4 });
+obstacles.push({ x: 2.5, z: -6, r: 2.2 });
+
+// Белый штакетник вокруг огородика
+{
+  const picketM = L(0xfff6e8);
+  const picketG = new THREE.BoxGeometry(0.11, 0.5, 0.06);
+  const tipG = new THREE.ConeGeometry(0.09, 0.14, 4);
+  const addPicket = (px, pz) => {
+    const p = new THREE.Mesh(picketG, picketM);
+    p.position.set(px, 0.25, pz);
+    const tip = new THREE.Mesh(tipG, picketM);
+    tip.position.set(px, 0.55, pz); tip.rotation.y = Math.PI / 4;
+    const pair = new THREE.Group(); pair.add(p, tip); pair.position.set(0, 0, 0);
+    p.position.set(px, 0.25, pz); tip.position.set(px, 0.55, pz);
+    garden.add(p, tip);
+  };
+  for (let px = -2.6; px <= 2.61; px += 0.65) { addPicket(px, -1.4); addPicket(px, 1.4); }
+  addPicket(-2.9, -0.7); addPicket(-2.9, 0); addPicket(-2.9, 0.7);
+}
 
 const smokes = [];
 for (let i = 0; i < 4; i++) {
@@ -467,7 +545,7 @@ const frog = new THREE.Group();
   frog.add(fBody);
   frog.userData.body = fBody;
 }
-const FROG_POS = { x: 10.8, z: 2.6 };
+const FROG_POS = { x: 11.5, z: 5.2 };
 frog.position.set(FROG_POS.x, 0.02, FROG_POS.z);
 frog.rotation.y = Math.atan2(0 - FROG_POS.x, 0 - FROG_POS.z);
 scene.add(frog);
@@ -532,6 +610,13 @@ function buildTreeStage(s) {
       new THREE.MeshBasicMaterial({ color: 0xffe9a3, transparent: true, opacity: 0.8 }));
     ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
     g.add(ring);
+    // Волшебная звезда на макушке — цель сюжета
+    const starTop = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0),
+      new THREE.MeshBasicMaterial({ color: 0xffe066 }));
+    starTop.position.y = 3.65;
+    starTop.scale.set(1, 1.35, 1);
+    g.add(starTop);
+    g.userData.star = starTop;
   }
   return g;
 }
@@ -761,7 +846,12 @@ function spawnBurst(pos, n = 10) {
 }
 
 // ============ СОСТОЯНИЕ ============
-let gameState = 'loading'; // loading | intro | explore | dialog | minigame | celebrate
+let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | celebrate | story
+let dialogToken = 0;
+function clearPendings() {
+  pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingHouse = false;
+  path = null; finalTarget = null;
+}
 
 // Капельки
 let dropsCount = parseInt(localStorage.getItem('wm_drops') || '0', 10);
@@ -789,7 +879,9 @@ function waterTree() {
   watering = 1.4;
   pourRain();
   play('drop');
-  speak('voice/tree_water.mp3');
+  stopVoice();
+  const waterVoices = ['voice/tree_water.mp3', 'voice/tree_water_b.mp3', 'voice/tree_water_c.mp3'];
+  speak(waterVoices[(treeWaters - 1) % 3]);
   setTimeout(() => {
     const need = TREE_STAGE_AT[treeStage + 1];
     if (need && treeWaters >= need) {
@@ -801,6 +893,11 @@ function waterTree() {
       play('fanfare');
       speak('voice/tree_grow.mp3');
       treeRoot.scale.setScalar(1.25);
+      if (treeStage === 3 && localStorage.getItem('wm_story3') !== '1') {
+        localStorage.setItem('wm_story3', '1');
+        setTimeout(() => showStory({ emoji: '🌟', voice: 'voice/story3.mp3',
+          text: 'Чудесно! Звезда зажглась — благодаря тебе! Древо загадало желание: пусть на полянке всегда будет радостно!' }), 2600);
+      }
     } else {
       treeRoot.scale.setScalar(1.12);
     }
@@ -885,10 +982,22 @@ const mgFinger = document.getElementById('mgFinger');
 const basketEls = { red: document.getElementById('basketRed'), green: document.getElementById('basketGreen') };
 const mgDom = { apples: [], done: 0, total: 6, lastAction: 0, fingerFlip: 0 };
 
+const MG_PAIRS = [
+  { a: '🍎', b: '🍏', ca: '#e26d5c', cb: '#7fb069' },
+  { a: '🍊', b: '🫐', ca: '#f2994c', cb: '#5b8fd9' },
+  { a: '🍓', b: '🍋', ca: '#e05263', cb: '#f2d24c' },
+];
 function openMinigame() {
   gameState = 'minigame';
   mgDom.done = 0;
   mgDom.lastAction = elapsed;
+  mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
+  document.getElementById('mgEmojiA').textContent = mgDom.pair.a;
+  document.getElementById('mgDotA').style.background = mgDom.pair.ca;
+  document.getElementById('mgEmojiB').textContent = mgDom.pair.b;
+  document.getElementById('mgDotB').style.background = mgDom.pair.cb;
+  basketEls.red.style.background = mgDom.pair.ca;
+  basketEls.green.style.background = mgDom.pair.cb;
   mgEl.style.display = 'flex';
   mgFinger.style.display = 'none';
   Object.values(basketEls).forEach(b => b.classList.remove('glow'));
@@ -903,7 +1012,7 @@ function openMinigame() {
       const col = i % 3, row = Math.floor(i / 3);
       const el = document.createElement('div');
       el.className = 'mg-apple';
-      el.textContent = color === 'red' ? '🍎' : '🍏';
+      el.textContent = color === 'red' ? mgDom.pair.a : mgDom.pair.b;
       el.dataset.color = color;
       const x = Math.min(rect.width * (0.12 + col * 0.26) + rand() * 8, rect.width - 78);
       const y = Math.min(rect.height * (0.05 + row * 0.2) + rand() * 6, rect.height - 200);
@@ -996,14 +1105,50 @@ function appleDrop(a) {
 }
 function bestNear() { return Math.min(window.innerWidth, window.innerHeight) * 0.18; }
 
+// Кнопки подсказок 💡 во всех трёх играх (подсказка — только по желанию ребёнка)
+document.getElementById('hintHedgeBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  mgDom.lastAction = elapsed - 100; // мгновенно включает свечение корзины и пальчик
+});
+document.getElementById('hintCountBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  const b = Array.from(cgAnswers.children).find(x => parseInt(x.textContent, 10) === cg.correct);
+  if (b) {
+    b.classList.add('glow');
+    const r = b.getBoundingClientRect();
+    cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
+    cgFinger.style.top = (r.top - 74) + 'px';
+    cgFinger.style.display = 'block';
+    cg.fingerShown = true;
+  }
+});
+document.getElementById('hintBridgeBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  const b = Array.from(bgAnswers.children).find(x => x.dataset.e === bg.answer);
+  if (b) {
+    b.classList.add('glow');
+    const r = b.getBoundingClientRect();
+    bgFinger.style.left = (r.left + r.width * 0.18) + 'px';
+    bgFinger.style.top = (r.top - 74) + 'px';
+    bgFinger.style.display = 'block';
+    bg.fingerShown = true;
+  }
+});
+
 function startDialog() {
   gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
   setBubble(bubTex.work);
   play('pop');
-  speak('voice/hedge_hello.mp3');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_hedge') === '1' ? 'voice/hedge_again.mp3' : 'voice/hedge_hello.mp3');
   const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog') openMinigame(); }, 2400);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMinigame(); }, 2400);
 }
 
 function celebrate() {
@@ -1011,7 +1156,9 @@ function celebrate() {
   dropsCount++;
   refreshDrops(true);
   onTaskDone();
+  stopVoice();
   play('fanfare');
+  localStorage.setItem('wm_met_hedge', '1');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/hedge_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
@@ -1021,6 +1168,7 @@ function celebrate() {
   setTimeout(() => {
     gameState = 'explore';
     setBubble(bubTex.apple);
+    checkStory();
   }, 2600);
 }
 
@@ -1034,12 +1182,15 @@ const CG_SETS = ['🍓', '🌼', '🍄', '⭐', '🐞', '🍒'];
 
 function startOwlDialog() {
   gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
   setOwlBubble(owlBubTex.count);
   play('pop');
-  speak('voice/sova_hello.mp3');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_owl') === '1' ? 'voice/sova_again.mp3' : 'voice/sova_hello.mp3');
   const dx = OWL_POS.x - hero.position.x, dz = OWL_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog') openCountGame(); }, 3000);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openCountGame(); }, 3000);
 }
 
 function openCountGame() {
@@ -1131,7 +1282,9 @@ function celebrateOwl() {
   dropsCount++;
   refreshDrops(true);
   onTaskDone();
+  stopVoice();
   play('fanfare');
+  localStorage.setItem('wm_met_owl', '1');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/sova_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(OWL_POS.x, 1.6, OWL_POS.z), 14);
@@ -1141,6 +1294,7 @@ function celebrateOwl() {
   setTimeout(() => {
     gameState = 'explore';
     setOwlBubble(owlBubTex.count);
+    checkStory();
   }, 2600);
 }
 
@@ -1154,12 +1308,15 @@ const BG_POOL = ['🍄', '🌼', '⭐', '🐞', '🍀', '🍇'];
 
 function startFrogDialog() {
   gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
   setFrogBubble(frogBubTex.puzzle);
   play('pop');
-  speak('voice/frog_hello.mp3');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_frog') === '1' ? 'voice/frog_again.mp3' : 'voice/frog_hello.mp3');
   const dx = FROG_POS.x - hero.position.x, dz = FROG_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog') openBridgeGame(); }, 3200);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(); }, 3200);
 }
 
 function openBridgeGame() {
@@ -1253,7 +1410,9 @@ function celebrateFrog() {
   dropsCount++;
   refreshDrops(true);
   onTaskDone();
+  stopVoice();
   play('fanfare');
+  localStorage.setItem('wm_met_frog', '1');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/frog_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(FROG_POS.x, 1.4, FROG_POS.z), 14);
@@ -1263,7 +1422,44 @@ function celebrateFrog() {
   setTimeout(() => {
     gameState = 'explore';
     setFrogBubble(frogBubTex.puzzle);
+    checkStory();
   }, 2600);
+}
+
+// ============ СЮЖЕТНЫЕ КАРТОЧКИ («одна большая сказка») ============
+const storyOv = document.getElementById('storyOv');
+const storyEmoji = document.getElementById('storyEmoji');
+const storyText = document.getElementById('storyText');
+const STORIES = [
+  { key: 'wm_story1', at: 2, emoji: '🌱', voice: 'voice/story1.mp3',
+    text: 'Тише… слышишь? Древо Желаний шепчет: каждая добрая помощь делает его сильнее!' },
+  { key: 'wm_story2', at: 5, emoji: '🌳', voice: 'voice/story2.mp3',
+    text: 'Древо подросло! Оно мечтает вырасти большим и зажечь на макушке волшебную звезду…' },
+];
+function showStory(s) {
+  if (gameState !== 'explore') return;
+  gameState = 'story';
+  storyEmoji.textContent = s.emoji;
+  storyText.textContent = s.text;
+  storyOv.style.display = 'flex';
+  stopVoice();
+  play('pop');
+  speak(s.voice);
+}
+document.getElementById('storyNext').addEventListener('click', () => {
+  storyOv.style.display = 'none';
+  stopVoice();
+  play('pop');
+  gameState = 'explore';
+});
+function checkStory() {
+  for (const s of STORIES) {
+    if (tasksDone >= s.at && localStorage.getItem(s.key) !== '1') {
+      localStorage.setItem(s.key, '1');
+      showStory(s);
+      break;
+    }
+  }
 }
 
 // ============ НАВИГАЦИЯ A* ============
@@ -1282,7 +1478,7 @@ function buildNavGrid() {
     const { x, z } = worldOf(i, j);
     if (Math.hypot(x, z) > ISLAND_R - 0.7) { navBlocked[j * NAV_N + i] = 1; continue; }
     for (const ob of obstacles) {
-      if (Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.75) { navBlocked[j * NAV_N + i] = 1; break; }
+      if (Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.6) { navBlocked[j * NAV_N + i] = 1; break; }
     }
   }
 }
@@ -1455,7 +1651,7 @@ window.addEventListener('pointerup', (e) => {
   if (frogHits.length) {
     const dx = FROG_POS.x - hero.position.x, dz = FROG_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.2) startFrogDialog();
-    else { pendingFrog = true; givePath(FROG_POS.x - 1.6, FROG_POS.z - 1.3); }
+    else { pendingFrog = true; givePath(FROG_POS.x - 1.7, FROG_POS.z - 1.6); }
     return;
   }
   // тап по Древу Желаний
@@ -1554,7 +1750,7 @@ function startIntro() {
     { pos: new THREE.Vector3(HEDGE_POS.x + 1, 4.5, HEDGE_POS.z + 6.5), look: new THREE.Vector3(HEDGE_POS.x, 0.8, HEDGE_POS.z), dur: 6 },
     { pos: new THREE.Vector3(TREE_POS.x + 0.5, 3.6, TREE_POS.z + 5.2), look: new THREE.Vector3(TREE_POS.x, 1, TREE_POS.z), dur: 7 },
     { pos: new THREE.Vector3(OWL_POS.x + 2.2, 4.2, OWL_POS.z + 4.6), look: new THREE.Vector3(OWL_POS.x, 1.3, OWL_POS.z), dur: 4.5 },
-    { pos: new THREE.Vector3(10.2, 4.8, 8.4), look: new THREE.Vector3(10.6, 0.5, 2.8), dur: 4.5 },
+    { pos: new THREE.Vector3(10.6, 5, 10.8), look: new THREE.Vector3(11.5, 0.5, 5.2), dur: 4.5 },
   );
   introIdx = 0; introT = 0;
   hedgeBubble.visible = true;
@@ -1636,16 +1832,12 @@ function animate() {
       laughBubble.position.set(hero.position.x, 2.1, hero.position.z);
       if (tickling <= 0) { hero.rotation.z = 0; tickleCooldown = 6; laughBubble.visible = false; }
     } else if (gameState !== 'intro' && path && path.length) {
-      const LOOKAHEAD = 0.9;
-      let steer = path[path.length - 1];
-      while (path.length && Math.hypot(path[0].x - hero.position.x, path[0].z - hero.position.z) < 0.25) path.shift();
-      for (const p of path) {
-        if (Math.hypot(p.x - hero.position.x, p.z - hero.position.z) > LOOKAHEAD) { steer = p; break; }
-        steer = p;
-      }
-      let dx = steer.x - hero.position.x, dz = steer.z - hero.position.z;
+      // Идём строго по точкам маршрута; препятствия обходим скольжением вдоль них,
+      // корпус поворачиваем по ФАКТИЧЕСКОМУ смещению (никакого «краба» и дёрганья).
+      const target = path[0];
+      const dx = target.x - hero.position.x, dz = target.z - hero.position.z;
       const d = Math.hypot(dx, dz);
-      // --- анти-залипание: нет прогресса 0.8 сек → считаем, что дошли ---
+      // детектор залипания по расстоянию до финала
       const finalPt = path[path.length - 1];
       const finalDist = Math.hypot(finalPt.x - hero.position.x, finalPt.z - hero.position.z);
       if (lastFinalDist === Infinity || finalDist < lastFinalDist - 0.004) {
@@ -1653,33 +1845,37 @@ function animate() {
       } else {
         noProgT += dt;
       }
-      const stuckFinish = noProgT > 0.7;
-      const arrived = !path.length || (path.length === 1 && finalDist < 0.45);
-      if (stuckFinish && !arrived && repathCount < 2 && finalTarget) {
-        // застряли у препятствия → не сдаёмся, а строим маршрут заново отсюда
-        repathCount++;
-        noProgT = 0; lastFinalDist = Infinity;
-        const np = findPath(hero.position.x, hero.position.z, finalTarget.x, finalTarget.z);
-        if (np) path = np; else { path = null; finalTarget = null; squashT = 1; }
-      } else if (stuckFinish || arrived) {
-        path = null;
-        finalTarget = null;
-        squashT = 1;
+      const arrived = path.length === 1 && finalDist < 0.4;
+      if (path.length > 1 && d < 0.32) {
+        path.shift(); // прошли точку — к следующей
+      } else if (arrived) {
+        path = null; finalTarget = null; squashT = 1;
+      } else if (noProgT > 1.0) {
+        if (repathCount < 2 && finalTarget) {
+          repathCount++;
+          noProgT = 0; lastFinalDist = Infinity;
+          const np = findPath(hero.position.x, hero.position.z, finalTarget.x, finalTarget.z);
+          if (np) path = np; else { path = null; finalTarget = null; squashT = 1; }
+        } else {
+          path = null; finalTarget = null; squashT = 1; // тихая остановка, без конвульсий
+        }
       } else if (d > 0.001) {
-        dx /= d; dz /= d;
-        hero.position.x += dx * SPEED * dt;
-        hero.position.z += dz * SPEED * dt;
-        resolveCollision(hero.position);
-        const wantYaw = Math.atan2(dx, dz);
-        let dy = wantYaw - hero.rotation.y;
-        while (dy > Math.PI) dy -= Math.PI * 2;
-        while (dy < -Math.PI) dy += Math.PI * 2;
-        hero.rotation.y += dy * 0.16;
-        const hop = Math.abs(Math.sin(elapsed * 10)) * 0.14;
-        hero.position.y = hop;
-        charData.bodyG.rotation.x = 0.1 + hop * 0.15;
-        charData.ears.forEach(e => e.rotation.x = -hop * 0.9);
-        if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hop * 0.9);
+        const step = Math.min(SPEED * dt, d);
+        const sl = slideCollide(hero.position.x + (dx / d) * step, hero.position.z + (dz / d) * step);
+        const mdx = sl[0] - hero.position.x, mdz = sl[1] - hero.position.z;
+        hero.position.x = sl[0]; hero.position.z = sl[1];
+        if (Math.hypot(mdx, mdz) > 0.0005) {
+          const wantYaw = Math.atan2(mdx, mdz);
+          let dyy = wantYaw - hero.rotation.y;
+          while (dyy > Math.PI) dyy -= Math.PI * 2;
+          while (dyy < -Math.PI) dyy += Math.PI * 2;
+          hero.rotation.y += dyy * 0.25;
+          const hop = Math.abs(Math.sin(elapsed * 10)) * 0.14;
+          hero.position.y = hop;
+          charData.bodyG.rotation.x = 0.1 + hop * 0.15;
+          charData.ears.forEach(e => e.rotation.x = -hop * 0.9);
+          if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hop * 0.9);
+        }
       }
     } else {
       hero.position.y += (0 - hero.position.y) * 0.25;
@@ -1692,7 +1888,7 @@ function animate() {
       }
     }
 
-    if (!path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -1744,7 +1940,12 @@ function animate() {
         const ex = w.g.position.x / d, ez = w.g.position.z / d;
         w.g.position.x += ex * 2.5 * dt; w.g.position.z += ez * 2.5 * dt;
         w.g.rotation.y = Math.atan2(ex, ez) - Math.PI / 2;
-        if (d > ISLAND_R + 2) { scene.remove(w.g); wolves.splice(wi, 1); }
+        // у края полянки волк «растворяется», а не уходит в пустоту
+        if (d > ISLAND_R - 0.3) {
+          spawnBurst(new THREE.Vector3(w.g.position.x, 0.7, w.g.position.z), 8);
+          play('whoosh');
+          scene.remove(w.g); wolves.splice(wi, 1);
+        }
         continue;
       }
       if (w.mode === 'hunt' && tickling <= 0 && gameState === 'explore' && !hiding) {
@@ -1767,9 +1968,15 @@ function animate() {
       } else {
         w.cooldown -= dt;
         w.g.position.y = 0;
-        // убегая, волк действительно уходит к краю острова
+        // убегая, волк действительно уходит к краю острова и растворяется
         const d = Math.hypot(w.g.position.x, w.g.position.z);
-        if (d > 0.001 && d < ISLAND_R + 1.5) {
+        if (d > ISLAND_R - 0.3) {
+          spawnBurst(new THREE.Vector3(w.g.position.x, 0.7, w.g.position.z), 8);
+          play('whoosh');
+          scene.remove(w.g); wolves.splice(wi, 1);
+          continue;
+        }
+        if (d > 0.001) {
           const ex = w.g.position.x / d, ez = w.g.position.z / d;
           w.g.position.x += ex * 3 * dt;
           w.g.position.z += ez * 3 * dt;
@@ -1796,6 +2003,13 @@ function animate() {
   // --- ДРЕВО ---
   treeRoot.scale.lerp(new THREE.Vector3(1, 1, 1), 0.06);
   treeRoot.rotation.z = Math.sin(elapsed * 1.4) * 0.015;
+  // вращающаяся звезда на выросшем Древе
+  if (treeStages[3] && treeStages[3].visible && treeStages[3].userData.star) {
+    const st = treeStages[3].userData.star;
+    st.rotation.y = elapsed * 1.6;
+    const sp = 1 + Math.sin(elapsed * 3) * 0.08;
+    st.scale.set(sp, 1.35 * sp, sp);
+  }
   if (watering > 0) watering -= dt;
   for (let i = waterDrops.length - 1; i >= 0; i--) {
     const d = waterDrops[i];
@@ -1823,8 +2037,8 @@ function animate() {
     const remain = mgDom.apples.filter(a => !a.done && a !== appleDrag);
     if (remain.length) {
       const need = basketEls[remain[0].color];
-      if (idle > 6) need.classList.add('glow');
-      if (idle > 12 && !appleDrag) {
+      if (idle > 18) need.classList.add('glow');
+      if (idle > 26 && !appleDrag) {
         mgFinger.style.display = 'block';
         mgDom.fingerFlip = Math.sin(elapsed * 1.4) > 0 ? 0 : 1;
         const from = remain[0].el.getBoundingClientRect();
@@ -1841,12 +2055,12 @@ function animate() {
   if (gameState === 'countgame' && !cg.answered) {
     const idle = elapsed - cg.lastAction;
     const rightBtn = Array.from(cgAnswers.children).find(b => parseInt(b.textContent, 10) === cg.correct);
-    if (rightBtn && idle > 6) rightBtn.classList.add('glow');
-    if (rightBtn && idle > 12 && !cg.fingerShown) {
+    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 26 && !cg.fingerShown) {
       cg.fingerShown = true;
       const r = rightBtn.getBoundingClientRect();
       cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
-      cgFinger.style.top = (r.top - r.height * 0.55) + 'px';
+      cgFinger.style.top = (r.top - 74) + 'px';
       cgFinger.style.display = 'block';
     }
   }
@@ -1855,12 +2069,12 @@ function animate() {
   if (gameState === 'bridgegame' && !bg.answered) {
     const idle = elapsed - bg.lastAction;
     const rightBtn = Array.from(bgAnswers.children).find(b => b.dataset.e === bg.answer);
-    if (rightBtn && idle > 6) rightBtn.classList.add('glow');
-    if (rightBtn && idle > 12 && !bg.fingerShown) {
+    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 26 && !bg.fingerShown) {
       bg.fingerShown = true;
       const r = rightBtn.getBoundingClientRect();
       bgFinger.style.left = (r.left + r.width * 0.18) + 'px';
-      bgFinger.style.top = (r.top - r.height * 0.55) + 'px';
+      bgFinger.style.top = (r.top - 74) + 'px';
       bgFinger.style.display = 'block';
     }
   }
@@ -1966,6 +2180,18 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
+// Скольжение вдоль препятствий: точку, попавшую внутрь круга, выносим по нормали —
+// тангенциальная составляющая движения сохраняется, визуально это плавный обход без отскоков.
+function slideCollide(nx, nz) {
+  for (const ob of obstacles) {
+    const ox = nx - ob.x, oz = nz - ob.z;
+    const d = Math.hypot(ox, oz);
+    const minD = ob.r + 0.32;
+    if (d < minD && d > 1e-4) { const k = minD / d; nx = ob.x + ox * k; nz = ob.z + oz * k; }
+  }
+  return [nx, nz];
+}
 
 function resolveCollision(pos) {
   for (const ob of obstacles) {
