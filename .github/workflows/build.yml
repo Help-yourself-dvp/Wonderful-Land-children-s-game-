@@ -42,6 +42,16 @@ jobs:
       - name: Sync web build into Android project
         run: npx cap sync android
 
+      - name: Lock landscape orientation (детям — только горизонтально)
+        run: |
+          python3 - <<'PY'
+          p = 'android/app/src/main/AndroidManifest.xml'
+          s = open(p).read()
+          s = s.replace('android:name=".MainActivity"', 'android:name=".MainActivity" android:screenOrientation="landscape"', 1)
+          open(p, 'w').write(s)
+          print('landscape locked:', 'screenOrientation' in s)
+          PY
+
       - name: Build APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon

@@ -20,34 +20,24 @@
       transform: translateX(-50%);
       background: rgba(255,255,255,0.75); color: #4a6b52;
       font-size: 18px; padding: 10px 22px; border-radius: 24px;
-      pointer-events: none; transition: opacity 1.2s ease; opacity: 0;
+      pointer-events: none; transition: opacity 1.2s ease; opacity: 0; z-index: 5;
     }
 
     /* ================= ЗАСТАВКА ================= */
     #splash {
-      position: fixed; inset: 0; z-index: 20;
-      overflow: hidden;
+      position: fixed; inset: 0; z-index: 20; overflow: hidden;
       background: linear-gradient(180deg, #cfeefa 0%, #fdeec9 55%, #bfe6b1 100%);
       transition: opacity 0.9s ease;
     }
     #splash svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-    /* солнце встаёт */
     #sSun { animation: sunRise 2.6s cubic-bezier(.22,1,.36,1) both; }
-    @keyframes sunRise {
-      from { transform: translateY(48%); }
-      to   { transform: translateY(0%); }
-    }
+    @keyframes sunRise { from { transform: translateY(48%); } to { transform: translateY(0%); } }
     #sGlow { animation: glowIn 2.8s ease both; transform-origin: 72% 30%; }
     @keyframes glowIn { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
-
-    /* холмы дышат параллаксом */
     .hill { animation: hillDrift 9s ease-in-out infinite alternate; }
     .hill.h2 { animation-duration: 12s; animation-delay: -3s; }
     .hill.h3 { animation-duration: 15s; animation-delay: -6s; }
     @keyframes hillDrift { from { transform: translateX(-1.2%); } to { transform: translateX(1.2%); } }
-
-    /* дерево растёт с упругим до-ходом */
     #sTree { transform-origin: 22% 88%; animation: treeGrow 1.6s cubic-bezier(.34,1.56,.64,1) .5s both; }
     @keyframes treeGrow { from { transform: scale(0); } to { transform: scale(1); } }
     #sTree .leaf { transform-box: fill-box; transform-origin: center; animation: leafPop .8s cubic-bezier(.34,1.56,.64,1) both; }
@@ -55,17 +45,8 @@
     #sTree .leaf.l2 { animation-delay: 1.4s; }
     #sTree .leaf.l3 { animation-delay: 1.6s; }
     @keyframes leafPop { from { transform: scale(0); } to { transform: scale(1); } }
-
-    /* мягкие светящиеся частички поднимаются */
     .mote { opacity: 0; animation: moteRise 4.5s ease-in-out infinite; }
-    @keyframes moteRise {
-      0% { transform: translateY(0); opacity: 0; }
-      20% { opacity: .8; }
-      80% { opacity: .5; }
-      100% { transform: translateY(-90px); opacity: 0; }
-    }
-
-    /* заголовок */
+    @keyframes moteRise { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: .8; } 80% { opacity: .5; } 100% { transform: translateY(-90px); opacity: 0; } }
     #splash .title-wrap {
       position: absolute; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 10px; padding: 0 24px;
@@ -77,38 +58,25 @@
       opacity: 0; animation: fadeUp 1s ease .9s both;
     }
     #splash h1 .accent { color: #e0813f; }
-    #splash .sub {
-      margin: 0; color: #5d7a63; font-size: clamp(15px, 3.2vw, 21px);
-      opacity: 0; animation: fadeUp 1s ease 1.5s both;
-    }
+    #splash .sub { margin: 0; color: #5d7a63; font-size: clamp(15px, 3.2vw, 21px); opacity: 0; animation: fadeUp 1s ease 1.5s both; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-
-    /* линия загрузки-росток */
     #splash .bar {
-      position: absolute; left: 50%; bottom: calc(9vh + env(safe-area-inset-bottom));
-      transform: translateX(-50%);
+      position: absolute; left: 50%; bottom: calc(9vh + env(safe-area-inset-bottom)); transform: translateX(-50%);
       width: min(46vw, 260px); height: 6px; border-radius: 99px;
-      background: rgba(61,92,68,0.18); overflow: hidden;
-      opacity: 0; animation: fadeUp .6s ease 1.2s both;
+      background: rgba(61,92,68,0.18); overflow: hidden; opacity: 0; animation: fadeUp .6s ease 1.2s both;
     }
-    #splash .bar i {
-      display: block; height: 100%; width: 0; border-radius: 99px;
-      background: linear-gradient(90deg, #8ed081, #6cbf6f);
-      animation: barGrow 2.3s cubic-bezier(.4,0,.2,1) .3s both;
-    }
+    #splash .bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #8ed081, #6cbf6f); animation: barGrow 2.3s cubic-bezier(.4,0,.2,1) .3s both; }
     @keyframes barGrow { from { width: 0; } to { width: 100%; } }
 
     /* ================= ВЫБОР ДРУГА ================= */
     #select {
-      position: fixed; inset: 0; z-index: 15;
-      display: none; flex-direction: column; align-items: center; justify-content: flex-end;
-      padding-bottom: calc(56px + env(safe-area-inset-bottom));
-      pointer-events: none;
+      position: fixed; inset: 0; z-index: 15; display: none;
+      flex-direction: column; align-items: center; justify-content: flex-end;
+      padding-bottom: calc(56px + env(safe-area-inset-bottom)); pointer-events: none;
     }
     #select .card {
       pointer-events: auto;
-      background: rgba(255,255,255,0.72);
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      background: rgba(255,255,255,0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       border-radius: 30px; padding: 22px 28px; text-align: center;
       box-shadow: 0 12px 40px rgba(61,92,68,0.22);
       animation: cardIn .55s cubic-bezier(.34,1.56,.64,1) both;
@@ -126,8 +94,8 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; box-shadow: 0 6px 18px rgba(61,92,68,0.18);
       transition: transform .18s cubic-bezier(.34,1.56,.64,1);
-      -webkit-tap-highlight-color: transparent;
-      opacity: 0; animation: charIn .5s cubic-bezier(.34,1.56,.64,1) both;
+      -webkit-tap-highlight-color: transparent; opacity: 0;
+      animation: charIn .5s cubic-bezier(.34,1.56,.64,1) both;
     }
     .char-wrap:nth-child(1) .char { animation-delay: .15s; }
     .char-wrap:nth-child(2) .char { animation-delay: .28s; }
@@ -135,9 +103,7 @@
     @keyframes charIn { from { transform: translateY(26px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
     .char:active { transform: scale(.88); }
 
-    .fade-out { opacity: 0; pointer-events: none; }
-
-    /* ================= HUD: КАПЕЛЬКИ ================= */
+    /* ================= HUD ================= */
     #drops {
       position: fixed; z-index: 10;
       top: calc(12px + env(safe-area-inset-top)); right: 14px;
@@ -145,58 +111,46 @@
       background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
       border-radius: 99px; padding: 8px 16px;
       color: #2e6f8e; font-size: 20px; font-weight: 700;
-      box-shadow: 0 4px 14px rgba(46,111,142,0.18);
-      pointer-events: none;
+      box-shadow: 0 4px 14px rgba(46,111,142,0.18); pointer-events: none;
     }
     #drops.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
     @keyframes dropPop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
-    /* кнопка звука */
     #muteBtn {
       position: fixed; z-index: 10;
       top: calc(12px + env(safe-area-inset-top)); left: 14px;
       width: 46px; height: 46px; border-radius: 50%; border: none;
       background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
       font-size: 22px; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 14px rgba(61,92,68,0.18);
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 4px 14px rgba(61,92,68,0.18); cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     #muteBtn:active { transform: scale(.9); }
 
-    /* ================= АЛЬБОМ НАКЛЕЕК ================= */
+    /* ================= АЛЬБОМ ================= */
     #albumBtn {
       position: fixed; z-index: 10;
       bottom: calc(16px + env(safe-area-inset-bottom)); right: 14px;
       width: 56px; height: 56px; border-radius: 50%; border: none;
       background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
       font-size: 28px; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 6px 18px rgba(61,92,68,0.22);
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 6px 18px rgba(61,92,68,0.22); cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     #albumBtn:active { transform: scale(.9); }
     #albumBtn.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
     #album {
       position: fixed; inset: 0; z-index: 30; display: none;
-      background: rgba(61,92,68,0.35);
-      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      background: rgba(61,92,68,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     }
     #album .sheet {
       position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
       width: min(92vw, 560px); height: min(78vh, 480px);
-      background: #fdfaf1; border-radius: 26px;
-      box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+      background: #fdfaf1; border-radius: 26px; box-shadow: 0 18px 60px rgba(0,0,0,0.25);
       padding: 18px; box-sizing: border-box;
       animation: cardIn .45s cubic-bezier(.34,1.56,.64,1) both;
       display: flex; flex-direction: column;
     }
     #album h3 { margin: 4px 0 10px; text-align: center; color: #4a6b52; font-size: 22px; }
     #albumField { position: relative; flex: 1; border-radius: 18px; background: repeating-linear-gradient(0deg, #f7f1de 0 34px, #f0e8d0 34px 36px); overflow: hidden; }
-    .sticker {
-      position: absolute; font-size: 46px; line-height: 1;
-      touch-action: none; cursor: grab;
-      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18));
-      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
-      -webkit-tap-highlight-color: transparent;
-    }
+    .sticker { position: absolute; font-size: 46px; line-height: 1; touch-action: none; cursor: grab; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); transition: transform .15s cubic-bezier(.34,1.56,.64,1); -webkit-tap-highlight-color: transparent; }
     .sticker:active { transform: scale(1.2); }
     .sticker.locked { filter: grayscale(1); opacity: 0.25; cursor: default; }
     #albumClose {
@@ -206,6 +160,66 @@
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     #albumClose:active { transform: scale(.9); }
+
+    /* ================= МИНИ-ИГРА (отдельный экран) ================= */
+    #minigame {
+      position: fixed; inset: 0; z-index: 25; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .mg-card {
+      pointer-events: auto;
+      width: min(94vw, 640px);
+      background: linear-gradient(180deg, #fffdf4, #f3f8e8);
+      border-radius: 28px; padding: 14px 16px 18px; box-sizing: border-box;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+      animation: cardIn .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .mg-head { display: flex; justify-content: center; gap: 18px; margin-bottom: 8px; }
+    .mg-rule {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.8); border-radius: 99px; padding: 6px 14px;
+      font-size: 24px;
+    }
+    .mg-dot { width: 22px; height: 22px; border-radius: 50%; display: inline-block; }
+    .mg-field { position: relative; height: min(52vh, 390px); border-radius: 20px; background: linear-gradient(180deg, #e8f4d9, #d9ecc6); overflow: hidden; }
+    .mg-apple {
+      position: absolute; font-size: clamp(46px, 9.5vh, 62px); line-height: 1;
+      touch-action: none; cursor: grab; z-index: 3;
+      filter: drop-shadow(0 4px 4px rgba(0,0,0,0.18));
+      transition: left .35s ease, top .35s ease, transform .2s, opacity .3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mg-apple.dragging { transition: none; transform: scale(1.25); z-index: 9; cursor: grabbing; }
+    .mg-apple.shake { animation: mgShake .4s ease; }
+    @keyframes mgShake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-10px) rotate(-8deg); } 75% { transform: translateX(10px) rotate(8deg); } }
+    .mg-baskets { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: space-around; z-index: 2; }
+    .mg-basket {
+      width: clamp(92px, 17vh, 128px); height: clamp(92px, 17vh, 128px);
+      border-radius: 26px; display: flex; align-items: center; justify-content: center;
+      font-size: clamp(52px, 10vh, 70px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15) inset, 0 4px 10px rgba(0,0,0,0.12);
+      transition: transform .2s;
+    }
+    .mg-basket.glow { animation: basketGlow .7s ease-in-out infinite alternate; }
+    @keyframes basketGlow { from { transform: scale(1); box-shadow: 0 0 0 4px rgba(255,209,102,0.9), 0 4px 10px rgba(0,0,0,0.12); } to { transform: scale(1.07); box-shadow: 0 0 0 14px rgba(255,209,102,0.25), 0 4px 10px rgba(0,0,0,0.12); } }
+    .mg-finger {
+      position: fixed; z-index: 29; font-size: 52px; pointer-events: none;
+      transition: left .65s ease-in-out, top .65s ease-in-out;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.25));
+    }
+
+    /* ================= ПОВЕРНИ УСТРОЙСТВО ================= */
+    #rotate {
+      position: fixed; inset: 0; z-index: 40; display: none;
+      background: linear-gradient(180deg, #cfeefa, #bfe6b1);
+      flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+      color: #3d5c44; font-size: 22px; font-weight: 700; text-align: center; padding: 20px;
+    }
+    #rotate .phone { font-size: 64px; animation: rotatePhone 1.6s ease-in-out infinite; }
+    @keyframes rotatePhone { 0%,30% { transform: rotate(0); } 70%,100% { transform: rotate(90deg); } }
+
+    .fade-out { opacity: 0 !important; pointer-events: none !important; }
   </style>
 </head>
 <body>
@@ -222,6 +236,24 @@
     </div>
   </div>
 
+  <div id="minigame">
+    <div class="mg-card">
+      <div class="mg-head">
+        <div class="mg-rule">🍎 ➜ <span class="mg-dot" style="background:#e26d5c"></span></div>
+        <div class="mg-rule">🍏 ➜ <span class="mg-dot" style="background:#7fb069"></span></div>
+      </div>
+      <div class="mg-field" id="mgField">
+        <div class="mg-baskets">
+          <div class="mg-basket" id="basketRed" style="background:#e26d5c">🧺</div>
+          <div class="mg-basket" id="basketGreen" style="background:#7fb069">🧺</div>
+        </div>
+      </div>
+    </div>
+    <div class="mg-finger" id="mgFinger" style="display:none">👆</div>
+  </div>
+
+  <div id="rotate"><div class="phone">📱</div>Поверни устройство —<br>так играть удобнее!</div>
+
   <div id="splash">
     <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
@@ -231,25 +263,17 @@
         </radialGradient>
         <filter id="soft"><feGaussianBlur stdDeviation="8"/></filter>
       </defs>
-
-      <!-- свечение и солнце -->
       <g id="sGlow"><circle cx="720" cy="300" r="230" fill="url(#gSunset)"/></g>
       <g id="sSun"><circle cx="720" cy="300" r="62" fill="#ffdf7e"/></g>
-
-      <!-- холмы -->
       <path class="hill h3" d="M-50 780 Q 250 640 520 760 T 1100 750 V1050 H-50 Z" fill="#bfe6b1"/>
       <path class="hill h2" d="M-50 850 Q 300 720 620 830 T 1100 830 V1050 H-50 Z" fill="#a5da92"/>
       <path class="hill"    d="M-50 930 Q 350 820 700 920 T 1100 910 V1050 H-50 Z" fill="#8ed081"/>
-
-      <!-- дерево -->
       <g id="sTree">
         <rect x="205" y="700" width="26" height="150" rx="12" fill="#9a6b4f"/>
         <circle class="leaf l1" cx="218" cy="640" r="72" fill="#6cbf6f"/>
         <circle class="leaf l2" cx="268" cy="686" r="46" fill="#7ecb7f"/>
         <circle class="leaf l3" cx="172" cy="692" r="42" fill="#8fd07a"/>
       </g>
-
-      <!-- частички -->
       <g filter="url(#soft)">
         <circle class="mote" cx="430" cy="620" r="7" fill="#ffffff" style="animation-delay:0s"/>
         <circle class="mote" cx="560" cy="560" r="5" fill="#fff3c9" style="animation-delay:.9s"/>
@@ -258,7 +282,6 @@
         <circle class="mote" cx="790" cy="600" r="5" fill="#ffffff" style="animation-delay:3.2s"/>
       </g>
     </svg>
-
     <div class="title-wrap">
       <h1>🌳 Волшебная <span class="accent">полянка</span></h1>
       <p class="sub">Добрые приключения с пользой</p>

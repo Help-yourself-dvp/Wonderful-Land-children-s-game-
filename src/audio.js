@@ -144,3 +144,6 @@ export function speak(file) {
     a.play().catch(() => {});
   } catch (e) {}
 }
+export function stopVoice() {
+  for (const k in voiceCache) { try { voiceCache[k].pause(); voiceCache[k].currentTime = 0; } catch (e) {} }
+}

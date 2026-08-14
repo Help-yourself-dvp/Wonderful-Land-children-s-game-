@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, setNight, toggleMute, isMuted, speak } from './audio.js';
+import { initAudio, play, setNight, toggleMute, isMuted, speak, stopVoice } from './audio.js';
 
 // ============ БАЗА ============
 const scene = new THREE.Scene();
@@ -18,9 +18,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
 document.body.appendChild(renderer.domElement);
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 250);
+const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 250);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x9ccc8f, 0.95);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2d0, 1.35);
@@ -41,7 +44,21 @@ ground.position.y = -0.9;
 ground.receiveShadow = true;
 scene.add(ground);
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.75); // плоскость перетаскивания фруктов
+
+let seed = 42;
+const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+// Разнотравье: мягкие пятна на лугу
+for (let i = 0; i < 14; i++) {
+  const a = rand() * Math.PI * 2, r = 2 + Math.sqrt(rand()) * 11.5;
+  const patch = new THREE.Mesh(
+    new THREE.CircleGeometry(1.1 + rand() * 1.4, 20),
+    new THREE.MeshLambertMaterial({ color: rand() > 0.5 ? 0x84cc78 : 0x9adb8a, transparent: true, opacity: 0.5 })
+  );
+  patch.rotation.x = -Math.PI / 2;
+  patch.position.set(Math.cos(a) * r, 0.015 + i * 0.001, Math.sin(a) * r);
+  scene.add(patch);
+}
 
 for (const [x, z, r, c] of [[-7, -7, 3.4, 0x7ecb74], [9, 6, 2.6, 0x86cf78], [-11, 4, 2.2, 0x94d687]]) {
   const hill = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), L(c));
@@ -73,7 +90,50 @@ for (let i = 0; i < 6; i++) {
   scene.add(st);
 }
 
-// ============ РАСТИТЕЛЬНОСТЬ ============
+// Камни, бревнышко, грибы, подсолнух
+for (const [x, z, r] of [[7.8, 6.8, 0.5], [-4.5, -4, 0.42], [11, 6.5, 0.38]]) {
+  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 2), L(0xb9c1c9));
+  stone.position.set(x, r * 0.55, z); stone.castShadow = true;
+  scene.add(stone);
+  obstacles.push({ x, z, r: r + 0.08 });
+}
+{
+  const log = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.7, 14), L(0x9a6b4f));
+  log.rotation.z = Math.PI / 2; log.position.set(8.9, 0.32, 1.2); log.rotation.y = 0.4;
+  log.castShadow = true;
+  scene.add(log);
+  obstacles.push({ x: 8.9, z: 1.2, r: 1.0 });
+}
+for (const [x, z] of [[-9, 1.5], [8.4, -4.6], [-5.8, 8.6]]) {
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.42, 10), L(0xf7e7c3));
+  stem.position.set(x, 0.21, z);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), L(0xe26d5c));
+  cap.position.set(x, 0.42, z); cap.castShadow = true;
+  scene.add(stem, cap);
+}
+{
+  const g = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.7, 8), L(0x5aa860));
+  stem.position.y = 0.85;
+  const center = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 14), L(0x8a5a3b));
+  center.position.y = 1.75; center.scale.z = 0.45; center.castShadow = true;
+  g.add(stem, center);
+  for (let p = 0; p < 9; p++) {
+    const petal = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), L(0xffd166));
+    const a = (p / 9) * Math.PI * 2;
+    petal.position.set(Math.cos(a) * 0.34, 1.75 + Math.sin(a) * 0.34, 0.05);
+    petal.scale.set(1.5, 0.7, 0.4);
+    petal.rotation.z = a;
+    g.add(petal);
+  }
+  g.position.set(-9.5, 0, 8.2);
+  g.rotation.y = 0.6;
+  scene.add(g);
+  swayList.push({ obj: g, amp: 0.08, speed: 1.2 });
+  obstacles.push({ x: -9.5, z: 8.2, r: 0.4 });
+}
+
+// ============ ДЕРЕВЬЯ / КУСТЫ / ЦВЕТЫ / ТРАВА ============
 function makeTree(x, z, s, crownColor) {
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.34 * s, 1.5 * s, 12), L(0x9a6b4f));
@@ -129,8 +189,6 @@ flowerSpots.forEach(([x, z], i) => {
 
 const tuftGeo = new THREE.ConeGeometry(0.09, 0.35, 6);
 const tuftMat = L(0x6fbf62);
-let seed = 42;
-const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 for (let i = 0; i < 70; i++) {
   const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * (ISLAND_R - 1.5);
   const tuft = new THREE.Mesh(tuftGeo, tuftMat);
@@ -264,7 +322,7 @@ function makeButterfly(cx, cz, color) {
 }
 makeButterfly(0.5, 6, 0xffb703); makeButterfly(-6, 2, 0xff8fa3);
 
-// ============ ЭМОДЗИ-СПРАЙТЫ (облачка речи, пальцы) ============
+// ============ ОБЛАЧКА-ЭМОДЗИ ============
 function makeBubbleSprite(emoji, scale = 1.15) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 256;
@@ -273,7 +331,7 @@ function makeBubbleSprite(emoji, scale = 1.15) {
   ctx.beginPath();
   ctx.arc(128, 108, 92, 0, Math.PI * 2);
   ctx.fill();
-  ctx.beginPath(); // хвостик облачка
+  ctx.beginPath();
   ctx.moveTo(108, 190); ctx.lineTo(92, 236); ctx.lineTo(140, 196);
   ctx.fill();
   ctx.font = '96px system-ui';
@@ -284,11 +342,8 @@ function makeBubbleSprite(emoji, scale = 1.15) {
   sp.scale.set(scale, scale, 1);
   return sp;
 }
-const fingerSprite = makeBubbleSprite('👆', 0.9);
-fingerSprite.visible = false;
-scene.add(fingerSprite);
 
-// ============ ЁЖИК (NPC) ============
+// ============ ЁЖИК ============
 const hedgehog = new THREE.Group();
 {
   const spikes = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 2), L(0x8a6b9e));
@@ -310,9 +365,8 @@ const HEDGE_POS = { x: -2.2, z: 7.2 };
 hedgehog.position.set(HEDGE_POS.x, 0, HEDGE_POS.z);
 hedgehog.rotation.y = 0.4;
 scene.add(hedgehog);
-obstacles.push({ x: HEDGE_POS.x, z: HEDGE_POS.z, r: 0.4 });
+obstacles.push({ x: HEDGE_POS.x, z: HEDGE_POS.z, r: 0.45 });
 
-// Облачко-приглашение над ёжиком
 const hedgeBubble = makeBubbleSprite('🍎', 1.05);
 hedgeBubble.position.set(HEDGE_POS.x, 2.1, HEDGE_POS.z);
 scene.add(hedgeBubble);
@@ -325,14 +379,14 @@ function setBubble(t) { hedgeBubble.material.map = t; hedgeBubble.material.needs
 
 // ============ ДРЕВО ЖЕЛАНИЙ ============
 const TREE_POS = { x: -0.5, z: -2.8 };
-let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10); // 1..3
+let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10);
 let treeWaters = parseInt(localStorage.getItem('wm_tree_waters') || '0', 10);
-const TREE_STAGE_AT = { 2: 2, 3: 5 }; // сколько поливов нужно для стадии 2 и 3
+const TREE_STAGE_AT = { 2: 2, 3: 5 };
 
 const treeStages = [null, null, null, null];
 function buildTreeStage(s) {
   const g = new THREE.Group();
-  if (s === 1) { // росток
+  if (s === 1) {
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 8), L(0x7aa95c));
     stem.position.y = 0.25;
     const leafGeo = new THREE.SphereGeometry(0.16, 12, 12);
@@ -340,7 +394,7 @@ function buildTreeStage(s) {
     leafL.position.set(-0.16, 0.5, 0); leafL.scale.set(1.3, 0.5, 0.6);
     const leafR = leafL.clone(); leafR.position.x = 0.16;
     g.add(stem, leafL, leafR);
-  } else if (s === 2) { // деревце
+  } else if (s === 2) {
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.2, 10), L(0x9a6b4f));
     trunk.position.y = 0.6; trunk.castShadow = true;
     const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 2), L(0x7ecb7f));
@@ -349,12 +403,11 @@ function buildTreeStage(s) {
     crown2.position.set(0.4, 1.35, 0.15);
     g.add(trunk, crown, crown2);
     for (const [dx, dy, dz] of [[0.3, 1.75, 0.2], [-0.35, 1.5, -0.1]]) {
-      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10),
-        new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffd166 }));
       fruit.position.set(dx, dy, dz);
       g.add(fruit);
     }
-  } else { // пышное дерево
+  } else {
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.9, 12), L(0x9a6b4f));
     trunk.position.y = 0.95; trunk.castShadow = true;
     g.add(trunk);
@@ -365,8 +418,7 @@ function buildTreeStage(s) {
       g.add(c);
     }
     for (const [dx, dy, dz] of [[0.5, 2.6, 0.4], [-0.5, 2.3, 0.3], [0.1, 2.9, -0.3], [0.85, 2.0, -0.1], [-0.3, 1.8, 0.55]]) {
-      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10),
-        new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffd166 }));
       fruit.position.set(dx, dy, dz);
       g.add(fruit);
     }
@@ -391,11 +443,10 @@ const treeBubble = makeBubbleSprite('💧', 0.95);
 treeBubble.position.set(TREE_POS.x, 2.6, TREE_POS.z);
 scene.add(treeBubble);
 function updateTreeBubble() {
-  treeBubble.visible = dropsCount > 0 && gameState === 'explore';
-  treeBubble.scale.setScalar(0.95 + Math.sin(elapsed * 2.2) * 0.05);
+  treeBubble.visible = dropsCount > 0 && (gameState === 'explore' || gameState === 'intro');
+  if (treeBubble.visible) treeBubble.scale.setScalar(0.95 + Math.sin(elapsed * 2.2) * 0.05);
 }
 
-// Капельки-полив (анимация дождя над деревом)
 const waterDrops = [];
 function pourRain() {
   for (let i = 0; i < 12; i++) {
@@ -525,18 +576,13 @@ const blob = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ color: 0x3f6b46, transparent: true, opacity: 0.16 })
 );
 blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02;
-
-function spawnHero(type) {
-  hero = makeChar(type);
-  hero.position.set(1, 0, 2);
-  hero.add(blob);
-  scene.add(hero);
-  charData = hero.userData;
-  spawnPop = 1;
-}
+const laughBubble = makeBubbleSprite('😂', 0.95);
+laughBubble.visible = false;
+scene.add(laughBubble);
 
 // ============ ВОЛКИ / СЕРДЕЧКИ ============
 const wolves = [];
+let wolfWarned = false;
 function makeWolf() {
   const g = new THREE.Group();
   const fur = L(0x7a7f8a);
@@ -560,6 +606,7 @@ function makeWolf() {
 }
 function spawnWolf() {
   play('whoosh');
+  if (!wolfWarned) { wolfWarned = true; speak('voice/wolf_warn.mp3'); }
   const a = rand() * Math.PI * 2;
   const g = makeWolf();
   g.position.set(Math.cos(a) * (ISLAND_R - 1), 0, Math.sin(a) * (ISLAND_R - 1));
@@ -579,11 +626,10 @@ function spawnBurst(pos, n = 10) {
   }
 }
 
-// ============ СОСТОЯНИЕ ИГРЫ ============
-let gameState = 'explore'; // explore | dialog | minigame | celebrate
-const camGoal = { pos: new THREE.Vector3(), look: new THREE.Vector3(), active: false };
+// ============ СОСТОЯНИЕ ============
+let gameState = 'loading'; // loading | intro | explore | dialog | minigame | celebrate
 
-// Капельки (сохраняются)
+// Капельки
 let dropsCount = parseInt(localStorage.getItem('wm_drops') || '0', 10);
 const dropsEl = document.getElementById('drops');
 const dropsNum = document.getElementById('dropsNum');
@@ -594,168 +640,6 @@ function refreshDrops(pop = false) {
   if (pop) { dropsEl.classList.remove('pop'); void dropsEl.offsetWidth; dropsEl.classList.add('pop'); }
 }
 refreshDrops();
-
-// ============ МИНИ-ИГРА «УРОЖАЙНЫЙ ДЕНЬ» ============
-const mg = {
-  active: false,
-  baskets: [],
-  fruits: [],
-  sorted: 0,
-  lastAction: 0,
-  glowBasket: null,
-};
-const BASKET_COLORS = [
-  { name: 'red', hex: 0xe26d5c, fruitHex: 0xd94f4f },
-  { name: 'green', hex: 0x7fb069, fruitHex: 0x8bc34a },
-];
-const MG_CENTER = { x: 0, z: 8.2 };
-
-function makeBasket(color) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.5, 0.55, 20), L(color.hex));
-  body.position.y = 0.28; body.castShadow = true;
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.08, 10, 24), L(color.hex));
-  rim.rotation.x = Math.PI / 2; rim.position.y = 0.56;
-  const inner = new THREE.Mesh(new THREE.CircleGeometry(0.5, 20), L(0x6b4e3d));
-  inner.rotation.x = -Math.PI / 2; inner.position.y = 0.5;
-  g.add(body, rim, inner);
-  g.userData.color = color.name;
-  g.userData.hex = color.hex;
-  return g;
-}
-function makeFruit(color) {
-  const g = new THREE.Group();
-  const apple = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 18), L(color.fruitHex));
-  apple.castShadow = true;
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.16, 6), L(0x8a5a3b));
-  stem.position.y = 0.36;
-  const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), L(0x5aa860));
-  leaf.position.set(0.08, 0.4, 0); leaf.scale.set(1.4, 0.5, 0.8);
-  g.add(apple, stem, leaf);
-  g.userData.color = color.name;
-  return g;
-}
-
-function startDialog() {
-  gameState = 'dialog';
-  setBubble(bubTex.work);
-  play('pop');
-  speak('voice/hedge_hello.mp3');
-  // герой здоровается — смотрит на ёжика
-  const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
-  hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog') startMinigame(); }, 1600);
-}
-
-function startMinigame() {
-  gameState = 'minigame';
-  mg.active = true; mg.sorted = 0; mg.lastAction = elapsed; mg.glowBasket = null;
-  fingerSprite.visible = false;
-  hedgeBubble.visible = false;
-
-  // корзины
-  const offs = [-1.7, 1.7];
-  mg.baskets = BASKET_COLORS.map((c, i) => {
-    const b = makeBasket(c);
-    b.position.set(MG_CENTER.x + offs[i], 0, MG_CENTER.z);
-    scene.add(b);
-    return b;
-  });
-
-  // 6 фруктов: 3 красных, 3 зелёных, вперемешку
-  const kinds = [0, 0, 0, 1, 1, 1].sort(() => rand() - 0.5);
-  mg.fruits = kinds.map((k, i) => {
-    const f = makeFruit(BASKET_COLORS[k]);
-    const col = i % 3, row = Math.floor(i / 3);
-    f.position.set(MG_CENTER.x - 1.3 + col * 1.3, 0.3, MG_CENTER.z + 1.4 + row * 0.95);
-    f.userData.home = f.position.clone();
-    f.userData.busy = false;
-    scene.add(f);
-    return f;
-  });
-
-  // камера на полянку с корзинами; герой встаёт рядом
-  camGoal.pos.set(MG_CENTER.x, 8.2, MG_CENTER.z + 7.2);
-  camGoal.look.set(MG_CENTER.x, 0, MG_CENTER.z + 0.6);
-  camGoal.active = true;
-  givePath(MG_CENTER.x - 3.2, MG_CENTER.z - 1.2);
-}
-
-// Анимации перелётов
-const flyAnims = [];
-function flyTo(mesh, to, opts = {}) {
-  flyAnims.push({
-    mesh, from: mesh.position.clone(), to: to.clone(),
-    t: 0, dur: opts.dur || 0.55, arc: opts.arc ?? 1.1,
-    shrink: !!opts.shrink, onDone: opts.onDone,
-  });
-}
-
-function onFruitDrop(fruit) {
-  mg.lastAction = elapsed;
-  fingerSprite.visible = false;
-  if (mg.glowBasket) { mg.glowBasket.children[0].material.emissive?.setHex(0x000000); mg.glowBasket = null; }
-  // ближайшая корзина
-  let best = null, bestD = 1.15;
-  for (const b of mg.baskets) {
-    const d = Math.hypot(b.position.x - fruit.position.x, b.position.z - fruit.position.z);
-    if (d < bestD) { bestD = d; best = b; }
-  }
-  if (best && best.userData.color === fruit.userData.color) {
-    // ВЕРНО: фрукт ныряет в корзину
-    play('good');
-    fruit.userData.busy = true;
-    const inBasket = best.position.clone(); inBasket.y = 0.55;
-    flyTo(fruit, inBasket, {
-      arc: 1.4, dur: 0.5, shrink: true,
-      onDone: () => {
-        scene.remove(fruit);
-        mg.sorted++;
-        spawnBurst(best.position.clone().add(new THREE.Vector3(0, 0.9, 0)), 7);
-        if (mg.sorted >= mg.fruits.length) celebrate();
-      },
-    });
-  } else {
-    // «Без проигрыша»: мягко возвращаем на место (плинг)
-    play('bad');
-    fruit.userData.busy = true;
-    flyTo(fruit, fruit.userData.home, {
-      arc: 0.7, dur: 0.45,
-      onDone: () => {
-        fruit.userData.busy = false;
-        squashPulse(fruit);
-      },
-    });
-  }
-}
-function squashPulse(mesh) {
-  flyAnims.push({ mesh, squash: true, t: 0, dur: 0.5 });
-}
-
-function celebrate() {
-  gameState = 'celebrate';
-  mg.active = false;
-  dropsCount++;
-  refreshDrops(true);
-  onTaskDone();
-  play('fanfare');
-  setTimeout(() => play('drop'), 450);
-  setTimeout(() => speak('voice/hedge_win.mp3'), 600);
-  spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
-  spawnBurst(new THREE.Vector3(MG_CENTER.x, 1.4, MG_CENTER.z), 18);
-  hedgeBubble.material.map = bubTex.star;
-  hedgeBubble.material.needsUpdate = true;
-  hedgeBubble.visible = true;
-  setTimeout(() => {
-    // убираем поле мини-игры, возвращаем камеру
-    for (const b of mg.baskets) scene.remove(b);
-    mg.baskets = [];
-    camGoal.active = false;
-    gameState = 'explore';
-    hedgeBubble.material.map = bubTex.apple;
-    hedgeBubble.material.needsUpdate = true;
-  }, 2600);
-}
 
 // ============ ПОЛИВ ДРЕВА ============
 let watering = 0;
@@ -768,14 +652,13 @@ function waterTree() {
   refreshDrops(true);
   treeWaters++;
   localStorage.setItem('wm_tree_waters', String(treeWaters));
-  watering = 1.4; // секунды анимации
+  watering = 1.4;
   pourRain();
   play('drop');
   speak('voice/tree_water.mp3');
   setTimeout(() => {
     const need = TREE_STAGE_AT[treeStage + 1];
     if (need && treeWaters >= need) {
-      // СТАДИЯ РОСТА!
       treeStage++;
       localStorage.setItem('wm_tree_stage', String(treeStage));
       treeStages[treeStage - 1].visible = false;
@@ -790,7 +673,7 @@ function waterTree() {
   }, 1100);
 }
 
-// ============ АЛЬБОМ НАКЛЕЕК ============
+// ============ АЛЬБОМ ============
 let tasksDone = parseInt(localStorage.getItem('wm_tasks') || '0', 10);
 const STICKERS = ['🍎', '🦔', '⭐', '🌸', '🦋', '🍏', '🌈', '🍄', '🌰', '🐞', '🌻', '🐝'];
 function unlockedCount() { return Math.min(STICKERS.length, Math.floor(tasksDone / 3)); }
@@ -832,7 +715,7 @@ function enableStickerDrag(el, idx) {
     l = Math.max(0, Math.min(86, l)); t = Math.max(0, Math.min(84, t));
     el.style.left = l + '%'; el.style.top = t + '%';
   });
-  el.addEventListener('pointerup', (e) => {
+  el.addEventListener('pointerup', () => {
     if (!drag) return;
     drag = false;
     albumPos[idx] = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) };
@@ -850,15 +733,159 @@ if (albumBtn) {
 document.getElementById('albumClose').addEventListener('click', () => {
   albumEl.style.display = 'none';
 });
-
 function onTaskDone() {
   tasksDone++;
   localStorage.setItem('wm_tasks', String(tasksDone));
   const before = Math.floor((tasksDone - 1) / 3), after = Math.floor(tasksDone / 3);
-  if (after > before && unlockedCount() <= STICKERS.length) {
-    // новая наклейка!
+  if (after > before) {
     albumBtn.classList.remove('pop'); void albumBtn.offsetWidth; albumBtn.classList.add('pop');
   }
+}
+
+// ============ МИНИ-ИГРА «УРОЖАЙНЫЙ ДЕНЬ» (отдельный экран) ============
+const mgEl = document.getElementById('minigame');
+const mgField = document.getElementById('mgField');
+const mgFinger = document.getElementById('mgFinger');
+const basketEls = { red: document.getElementById('basketRed'), green: document.getElementById('basketGreen') };
+const mgDom = { apples: [], done: 0, total: 6, lastAction: 0, fingerFlip: 0 };
+
+function openMinigame() {
+  gameState = 'minigame';
+  mgDom.done = 0;
+  mgDom.lastAction = elapsed;
+  mgEl.style.display = 'flex';
+  mgFinger.style.display = 'none';
+  Object.values(basketEls).forEach(b => b.classList.remove('glow'));
+  // ждём кадр для раскладки
+  requestAnimationFrame(() => {
+    const rect = mgField.getBoundingClientRect();
+    // убрать старые яблоки
+    for (const a of mgDom.apples) a.el.remove();
+    mgDom.apples = [];
+    const kinds = ['red', 'red', 'red', 'green', 'green', 'green'].sort(() => rand() - 0.5);
+    kinds.forEach((color, i) => {
+      const col = i % 3, row = Math.floor(i / 3);
+      const el = document.createElement('div');
+      el.className = 'mg-apple';
+      el.textContent = color === 'red' ? '🍎' : '🍏';
+      el.dataset.color = color;
+      const x = rect.width * (0.14 + col * 0.26) + rand() * 10;
+      const y = rect.height * (0.08 + row * 0.22) + rand() * 8;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      const a = { el, color, done: false, home: { x, y } };
+      el.addEventListener('pointerdown', (e) => appleDown(e, a));
+      mgField.appendChild(el);
+      mgDom.apples.push(a);
+    });
+  });
+}
+function closeMinigame() {
+  mgEl.style.display = 'none';
+  mgFinger.style.display = 'none';
+}
+
+let appleDrag = null;
+function appleDown(e, a) {
+  if (a.done) return;
+  appleDrag = a;
+  a.el.classList.add('dragging');
+  a.el.setPointerCapture(e.pointerId);
+  a.sx = e.clientX; a.sy = e.clientY;
+  const r = mgField.getBoundingClientRect();
+  a.startL = parseFloat(a.el.style.left);
+  a.startT = parseFloat(a.el.style.top);
+  a.fieldRect = r;
+  play('pickup');
+  mgDom.lastAction = elapsed;
+  e.stopPropagation();
+
+  a.move = (ev) => {
+    let l = a.startL + (ev.clientX - a.sx);
+    let t = a.startT + (ev.clientY - a.sy);
+    l = Math.max(-10, Math.min(a.fieldRect.width - 40, l));
+    t = Math.max(-10, Math.min(a.fieldRect.height - 40, t));
+    a.el.style.left = l + 'px';
+    a.el.style.top = t + 'px';
+  };
+  a.up = (ev) => {
+    a.el.removeEventListener('pointermove', a.move);
+    a.el.removeEventListener('pointerup', a.up);
+    a.el.classList.remove('dragging');
+    appleDrag = null;
+    appleDrop(a);
+  };
+  a.el.addEventListener('pointermove', a.move);
+  a.el.addEventListener('pointerup', a.up);
+}
+function appleDrop(a) {
+  const fieldR = mgField.getBoundingClientRect();
+  const ax = parseFloat(a.el.style.left) + 28, ay = parseFloat(a.el.style.top) + 28;
+  let best = null, bestD = Infinity;
+  for (const color of ['red', 'green']) {
+    const b = basketEls[color];
+    const br = { left: b.offsetLeft, top: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight };
+    // корзина лежит внутри .mg-baskets (flex) внутри field → координаты offsetLeft/Top дочерних div'ов относительно .mg-baskets
+    const wrap = b.parentElement.getBoundingClientRect();
+    const cx = (wrap.left - fieldR.left) + br.left + br.w / 2;
+    const cy = (wrap.top - fieldR.top) + br.top + br.h / 2;
+    const d = Math.hypot(cx - ax, cy - ay);
+    if (d < bestD) { bestD = d; best = { color, cx, cy }; }
+  }
+  mgDom.lastAction = elapsed;
+  Object.values(basketEls).forEach(b => b.classList.remove('glow'));
+  mgFinger.style.display = 'none';
+
+  if (best && best.color === a.color && bestD < bestNear()) {
+    // ВЕРНО!
+    play('good');
+    a.done = true;
+    a.el.style.left = (best.cx - 28) + 'px';
+    a.el.style.top = (best.cy - 28) + 'px';
+    a.el.style.transform = 'scale(0.25)';
+    a.el.style.opacity = '0.5';
+    setTimeout(() => a.el.remove(), 400);
+    mgDom.done++;
+    if (mgDom.done >= mgDom.total) setTimeout(() => { closeMinigame(); celebrate(); }, 550);
+  } else {
+    // мягкий возврат «плинг»
+    play('bad');
+    a.el.classList.add('shake');
+    setTimeout(() => {
+      a.el.classList.remove('shake');
+      a.el.style.left = a.home.x + 'px';
+      a.el.style.top = a.home.y + 'px';
+    }, 380);
+  }
+}
+function bestNear() { return Math.min(window.innerWidth, window.innerHeight) * 0.18; }
+
+function startDialog() {
+  gameState = 'dialog';
+  setBubble(bubTex.work);
+  play('pop');
+  speak('voice/hedge_hello.mp3');
+  const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog') openMinigame(); }, 2400);
+}
+
+function celebrate() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  play('fanfare');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/hedge_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setBubble(bubTex.star);
+  hedgeBubble.visible = true;
+  setTimeout(() => {
+    gameState = 'explore';
+    setBubble(bubTex.apple);
+  }, 2600);
 }
 
 // ============ НАВИГАЦИЯ A* ============
@@ -969,11 +996,11 @@ const pointer = new THREE.Vector2();
 let path = null;
 let pendingHedge = false;
 let pendingTree = false;
+let noProgT = 0, lastFinalDist = Infinity;
 const SPEED = 4;
 let elapsed = 0;
 let tickling = 0;
 let tickleCooldown = 0;
-let dragging = null;
 
 function castAt(clientX, clientY) {
   pointer.x = (clientX / window.innerWidth) * 2 - 1;
@@ -981,13 +1008,12 @@ function castAt(clientX, clientY) {
   raycaster.setFromCamera(pointer, camera);
   return raycaster;
 }
-
 function givePath(x, z) {
   let p = findPath(hero.position.x, hero.position.z, x, z);
   if (!p) p = [{ x, z }];
   path = p;
+  noProgT = 0; lastFinalDist = Infinity;
 }
-
 function tapGround(clientX, clientY) {
   const hit = new THREE.Vector3();
   const rc = castAt(clientX, clientY);
@@ -1006,57 +1032,34 @@ let downX = 0, downY = 0, downT = 0;
 window.addEventListener('pointerdown', (e) => {
   initAudio();
   downX = e.clientX; downY = e.clientY; downT = performance.now();
-  if (!hero) return;
-  // мини-игра: подхват фрукта
-  if (gameState === 'minigame') {
-    const rc = castAt(e.clientX, e.clientY);
-    const hits = rc.intersectObjects(mg.fruits.filter(f => !f.userData.busy), true);
-    if (hits.length) {
-      let g = hits[0].object;
-      while (g.parent && !mg.fruits.includes(g)) g = g.parent;
-      dragging = g;
-      play('pickup');
-      hideHint();
-    }
-  }
-});
-window.addEventListener('pointermove', (e) => {
-  if (dragging && gameState === 'minigame') {
-    const hit = new THREE.Vector3();
-    castAt(e.clientX, e.clientY).ray.intersectPlane(dragPlane, hit);
-    if (hit) { dragging.position.x = hit.x; dragging.position.z = hit.z; }
-  }
 });
 window.addEventListener('pointerup', (e) => {
-  if (dragging) {
-    const fruit = dragging;
-    dragging = null;
-    onFruitDrop(fruit);
-    return;
-  }
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
   const dt = performance.now() - downT;
-  if (moved < 24 && dt < 500 && hero && tickling <= 0) {
-    if (gameState !== 'explore') return;
-    // тап по ёжику?
-    const rc = castAt(e.clientX, e.clientY);
-    const hits = rc.intersectObject(hedgehog, true);
-    if (hits.length) {
-      const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
-      if (Math.hypot(dx, dz) < 2.6) startDialog();
-      else { pendingHedge = true; givePath(HEDGE_POS.x + 1.6, HEDGE_POS.z - 1.2); }
-      return;
-    }
-    // тап по Древу Желаний?
-    const treeHits = rc.intersectObject(treeRoot, true);
-    if (treeHits.length) {
-      const dx = TREE_POS.x - hero.position.x, dz = TREE_POS.z - hero.position.z;
-      if (Math.hypot(dx, dz) < 2.6) waterTree();
-      else { pendingTree = true; givePath(TREE_POS.x - 1.4, TREE_POS.z - 1.1); }
-      return;
-    }
-    tapGround(e.clientX, e.clientY);
+  if (!hero) return;
+  // пропуск вступления
+  if (gameState === 'intro') { finishIntro(); return; }
+  if (moved >= 24 || dt >= 500 || tickling > 0) return;
+  if (gameState !== 'explore') return;
+  if (albumEl.style.display === 'block') return;
+  const rc = castAt(e.clientX, e.clientY);
+  // тап по ёжику
+  const hits = rc.intersectObject(hedgehog, true);
+  if (hits.length) {
+    const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.0) startDialog();
+    else { pendingHedge = true; givePath(HEDGE_POS.x + 1.6, HEDGE_POS.z - 1.2); }
+    return;
   }
+  // тап по Древу Желаний
+  const treeHits = rc.intersectObject(treeRoot, true);
+  if (treeHits.length) {
+    const dx = TREE_POS.x - hero.position.x, dz = TREE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.0) waterTree();
+    else { pendingTree = true; givePath(TREE_POS.x - 1.4, TREE_POS.z - 1.1); }
+    return;
+  }
+  tapGround(e.clientX, e.clientY);
 });
 let hintHidden = false;
 function hideHint() {
@@ -1067,7 +1070,7 @@ function hideHint() {
 }
 
 // ============ ДЕНЬ/НОЧЬ ============
-const DAY_LEN = 300; // секунд полный цикл (5 минут, по решению владельца)
+const DAY_LEN = 300;
 let dayT = 0;
 const skyDay = new THREE.Color(0xaee3f5), skyNight = new THREE.Color(0x1c2b4d);
 const sunDay = new THREE.Color(0xfff2d0), sunNight = new THREE.Color(0x8fb4ff);
@@ -1075,7 +1078,7 @@ const tmpColor = new THREE.Color();
 let nightness = 0;
 function smoothstep(a, b, x) { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
 
-// ============ ЗАСТАВКА / ВЫБОР ============
+// ============ ЗАСТАВКА / ВЫБОР / ВСТУПЛЕНИЕ ============
 const splashEl = document.getElementById('splash');
 const selectEl = document.getElementById('select');
 const muteBtn = document.getElementById('muteBtn');
@@ -1095,18 +1098,69 @@ document.querySelectorAll('.char').forEach(btn => {
     selectEl.classList.add('fade-out');
     setTimeout(() => selectEl.style.display = 'none', 500);
     spawnHero(btn.dataset.char);
-    const hint = document.getElementById('hint');
-    if (hint) hint.style.opacity = '1';
+    startIntro();
   });
 });
 
+function spawnHero(type) {
+  hero = makeChar(type);
+  hero.position.set(1, 0, 2);
+  hero.add(blob);
+  scene.add(hero);
+  charData = hero.userData;
+  spawnPop = 1;
+}
+
+// Вступительный облёт с рассказом
+let introIdx = 0, introT = 0;
+const introSteps = [];
+function startIntro() {
+  gameState = 'intro';
+  introSteps.length = 0;
+  introSteps.push(
+    { pos: new THREE.Vector3(1, 17, 16), look: new THREE.Vector3(0, 0, 2), dur: 5.5 },
+    { pos: new THREE.Vector3(HEDGE_POS.x + 1, 4.5, HEDGE_POS.z + 6.5), look: new THREE.Vector3(HEDGE_POS.x, 0.8, HEDGE_POS.z), dur: 6.5 },
+    { pos: new THREE.Vector3(TREE_POS.x + 0.5, 3.6, TREE_POS.z + 5.2), look: new THREE.Vector3(TREE_POS.x, 1, TREE_POS.z), dur: 7 },
+    { pos: new THREE.Vector3(5, 5.5, 10.5), look: new THREE.Vector3(5, 0.3, 4), dur: 5.5 },
+  );
+  introIdx = 0; introT = 0;
+  hedgeBubble.visible = true;
+  treeBubble.visible = true;
+  play('pop');
+  speak('voice/intro.mp3');
+}
+function finishIntro() {
+  if (gameState !== 'intro') return;
+  gameState = 'explore';
+  stopVoice();
+  const hint = document.getElementById('hint');
+  if (hint) hint.style.opacity = '1';
+}
+
 // ============ ЦИКЛ ============
 buildNavGrid();
-const camOffset = new THREE.Vector3(0, 14, 11.5);
+const camOffsetBase = new THREE.Vector3(0, 14, 11.5);
+const camOffset = camOffsetBase.clone();
 const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
 let blinkT = 2.5, squashT = 0;
+
+function applyCamFraming() {
+  const a = window.innerWidth / window.innerHeight;
+  const k = a < 1.6 ? Math.min(1.6 / a, 1.6) : 1;
+  camOffset.copy(camOffsetBase).multiplyScalar(k);
+  camera.fov = 46 + (k - 1) * 16;
+  camera.updateProjectionMatrix();
+}
+applyCamFraming();
+
+const rotateEl = document.getElementById('rotate');
+function checkRotate() {
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  rotateEl.style.display = (coarse && window.innerHeight > window.innerWidth) ? 'flex' : 'none';
+}
+checkRotate();
 
 function animate() {
   requestAnimationFrame(animate);
@@ -1142,8 +1196,10 @@ function animate() {
       tickling -= dt;
       hero.rotation.z = Math.sin(elapsed * 14) * 0.35;
       hero.position.y = Math.abs(Math.sin(elapsed * 10)) * 0.1;
-      if (tickling <= 0) { hero.rotation.z = 0; tickleCooldown = 6; }
-    } else if (path && path.length) {
+      laughBubble.visible = true;
+      laughBubble.position.set(hero.position.x, 2.1, hero.position.z);
+      if (tickling <= 0) { hero.rotation.z = 0; tickleCooldown = 6; laughBubble.visible = false; }
+    } else if (gameState !== 'intro' && path && path.length) {
       const LOOKAHEAD = 0.9;
       let steer = path[path.length - 1];
       while (path.length && Math.hypot(path[0].x - hero.position.x, path[0].z - hero.position.z) < 0.25) path.shift();
@@ -1153,7 +1209,17 @@ function animate() {
       }
       let dx = steer.x - hero.position.x, dz = steer.z - hero.position.z;
       const d = Math.hypot(dx, dz);
-      if (!path.length || (path.length === 1 && d < 0.25)) {
+      // --- анти-залипание: нет прогресса 0.8 сек → считаем, что дошли ---
+      const finalPt = path[path.length - 1];
+      const finalDist = Math.hypot(finalPt.x - hero.position.x, finalPt.z - hero.position.z);
+      if (lastFinalDist === Infinity || finalDist < lastFinalDist - 0.004) {
+        lastFinalDist = finalDist; noProgT = 0;
+      } else {
+        noProgT += dt;
+      }
+      const stuckFinish = noProgT > 0.8;
+      const arrived = !path.length || (path.length === 1 && finalDist < 0.45);
+      if (stuckFinish || arrived) {
         path = null;
         squashT = 1;
       } else if (d > 0.001) {
@@ -1183,17 +1249,17 @@ function animate() {
       }
     }
 
-    // дошёл до ёжика — начинаем диалог
-    if (pendingHedge && !path) {
-      pendingHedge = false;
-      const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
-      if (d < 3.0) startDialog();
-    }
-    // дошёл до Древа — поливаем
-    if (pendingTree && !path) {
-      pendingTree = false;
-      const d = Math.hypot(TREE_POS.x - hero.position.x, TREE_POS.z - hero.position.z);
-      if (d < 3.0) waterTree();
+    if ((pendingHedge || pendingTree) && !path) {
+      if (pendingHedge) {
+        pendingHedge = false;
+        const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
+        if (d < 3.4) startDialog();
+      }
+      if (pendingTree) {
+        pendingTree = false;
+        const d = Math.hypot(TREE_POS.x - hero.position.x, TREE_POS.z - hero.position.z);
+        if (d < 3.2) waterTree();
+      }
     }
 
     if (squashT > 0) {
@@ -1210,7 +1276,7 @@ function animate() {
     charData.eyes[1].scale.y = charData.eyes[0].scale.y;
     charData.glints.forEach(g => g.visible = blink > 0.5);
 
-    // --- ВОЛКИ (только в режиме исследования) ---
+    // --- ВОЛКИ ---
     if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && Math.random() < dt * 0.15) spawnWolf();
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
@@ -1226,17 +1292,19 @@ function animate() {
       if (w.mode === 'hunt' && tickling <= 0 && gameState === 'explore') {
         const dx = hero.position.x - w.g.position.x, dz = hero.position.z - w.g.position.z;
         const d = Math.hypot(dx, dz);
-        if (d < 0.75 && tickleCooldown <= 0) {
+        if (d < 0.95 && tickleCooldown <= 0) {
           tickling = 2.6;
           w.mode = 'flee'; w.cooldown = 18;
           play('tickle');
           spawnBurst(hero.position);
-        } else if (d > 0.001) {
+        } else if (d > 0.9) {
           const sp = 2.6 * dt;
           w.g.position.x += (dx / d) * sp; w.g.position.z += (dz / d) * sp;
           resolveCollision(w.g.position);
           w.g.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
           w.g.position.y = Math.abs(Math.sin(elapsed * 8)) * 0.08;
+        } else {
+          w.g.position.y = 0;
         }
       } else {
         w.cooldown -= dt;
@@ -1246,13 +1314,13 @@ function animate() {
     }
   }
 
-  // --- ЁЖИК: всегда радостно кивает к игроку ---
-  if (hero && gameState === 'explore') {
+  // --- ЁЖИК ---
+  if (hero && (gameState === 'explore' || gameState === 'intro')) {
     hedgehog.position.y = Math.abs(Math.sin(elapsed * 3)) * 0.06;
     hedgeBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
   }
 
-  // --- ДРЕВО ЖЕЛАНИЙ: дождик, рост, качание ---
+  // --- ДРЕВО ---
   treeRoot.scale.lerp(new THREE.Vector3(1, 1, 1), 0.06);
   treeRoot.rotation.z = Math.sin(elapsed * 1.4) * 0.015;
   if (watering > 0) watering -= dt;
@@ -1263,48 +1331,35 @@ function animate() {
   }
   updateTreeBubble();
 
-  // --- ПЕРЕЛЁТЫ фруктов ---
-  for (let i = flyAnims.length - 1; i >= 0; i--) {
-    const a = flyAnims[i];
-    a.t += dt / a.dur;
-    if (a.squash) {
-      const k = Math.sin(Math.min(a.t, 1) * Math.PI);
-      a.mesh.scale.set(1 + k * 0.15, 1 - k * 0.2, 1 + k * 0.15);
-    } else {
-      const k = Math.min(a.t, 1);
-      a.mesh.position.lerpVectors(a.from, a.to, k);
-      a.mesh.position.y = a.from.y + (a.to.y - a.from.y) * k + Math.sin(k * Math.PI) * a.arc;
-      if (a.shrink) a.mesh.scale.setScalar(1 - k * 0.55);
-    }
-    if (a.t >= 1) {
-      if (a.squash) a.mesh.scale.set(1, 1, 1);
-      flyAnims.splice(i, 1);
-      if (a.onDone) a.onDone();
+  // --- ВСТУПЛЕНИЕ: ключевые кадры камеры ---
+  if (gameState === 'intro' && introSteps.length) {
+    introT += dt;
+    const st = introSteps[Math.min(introIdx, introSteps.length - 1)];
+    camera.position.lerp(st.pos, 0.028);
+    lookTarget.lerp(st.look, 0.035);
+    if (introT > st.dur) {
+      introIdx++;
+      introT = 0;
+      if (introIdx >= introSteps.length) finishIntro();
     }
   }
 
-  // --- ПОДСКАЗКИ В МИНИ-ИГРЕ ---
+  // --- ПОДСКАЗКИ В МИНИ-ИГРЕ (DOM) ---
   if (gameState === 'minigame') {
-    const idle = elapsed - mg.lastAction;
-    const remain = mg.fruits.filter(f => !f.userData.busy && f !== dragging);
+    const idle = elapsed - mgDom.lastAction;
+    const remain = mgDom.apples.filter(a => !a.done && a !== appleDrag);
     if (remain.length) {
-      const correctBasket = mg.baskets.find(b => b.userData.color === remain[0].userData.color);
-      // Подсказка 1 (6 сек): корзина светится
-      if (idle > 6 && correctBasket) {
-        mg.glowBasket = correctBasket;
-        correctBasket.children[0].material.emissive?.setHex(correctBasket.userData.hex);
-        const pulse = 0.35 + Math.sin(elapsed * 5) * 0.2;
-        correctBasket.children[0].material.emissiveIntensity = pulse;
-      }
-      // Подсказка 2 (12 сек): пальчик
-      if (idle > 12 && correctBasket && !dragging) {
-        fingerSprite.visible = true;
-        const t = (Math.sin(elapsed * 1.6) + 1) / 2;
-        fingerSprite.position.lerpVectors(
-          remain[0].position.clone().add(new THREE.Vector3(0, 0.8, 0)),
-          correctBasket.position.clone().add(new THREE.Vector3(0, 1.2, 0)),
-          t
-        );
+      const need = basketEls[remain[0].color];
+      if (idle > 6) need.classList.add('glow');
+      if (idle > 12 && !appleDrag) {
+        mgFinger.style.display = 'block';
+        mgDom.fingerFlip = Math.sin(elapsed * 1.4) > 0 ? 0 : 1;
+        const from = remain[0].el.getBoundingClientRect();
+        const to = need.getBoundingClientRect();
+        const fx = mgDom.fingerFlip ? to.left + to.width * 0.5 : from.left + from.width * 0.5;
+        const fy = mgDom.fingerFlip ? to.top : from.top - 14;
+        mgFinger.style.left = fx + 'px';
+        mgFinger.style.top = fy + 'px';
       }
     }
   }
@@ -1397,16 +1452,11 @@ function animate() {
     marker.scale.setScalar(1 + (1 - Math.max(markerLife, 0)) * 0.8);
   }
 
-  // --- КАМЕРА ---
-  if (hero) {
-    if (camGoal.active) {
-      camera.position.lerp(camGoal.pos, 0.05);
-      lookTarget.lerp(camGoal.look, 0.07);
-    } else {
-      const wanted = new THREE.Vector3().copy(hero.position).add(camOffset);
-      camera.position.lerp(wanted, 0.06);
-      lookTarget.lerp(hero.position, 0.08);
-    }
+  // --- КАМЕРА (в обычном режиме следует; в интро — по ключевым кадрам выше) ---
+  if (hero && gameState !== 'intro') {
+    const wanted = new THREE.Vector3().copy(hero.position).add(camOffset);
+    camera.position.lerp(wanted, 0.06);
+    lookTarget.lerp(hero.position, 0.08);
     sun.position.set(anchor.x + 12, 20, anchor.z + 9);
     sun.target.position.copy(anchor);
   }
@@ -1432,4 +1482,6 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  applyCamFraming();
+  checkRotate();
 });
