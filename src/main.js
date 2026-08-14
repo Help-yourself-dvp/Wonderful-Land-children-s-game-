@@ -323,6 +323,91 @@ const bubTex = {
 };
 function setBubble(t) { hedgeBubble.material.map = t; hedgeBubble.material.needsUpdate = true; }
 
+// ============ ДРЕВО ЖЕЛАНИЙ ============
+const TREE_POS = { x: -0.5, z: -2.8 };
+let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10); // 1..3
+let treeWaters = parseInt(localStorage.getItem('wm_tree_waters') || '0', 10);
+const TREE_STAGE_AT = { 2: 2, 3: 5 }; // сколько поливов нужно для стадии 2 и 3
+
+const treeStages = [null, null, null, null];
+function buildTreeStage(s) {
+  const g = new THREE.Group();
+  if (s === 1) { // росток
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 8), L(0x7aa95c));
+    stem.position.y = 0.25;
+    const leafGeo = new THREE.SphereGeometry(0.16, 12, 12);
+    const leafL = new THREE.Mesh(leafGeo, L(0x8fd07a));
+    leafL.position.set(-0.16, 0.5, 0); leafL.scale.set(1.3, 0.5, 0.6);
+    const leafR = leafL.clone(); leafR.position.x = 0.16;
+    g.add(stem, leafL, leafR);
+  } else if (s === 2) { // деревце
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.2, 10), L(0x9a6b4f));
+    trunk.position.y = 0.6; trunk.castShadow = true;
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 2), L(0x7ecb7f));
+    crown.position.y = 1.6; crown.castShadow = true;
+    const crown2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 2), L(0x8fd07a));
+    crown2.position.set(0.4, 1.35, 0.15);
+    g.add(trunk, crown, crown2);
+    for (const [dx, dy, dz] of [[0.3, 1.75, 0.2], [-0.35, 1.5, -0.1]]) {
+      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10),
+        new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+      fruit.position.set(dx, dy, dz);
+      g.add(fruit);
+    }
+  } else { // пышное дерево
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.9, 12), L(0x9a6b4f));
+    trunk.position.y = 0.95; trunk.castShadow = true;
+    g.add(trunk);
+    const crownMat = L(0x74c98f);
+    for (const [dx, dy, dz, r] of [[0, 2.5, 0, 1.05], [0.7, 2.1, 0.3, 0.65], [-0.65, 2.15, -0.25, 0.6], [0.15, 1.9, -0.5, 0.5]]) {
+      const c = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 2), crownMat);
+      c.position.set(dx, dy, dz); c.castShadow = true;
+      g.add(c);
+    }
+    for (const [dx, dy, dz] of [[0.5, 2.6, 0.4], [-0.5, 2.3, 0.3], [0.1, 2.9, -0.3], [0.85, 2.0, -0.1], [-0.3, 1.8, 0.55]]) {
+      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10),
+        new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+      fruit.position.set(dx, dy, dz);
+      g.add(fruit);
+    }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.05, 8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a3, transparent: true, opacity: 0.8 }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
+    g.add(ring);
+  }
+  return g;
+}
+const treeRoot = new THREE.Group();
+for (let s = 1; s <= 3; s++) {
+  treeStages[s] = buildTreeStage(s);
+  treeStages[s].visible = (s === treeStage);
+  treeRoot.add(treeStages[s]);
+}
+treeRoot.position.set(TREE_POS.x, 0, TREE_POS.z);
+scene.add(treeRoot);
+obstacles.push({ x: TREE_POS.x, z: TREE_POS.z, r: 0.5 });
+
+const treeBubble = makeBubbleSprite('💧', 0.95);
+treeBubble.position.set(TREE_POS.x, 2.6, TREE_POS.z);
+scene.add(treeBubble);
+function updateTreeBubble() {
+  treeBubble.visible = dropsCount > 0 && gameState === 'explore';
+  treeBubble.scale.setScalar(0.95 + Math.sin(elapsed * 2.2) * 0.05);
+}
+
+// Капельки-полив (анимация дождя над деревом)
+const waterDrops = [];
+function pourRain() {
+  for (let i = 0; i < 12; i++) {
+    const d = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x7ecbe8, transparent: true, opacity: 0.95 }));
+    d.position.set(TREE_POS.x + (rand() - 0.5) * 1.6, 3.2 + rand() * 1.5, TREE_POS.z + (rand() - 0.5) * 1.6);
+    d.userData.v = 3 + rand() * 1.5;
+    scene.add(d);
+    waterDrops.push(d);
+  }
+}
+
 // ============ ПЕРСОНАЖИ ============
 function makeChar(type) {
   const g = new THREE.Group();
@@ -652,6 +737,7 @@ function celebrate() {
   mg.active = false;
   dropsCount++;
   refreshDrops(true);
+  onTaskDone();
   play('fanfare');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/hedge_win.mp3'), 600);
@@ -669,6 +755,110 @@ function celebrate() {
     hedgeBubble.material.map = bubTex.apple;
     hedgeBubble.material.needsUpdate = true;
   }, 2600);
+}
+
+// ============ ПОЛИВ ДРЕВА ============
+let watering = 0;
+function waterTree() {
+  if (dropsCount <= 0 || watering > 0) {
+    if (dropsCount <= 0) play('hintGlow');
+    return;
+  }
+  dropsCount--;
+  refreshDrops(true);
+  treeWaters++;
+  localStorage.setItem('wm_tree_waters', String(treeWaters));
+  watering = 1.4; // секунды анимации
+  pourRain();
+  play('drop');
+  speak('voice/tree_water.mp3');
+  setTimeout(() => {
+    const need = TREE_STAGE_AT[treeStage + 1];
+    if (need && treeWaters >= need) {
+      // СТАДИЯ РОСТА!
+      treeStage++;
+      localStorage.setItem('wm_tree_stage', String(treeStage));
+      treeStages[treeStage - 1].visible = false;
+      treeStages[treeStage].visible = true;
+      spawnBurst(new THREE.Vector3(TREE_POS.x, 1.5, TREE_POS.z), 22);
+      play('fanfare');
+      speak('voice/tree_grow.mp3');
+      treeRoot.scale.setScalar(1.25);
+    } else {
+      treeRoot.scale.setScalar(1.12);
+    }
+  }, 1100);
+}
+
+// ============ АЛЬБОМ НАКЛЕЕК ============
+let tasksDone = parseInt(localStorage.getItem('wm_tasks') || '0', 10);
+const STICKERS = ['🍎', '🦔', '⭐', '🌸', '🦋', '🍏', '🌈', '🍄', '🌰', '🐞', '🌻', '🐝'];
+function unlockedCount() { return Math.min(STICKERS.length, Math.floor(tasksDone / 3)); }
+
+const albumEl = document.getElementById('album');
+const albumField = document.getElementById('albumField');
+const albumBtn = document.getElementById('albumBtn');
+let albumPos = {};
+try { albumPos = JSON.parse(localStorage.getItem('wm_album') || '{}'); } catch (e) {}
+
+function buildAlbum() {
+  albumField.innerHTML = '';
+  const unlocked = unlockedCount();
+  STICKERS.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'sticker' + (i < unlocked ? '' : ' locked');
+    el.textContent = s;
+    const col = i % 4, row = Math.floor(i / 4);
+    const p = albumPos[i] || { x: 6 + col * 24, y: 6 + row * 30 };
+    el.style.left = p.x + '%';
+    el.style.top = p.y + '%';
+    if (i < unlocked) enableStickerDrag(el, i);
+    albumField.appendChild(el);
+  });
+}
+function enableStickerDrag(el, idx) {
+  let sx = 0, sy = 0, startL = 0, startT = 0, drag = false;
+  el.addEventListener('pointerdown', (e) => {
+    drag = true; sx = e.clientX; sy = e.clientY;
+    startL = parseFloat(el.style.left); startT = parseFloat(el.style.top);
+    el.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const rect = albumField.getBoundingClientRect();
+    let l = startL + ((e.clientX - sx) / rect.width) * 100;
+    let t = startT + ((e.clientY - sy) / rect.height) * 100;
+    l = Math.max(0, Math.min(86, l)); t = Math.max(0, Math.min(84, t));
+    el.style.left = l + '%'; el.style.top = t + '%';
+  });
+  el.addEventListener('pointerup', (e) => {
+    if (!drag) return;
+    drag = false;
+    albumPos[idx] = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) };
+    localStorage.setItem('wm_album', JSON.stringify(albumPos));
+    play('tap');
+  });
+}
+if (albumBtn) {
+  albumBtn.addEventListener('click', () => {
+    buildAlbum();
+    albumEl.style.display = 'block';
+    play('pop');
+  });
+}
+document.getElementById('albumClose').addEventListener('click', () => {
+  albumEl.style.display = 'none';
+});
+
+function onTaskDone() {
+  tasksDone++;
+  localStorage.setItem('wm_tasks', String(tasksDone));
+  const before = Math.floor((tasksDone - 1) / 3), after = Math.floor(tasksDone / 3);
+  if (after > before && unlockedCount() <= STICKERS.length) {
+    // новая наклейка!
+    albumBtn.classList.remove('pop'); void albumBtn.offsetWidth; albumBtn.classList.add('pop');
+  }
 }
 
 // ============ НАВИГАЦИЯ A* ============
@@ -778,6 +968,7 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let path = null;
 let pendingHedge = false;
+let pendingTree = false;
 const SPEED = 4;
 let elapsed = 0;
 let tickling = 0;
@@ -854,6 +1045,14 @@ window.addEventListener('pointerup', (e) => {
       const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
       if (Math.hypot(dx, dz) < 2.6) startDialog();
       else { pendingHedge = true; givePath(HEDGE_POS.x + 1.6, HEDGE_POS.z - 1.2); }
+      return;
+    }
+    // тап по Древу Желаний?
+    const treeHits = rc.intersectObject(treeRoot, true);
+    if (treeHits.length) {
+      const dx = TREE_POS.x - hero.position.x, dz = TREE_POS.z - hero.position.z;
+      if (Math.hypot(dx, dz) < 2.6) waterTree();
+      else { pendingTree = true; givePath(TREE_POS.x - 1.4, TREE_POS.z - 1.1); }
       return;
     }
     tapGround(e.clientX, e.clientY);
@@ -986,9 +1185,15 @@ function animate() {
 
     // дошёл до ёжика — начинаем диалог
     if (pendingHedge && !path) {
+      pendingHedge = false;
       const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
-      if (d < 3.0) { pendingHedge = false; startDialog(); }
-      else pendingHedge = false;
+      if (d < 3.0) startDialog();
+    }
+    // дошёл до Древа — поливаем
+    if (pendingTree && !path) {
+      pendingTree = false;
+      const d = Math.hypot(TREE_POS.x - hero.position.x, TREE_POS.z - hero.position.z);
+      if (d < 3.0) waterTree();
     }
 
     if (squashT > 0) {
@@ -1046,6 +1251,17 @@ function animate() {
     hedgehog.position.y = Math.abs(Math.sin(elapsed * 3)) * 0.06;
     hedgeBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
   }
+
+  // --- ДРЕВО ЖЕЛАНИЙ: дождик, рост, качание ---
+  treeRoot.scale.lerp(new THREE.Vector3(1, 1, 1), 0.06);
+  treeRoot.rotation.z = Math.sin(elapsed * 1.4) * 0.015;
+  if (watering > 0) watering -= dt;
+  for (let i = waterDrops.length - 1; i >= 0; i--) {
+    const d = waterDrops[i];
+    d.position.y -= d.userData.v * dt;
+    if (d.position.y < 0.15) { scene.remove(d); waterDrops.splice(i, 1); }
+  }
+  updateTreeBubble();
 
   // --- ПЕРЕЛЁТЫ фруктов ---
   for (let i = flyAnims.length - 1; i >= 0; i--) {
