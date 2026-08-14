@@ -36,8 +36,14 @@ jobs:
       - name: Add Capacitor Android platform
         run: npx cap add android
 
+      - name: Generate app icons & splash (из assets/)
+        run: npx --yes @capacitor/assets generate --android
+
       - name: Restore stable debug keystore (постоянная подпись для обновлений поверх)
-        run: echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > android/app/debug.keystore
+        run: |
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > android/app/debug.keystore
+          mkdir -p "$HOME/.android"
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > "$HOME/.android/debug.keystore"
 
       - name: Sync web build into Android project
         run: npx cap sync android

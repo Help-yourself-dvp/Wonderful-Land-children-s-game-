@@ -150,3 +150,8 @@ export function speak(file) {
 export function stopVoice() {
   for (const k in voiceCache) { try { voiceCache[k].pause(); voiceCache[k].currentTime = 0; } catch (e) {} }
 }
+// Пауза всей игры: глушим Web Audio и ставим реплики на паузу
+export function setGamePaused(p) {
+  try { Object.values(voiceCache).forEach(a => { if (p) a.pause(); else if (a.duration && a.currentTime > 0 && a.currentTime < a.duration) a.play().catch(() => {}); }); } catch (e) {}
+  try { if (ctx) { if (p) ctx.suspend(); else ctx.resume(); } } catch (e) {}
+}

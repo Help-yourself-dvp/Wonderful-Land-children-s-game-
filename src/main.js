@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, setNight, toggleMute, isMuted, speak, stopVoice } from './audio.js';
+import { initAudio, play, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused } from './audio.js';
 
 // ============ БАЗА ============
 const scene = new THREE.Scene();
@@ -154,12 +154,12 @@ function makeTree(x, z, s, crownColor) {
 }
 const treeSpots = [
   [-6, -9, 1.1, 0x6cbf6f], [8.5, -7, 0.9, 0x5cb85c], [-10.5, -3.5, 1.25, 0x8fd07a],
-  [-8.5, 6.5, 1.0, 0x6cbf6f], [11.5, 2.5, 0.85, 0x5cb85c], [1.5, 10.5, 1.0, 0x8fd07a],
-  [12, -3, 1.05, 0x6cbf6f], [-3, 11, 0.8, 0x5cb85c], [-12.5, 0.5, 0.9, 0x8fd07a], [7.5, 9.5, 1.15, 0x6cbf6f],
+  [-8.5, 6.5, 1.0, 0x6cbf6f], [1.5, 10.5, 1.0, 0x8fd07a],
+  [-12.5, 0.5, 0.9, 0x8fd07a], [7.5, 9.5, 1.15, 0x6cbf6f],
 ];
 treeSpots.forEach(([x, z, s, c]) => makeTree(x, z, s, c));
 
-for (const [x, z, r] of [[-3.5, 6, 0.8], [9.5, 0.5, 0.7], [-9, -2, 0.9], [5.5, 7, 0.6], [2, -6, 0.75], [-5, 1.5, 0.65], [12.5, 5, 0.8]]) {
+for (const [x, z, r] of [[-3.5, 6, 0.8], [-9, -2, 0.9], [5.5, 7, 0.6], [2, -6, 0.75], [-5, 1.5, 0.65]]) {
   const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 2), L(0x74c476));
   bush.position.set(x, r * 0.55, z); bush.castShadow = true;
   scene.add(bush);
@@ -431,6 +431,57 @@ const owlBubTex = {
 };
 function setOwlBubble(t) { owlBubble.material.map = t; owlBubble.material.needsUpdate = true; }
 
+// ============ ЛЯГУШКА ============
+const frog = new THREE.Group();
+{
+  const pad = new THREE.Mesh(new THREE.CircleGeometry(0.62, 20), L(0x4faf6a));
+  pad.rotation.x = -Math.PI / 2; pad.position.y = 0.06;
+  frog.add(pad);
+  const fBody = new THREE.Group();
+  const fbodyM = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 18), L(0x69c34d));
+  fbodyM.position.y = 0.42; fbodyM.scale.set(1, 0.85, 0.9); fbodyM.castShadow = true;
+  const fbelly = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 14), L(0xd9f2b8));
+  fbelly.position.set(0, 0.36, 0.18); fbelly.scale.set(0.85, 0.8, 0.5);
+  const fsocketGeo = new THREE.SphereGeometry(0.13, 12, 12);
+  const fsockL = new THREE.Mesh(fsocketGeo, L(0x69c34d));
+  fsockL.position.set(-0.16, 0.72, 0.08);
+  const fsockR = fsockL.clone(); fsockR.position.x = 0.16;
+  const feyeGeo = new THREE.SphereGeometry(0.09, 10, 10);
+  const feyeM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const feyeL = new THREE.Mesh(feyeGeo, feyeM);
+  feyeL.position.set(-0.16, 0.75, 0.14);
+  const feyeR = feyeL.clone(); feyeR.position.x = 0.16;
+  const fpupGeo = new THREE.SphereGeometry(0.045, 8, 8);
+  const fpupM = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
+  const fpupL = new THREE.Mesh(fpupGeo, fpupM);
+  fpupL.position.set(-0.16, 0.75, 0.22);
+  const fpupR = fpupL.clone(); fpupR.position.x = 0.16;
+  const fmouth = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.028, 8, 16, Math.PI),
+    new THREE.MeshBasicMaterial({ color: 0x3f7a2e }));
+  fmouth.position.set(0, 0.42, 0.31); fmouth.rotation.z = Math.PI;
+  const flegGeo = new THREE.SphereGeometry(0.14, 10, 10);
+  const flegL = new THREE.Mesh(flegGeo, L(0x57a83f));
+  flegL.position.set(-0.32, 0.2, -0.05); flegL.scale.set(1.2, 0.6, 1.1);
+  const flegR = flegL.clone(); flegR.position.x = 0.32;
+  fBody.add(fbodyM, fbelly, fsockL, fsockR, feyeL, feyeR, fpupL, fpupR, fmouth, flegL, flegR);
+  frog.add(fBody);
+  frog.userData.body = fBody;
+}
+const FROG_POS = { x: 10.8, z: 2.6 };
+frog.position.set(FROG_POS.x, 0.02, FROG_POS.z);
+frog.rotation.y = Math.atan2(0 - FROG_POS.x, 0 - FROG_POS.z);
+scene.add(frog);
+obstacles.push({ x: FROG_POS.x, z: FROG_POS.z, r: 0.5 });
+
+const frogBubble = makeBubbleSprite('🧩', 1.05);
+frogBubble.position.set(FROG_POS.x, 2.2, FROG_POS.z);
+scene.add(frogBubble);
+const frogBubTex = {
+  puzzle: frogBubble.material.map,
+  star: makeBubbleSprite('⭐', 1).material.map,
+};
+function setFrogBubble(t) { frogBubble.material.map = t; frogBubble.material.needsUpdate = true; }
+
 // ============ ДРЕВО ЖЕЛАНИЙ ============
 const TREE_POS = { x: -0.5, z: -2.8 };
 let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10);
@@ -441,13 +492,14 @@ const treeStages = [null, null, null, null];
 function buildTreeStage(s) {
   const g = new THREE.Group();
   if (s === 1) {
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 8), L(0x7aa95c));
-    stem.position.y = 0.25;
-    const leafGeo = new THREE.SphereGeometry(0.16, 12, 12);
-    const leafL = new THREE.Mesh(leafGeo, L(0x8fd07a));
-    leafL.position.set(-0.16, 0.5, 0); leafL.scale.set(1.3, 0.5, 0.6);
-    const leafR = leafL.clone(); leafR.position.x = 0.16;
-    g.add(stem, leafL, leafR);
+    // Саженец, но уже заметный: ребёнок считает его «настоящим деревцем»
+    const trunk1 = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 0.95, 10), L(0x9a6b4f));
+    trunk1.position.y = 0.48; trunk1.castShadow = true;
+    const crown1 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 2), L(0x8fd07a));
+    crown1.position.y = 1.25; crown1.castShadow = true;
+    const crown2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 2), L(0x7ecb7f));
+    crown2.position.set(0.32, 1.05, 0.12);
+    g.add(trunk1, crown1, crown2);
   } else if (s === 2) {
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.2, 10), L(0x9a6b4f));
     trunk.position.y = 0.6; trunk.castShadow = true;
@@ -634,6 +686,34 @@ const laughBubble = makeBubbleSprite('😂', 0.95);
 laughBubble.visible = false;
 scene.add(laughBubble);
 
+// ============ ДОМИК-УКРЫТИЕ (переждать ночь, спрятаться от волков) ============
+const sleepBubble = makeBubbleSprite('💤', 0.9);
+sleepBubble.visible = false;
+sleepBubble.position.set(-6.4, 4.1, -5.6);
+scene.add(sleepBubble);
+const HOUSE_DOOR = { x: -6.45, z: -5.49 };
+let hiding = false;
+let sleptNight = false;
+function enterHouse() {
+  if (hiding || !hero) return;
+  hiding = true;
+  sleptNight = nightness > 0.4;
+  path = null; finalTarget = null;
+  hero.visible = false;
+  sleepBubble.visible = true;
+  play('pop');
+  for (const w of wolves) { w.mode = 'flee'; w.cooldown = 30; }
+}
+function exitHouse() {
+  if (!hiding) return;
+  hiding = false;
+  hero.visible = true;
+  hero.position.set(HOUSE_DOOR.x, 0, HOUSE_DOOR.z);
+  sleepBubble.visible = false;
+  spawnPop = 1;
+  play('pop');
+}
+
 // ============ ВОЛКИ / СЕРДЕЧКИ ============
 const wolves = [];
 let wolfWarned = false;
@@ -766,7 +846,9 @@ function enableStickerDrag(el, idx) {
     const rect = albumField.getBoundingClientRect();
     let l = startL + ((e.clientX - sx) / rect.width) * 100;
     let t = startT + ((e.clientY - sy) / rect.height) * 100;
-    l = Math.max(0, Math.min(86, l)); t = Math.max(0, Math.min(84, t));
+    const maxL = ((rect.width - el.offsetWidth) / rect.width) * 100;
+    const maxT = ((rect.height - el.offsetHeight) / rect.height) * 100;
+    l = Math.max(0, Math.min(maxL, l)); t = Math.max(0, Math.min(maxT, t));
     el.style.left = l + '%'; el.style.top = t + '%';
   });
   el.addEventListener('pointerup', () => {
@@ -823,8 +905,8 @@ function openMinigame() {
       el.className = 'mg-apple';
       el.textContent = color === 'red' ? '🍎' : '🍏';
       el.dataset.color = color;
-      const x = rect.width * (0.14 + col * 0.26) + rand() * 10;
-      const y = rect.height * (0.08 + row * 0.22) + rand() * 8;
+      const x = Math.min(rect.width * (0.12 + col * 0.26) + rand() * 8, rect.width - 78);
+      const y = Math.min(rect.height * (0.05 + row * 0.2) + rand() * 6, rect.height - 200);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
       const a = { el, color, done: false, home: { x, y } };
@@ -1062,6 +1144,128 @@ function celebrateOwl() {
   }, 2600);
 }
 
+// ============ МИНИ-ИГРА «ВОЛШЕБНЫЙ МОСТИК» (Лягушка, узоры-логика) ============
+const bgEl = document.getElementById('bridgegame');
+const bgRow = document.getElementById('bgRow');
+const bgAnswers = document.getElementById('bgAnswers');
+const bgFinger = document.getElementById('bgFinger');
+const bg = { round: 0, total: 2, answer: '', lastAction: 0, answered: false, fingerShown: false };
+const BG_POOL = ['🍄', '🌼', '⭐', '🐞', '🍀', '🍇'];
+
+function startFrogDialog() {
+  gameState = 'dialog';
+  setFrogBubble(frogBubTex.puzzle);
+  play('pop');
+  speak('voice/frog_hello.mp3');
+  const dx = FROG_POS.x - hero.position.x, dz = FROG_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog') openBridgeGame(); }, 3200);
+}
+
+function openBridgeGame() {
+  gameState = 'bridgegame';
+  bg.round = 0;
+  bgEl.style.display = 'flex';
+  speak('voice/frog_ask.mp3');
+  buildBridgeRound();
+}
+function closeBridgeGame() {
+  bgEl.style.display = 'none';
+  bgFinger.style.display = 'none';
+}
+
+function buildBridgeRound() {
+  bg.round++;
+  bg.answered = false;
+  bg.fingerShown = false;
+  bg.lastAction = elapsed;
+  bgRow.innerHTML = '';
+  bgAnswers.innerHTML = '';
+  bgFinger.style.display = 'none';
+
+  // три разных картинки для узора
+  const picks = [];
+  const pool = [...BG_POOL];
+  while (picks.length < 3) picks.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
+  const [A, B, C] = picks;
+
+  // шаблоны узоров: [показанные..., правильный следующий]
+  let shown, answer;
+  if (bg.round === 1) { shown = [A, B, A, B]; answer = A; } // А-Б-А-Б-?
+  else {
+    const t = Math.floor(rand() * 3);
+    if (t === 0) { shown = [A, A, B, A, A]; answer = B; }      // А-А-Б-А-А-?
+    else if (t === 1) { shown = [A, B, B, A, B]; answer = B; } // А-Б-Б-А-Б-?
+    else { shown = [A, B, C, A, B]; answer = C; }              // А-Б-В-А-Б-?
+  }
+  bg.answer = answer;
+
+  shown.forEach((e, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'bg-item';
+    cell.textContent = e;
+    cell.style.animationDelay = (i * 0.08) + 's';
+    bgRow.appendChild(cell);
+  });
+  const gap = document.createElement('div');
+  gap.className = 'bg-item gap';
+  gap.textContent = '❓';
+  gap.style.animationDelay = (shown.length * 0.08) + 's';
+  bgRow.appendChild(gap);
+
+  // варианты: правильный + 2 «похожих»
+  const opts = [answer, ...picks.filter(p => p !== answer)].slice(0, 3);
+  opts.sort(() => rand() - 0.5).forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'cg-answer bg-answer';
+    b.textContent = v;
+    b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', () => answerBridge(v, b));
+    bgAnswers.appendChild(b);
+  });
+}
+
+function answerBridge(v, btn) {
+  if (gameState !== 'bridgegame' || bg.answered) return;
+  bg.lastAction = elapsed;
+  bg.fingerShown = false;
+  bgFinger.style.display = 'none';
+  Array.from(bgAnswers.children).forEach(b => b.classList.remove('glow'));
+  if (v === bg.answer) {
+    bg.answered = true;
+    play('good');
+    btn.classList.add('right');
+    const gap = bgRow.querySelector('.gap');
+    if (gap) { gap.classList.remove('gap'); gap.textContent = v; gap.classList.add('jump'); }
+    setTimeout(() => {
+      if (bg.round >= bg.total) { closeBridgeGame(); celebrateFrog(); }
+      else { buildBridgeRound(); }
+    }, 900);
+  } else {
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 420);
+  }
+}
+
+function celebrateFrog() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  play('fanfare');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/frog_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(FROG_POS.x, 1.4, FROG_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setFrogBubble(frogBubTex.star);
+  frogBubble.visible = true;
+  setTimeout(() => {
+    gameState = 'explore';
+    setFrogBubble(frogBubTex.puzzle);
+  }, 2600);
+}
+
 // ============ НАВИГАЦИЯ A* ============
 const NAV_N = 64, NAV_MIN = -16, NAV_CELL = 0.5;
 const navBlocked = new Uint8Array(NAV_N * NAV_N);
@@ -1078,7 +1282,7 @@ function buildNavGrid() {
     const { x, z } = worldOf(i, j);
     if (Math.hypot(x, z) > ISLAND_R - 0.7) { navBlocked[j * NAV_N + i] = 1; continue; }
     for (const ob of obstacles) {
-      if (Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.4) { navBlocked[j * NAV_N + i] = 1; break; }
+      if (Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.75) { navBlocked[j * NAV_N + i] = 1; break; }
     }
   }
 }
@@ -1171,6 +1375,10 @@ let path = null;
 let pendingHedge = false;
 let pendingTree = false;
 let pendingOwl = false;
+let pendingFrog = false;
+let pendingHouse = false;
+let finalTarget = null;
+let repathCount = 0;
 let noProgT = 0, lastFinalDist = Infinity;
 const SPEED = 4;
 let elapsed = 0;
@@ -1187,9 +1395,12 @@ function givePath(x, z) {
   let p = findPath(hero.position.x, hero.position.z, x, z);
   if (!p) p = [{ x, z }];
   path = p;
+  finalTarget = { x, z };
+  repathCount = 0;
   noProgT = 0; lastFinalDist = Infinity;
 }
 function tapGround(clientX, clientY) {
+  if (hiding) return;
   const hit = new THREE.Vector3();
   const rc = castAt(clientX, clientY);
   if (rc.ray.intersectPlane(groundPlane, hit)) {
@@ -1218,6 +1429,11 @@ window.addEventListener('pointerup', (e) => {
   if (gameState !== 'explore') return;
   if (albumEl.style.display === 'block') return;
   const rc = castAt(e.clientX, e.clientY);
+  // спрятавшийся герой реагирует только на домик (там спит)
+  if (hiding) {
+    if (rc.intersectObject(house, true).length) exitHouse();
+    return;
+  }
   // тап по ёжику
   const hits = rc.intersectObject(hedgehog, true);
   if (hits.length) {
@@ -1234,12 +1450,26 @@ window.addEventListener('pointerup', (e) => {
     else { pendingOwl = true; givePath(OWL_POS.x + 1.5, OWL_POS.z - 1.4); }
     return;
   }
+  // тап по Лягушке
+  const frogHits = rc.intersectObject(frog, true);
+  if (frogHits.length) {
+    const dx = FROG_POS.x - hero.position.x, dz = FROG_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.2) startFrogDialog();
+    else { pendingFrog = true; givePath(FROG_POS.x - 1.6, FROG_POS.z - 1.3); }
+    return;
+  }
   // тап по Древу Желаний
   const treeHits = rc.intersectObject(treeRoot, true);
   if (treeHits.length) {
     const dx = TREE_POS.x - hero.position.x, dz = TREE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.0) waterTree();
     else { pendingTree = true; givePath(TREE_POS.x - 1.4, TREE_POS.z - 1.1); }
+    return;
+  }
+  // тап по домику — войти/переждать ночь
+  if (rc.intersectObject(house, true).length) {
+    pendingHouse = true;
+    givePath(HOUSE_DOOR.x, HOUSE_DOOR.z);
     return;
   }
   tapGround(e.clientX, e.clientY);
@@ -1276,6 +1506,25 @@ setTimeout(() => {
   splashEl.classList.add('fade-out');
   setTimeout(() => { splashEl.style.display = 'none'; selectEl.style.display = 'flex'; }, 900);
 }, 2600);
+
+// Пауза: весь мир замирает (волки не щекочут), звук глушится
+const pauseOv = document.getElementById('pauseOv');
+let paused = false;
+const pauseBtn = document.getElementById('pauseBtn');
+if (pauseBtn) {
+  pauseBtn.addEventListener('click', () => {
+    initAudio();
+    paused = true;
+    pauseOv.style.display = 'flex';
+    setGamePaused(true);
+  });
+}
+document.getElementById('pauseResume').addEventListener('click', () => {
+  paused = false;
+  pauseOv.style.display = 'none';
+  setGamePaused(false);
+  play('pop');
+});
 document.querySelectorAll('.char').forEach(btn => {
   btn.addEventListener('click', () => {
     selectEl.classList.add('fade-out');
@@ -1301,10 +1550,11 @@ function startIntro() {
   gameState = 'intro';
   introSteps.length = 0;
   introSteps.push(
-    { pos: new THREE.Vector3(1, 17, 16), look: new THREE.Vector3(0, 0, 2), dur: 5.5 },
-    { pos: new THREE.Vector3(HEDGE_POS.x + 1, 4.5, HEDGE_POS.z + 6.5), look: new THREE.Vector3(HEDGE_POS.x, 0.8, HEDGE_POS.z), dur: 6.5 },
+    { pos: new THREE.Vector3(1, 17, 16), look: new THREE.Vector3(0, 0, 2), dur: 5 },
+    { pos: new THREE.Vector3(HEDGE_POS.x + 1, 4.5, HEDGE_POS.z + 6.5), look: new THREE.Vector3(HEDGE_POS.x, 0.8, HEDGE_POS.z), dur: 6 },
     { pos: new THREE.Vector3(TREE_POS.x + 0.5, 3.6, TREE_POS.z + 5.2), look: new THREE.Vector3(TREE_POS.x, 1, TREE_POS.z), dur: 7 },
-    { pos: new THREE.Vector3(5, 5.5, 10.5), look: new THREE.Vector3(5, 0.3, 4), dur: 5.5 },
+    { pos: new THREE.Vector3(OWL_POS.x + 2.2, 4.2, OWL_POS.z + 4.6), look: new THREE.Vector3(OWL_POS.x, 1.3, OWL_POS.z), dur: 4.5 },
+    { pos: new THREE.Vector3(10.2, 4.8, 8.4), look: new THREE.Vector3(10.6, 0.5, 2.8), dur: 4.5 },
   );
   introIdx = 0; introT = 0;
   hedgeBubble.visible = true;
@@ -1347,11 +1597,12 @@ checkRotate();
 
 function animate() {
   requestAnimationFrame(animate);
+  if (paused) { renderer.render(scene, camera); return; }
   const dt = 1 / 60;
   elapsed += dt;
 
-  // --- ДЕНЬ/НОЧЬ ---
-  dayT = (dayT + dt / DAY_LEN) % 1;
+  // --- ДЕНЬ/НОЧЬ (во сне в домике ночь пролетает быстро) ---
+  dayT = (dayT + (dt * (hiding ? 22 : 1)) / DAY_LEN) % 1;
   nightness = smoothstep(0.36, 0.5, dayT) - smoothstep(0.86, 1.0, dayT);
   setNight(nightness);
   tmpColor.copy(skyDay).lerp(skyNight, nightness);
@@ -1365,6 +1616,8 @@ function animate() {
   ffMat.opacity = nightness;
   pollenMat.opacity = 0.7 * (1 - nightness);
   winMat.color.setHex(nightness > 0.4 ? 0xffe9a3 : 0xfff7cc);
+  // утро — будим героя
+  if (hiding && sleptNight && nightness <= 0.03) exitHouse();
 
   // --- ГЕРОЙ ---
   if (hero) {
@@ -1400,10 +1653,17 @@ function animate() {
       } else {
         noProgT += dt;
       }
-      const stuckFinish = noProgT > 0.8;
+      const stuckFinish = noProgT > 0.7;
       const arrived = !path.length || (path.length === 1 && finalDist < 0.45);
-      if (stuckFinish || arrived) {
+      if (stuckFinish && !arrived && repathCount < 2 && finalTarget) {
+        // застряли у препятствия → не сдаёмся, а строим маршрут заново отсюда
+        repathCount++;
+        noProgT = 0; lastFinalDist = Infinity;
+        const np = findPath(hero.position.x, hero.position.z, finalTarget.x, finalTarget.z);
+        if (np) path = np; else { path = null; finalTarget = null; squashT = 1; }
+      } else if (stuckFinish || arrived) {
         path = null;
+        finalTarget = null;
         squashT = 1;
       } else if (d > 0.001) {
         dx /= d; dz /= d;
@@ -1432,7 +1692,7 @@ function animate() {
       }
     }
 
-    if ((pendingHedge || pendingTree || pendingOwl) && !path) {
+    if (!path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -1447,6 +1707,16 @@ function animate() {
         pendingOwl = false;
         const d = Math.hypot(OWL_POS.x - hero.position.x, OWL_POS.z - hero.position.z);
         if (d < 3.6) startOwlDialog();
+      }
+      if (pendingFrog) {
+        pendingFrog = false;
+        const d = Math.hypot(FROG_POS.x - hero.position.x, FROG_POS.z - hero.position.z);
+        if (d < 4.2) startFrogDialog();
+      }
+      if (pendingHouse) {
+        pendingHouse = false;
+        const d = Math.hypot(HOUSE_DOOR.x - hero.position.x, HOUSE_DOOR.z - hero.position.z);
+        if (d < 2.8) enterHouse();
       }
     }
 
@@ -1465,7 +1735,7 @@ function animate() {
     charData.glints.forEach(g => g.visible = blink > 0.5);
 
     // --- ВОЛКИ ---
-    if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && Math.random() < dt * 0.15) spawnWolf();
+    if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && Math.random() < dt * 0.15) spawnWolf();
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
       const w = wolves[wi];
@@ -1477,7 +1747,7 @@ function animate() {
         if (d > ISLAND_R + 2) { scene.remove(w.g); wolves.splice(wi, 1); }
         continue;
       }
-      if (w.mode === 'hunt' && tickling <= 0 && gameState === 'explore') {
+      if (w.mode === 'hunt' && tickling <= 0 && gameState === 'explore' && !hiding) {
         const dx = hero.position.x - w.g.position.x, dz = hero.position.z - w.g.position.z;
         const d = Math.hypot(dx, dz);
         if (d < 0.95 && tickleCooldown <= 0) {
@@ -1497,18 +1767,30 @@ function animate() {
       } else {
         w.cooldown -= dt;
         w.g.position.y = 0;
-        if (w.cooldown <= 0) w.mode = 'hunt';
+        // убегая, волк действительно уходит к краю острова
+        const d = Math.hypot(w.g.position.x, w.g.position.z);
+        if (d > 0.001 && d < ISLAND_R + 1.5) {
+          const ex = w.g.position.x / d, ez = w.g.position.z / d;
+          w.g.position.x += ex * 3 * dt;
+          w.g.position.z += ez * 3 * dt;
+          w.g.rotation.y = Math.atan2(ex, ez) - Math.PI / 2;
+        }
+        if (w.cooldown <= 0 && !hiding) w.mode = 'hunt';
       }
     }
   }
 
-  // --- ЁЖИК / СОВА ---
+  // --- ЁЖИК / СОВА / ЛЯГУШКА ---
   if (hero && (gameState === 'explore' || gameState === 'intro')) {
     hedgehog.position.y = Math.abs(Math.sin(elapsed * 3)) * 0.06;
     hedgeBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     owl.userData.bird.rotation.z = Math.sin(elapsed * 1.6) * 0.05;
     owl.userData.bird.position.y = 0.55 + Math.abs(Math.sin(elapsed * 2.4)) * 0.03;
     owlBubble.position.y = 2.5 + Math.sin(elapsed * 2.2) * 0.08;
+    const fhop = Math.abs(Math.sin(elapsed * 2.6));
+    frog.userData.body.position.y = fhop * 0.1;
+    frog.userData.body.scale.y = 0.92 + fhop * 0.08;
+    frogBubble.position.y = 2.2 + Math.sin(elapsed * 2.2) * 0.08;
   }
 
   // --- ДРЕВО ---
@@ -1566,6 +1848,20 @@ function animate() {
       cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
       cgFinger.style.top = (r.top - r.height * 0.55) + 'px';
       cgFinger.style.display = 'block';
+    }
+  }
+
+  // --- ПОДСКАЗКИ В ИГРЕ «ВОЛШЕБНЫЙ МОСТИК» ---
+  if (gameState === 'bridgegame' && !bg.answered) {
+    const idle = elapsed - bg.lastAction;
+    const rightBtn = Array.from(bgAnswers.children).find(b => b.dataset.e === bg.answer);
+    if (rightBtn && idle > 6) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 12 && !bg.fingerShown) {
+      bg.fingerShown = true;
+      const r = rightBtn.getBoundingClientRect();
+      bgFinger.style.left = (r.left + r.width * 0.18) + 'px';
+      bgFinger.style.top = (r.top - r.height * 0.55) + 'px';
+      bgFinger.style.display = 'block';
     }
   }
 
@@ -1675,7 +1971,7 @@ function resolveCollision(pos) {
   for (const ob of obstacles) {
     const dx = pos.x - ob.x, dz = pos.z - ob.z;
     const d = Math.hypot(dx, dz);
-    const minD = ob.r + 0.42;
+    const minD = ob.r + 0.5;
     if (d < minD && d > 0.0001) {
       pos.x = ob.x + (dx / d) * minD;
       pos.z = ob.z + (dz / d) * minD;
