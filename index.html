@@ -11,7 +11,7 @@
       overflow: hidden; background: #aee3f5;
       touch-action: none; overscroll-behavior: none;
       user-select: none; -webkit-user-select: none;
-      font-family: system-ui, sans-serif;
+      font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
     }
     canvas { display: block; }
     #hint {
@@ -22,56 +22,119 @@
       font-size: 18px; padding: 10px 22px; border-radius: 24px;
       pointer-events: none; transition: opacity 1.2s ease; opacity: 0;
     }
-    /* ---- Заставка ---- */
+
+    /* ================= ЗАСТАВКА ================= */
     #splash {
       position: fixed; inset: 0; z-index: 20;
-      background: linear-gradient(180deg, #ffe9b8 0%, #aee3f5 60%, #8ed081 100%);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      overflow: hidden;
+      background: linear-gradient(180deg, #cfeefa 0%, #fdeec9 55%, #bfe6b1 100%);
       transition: opacity 0.9s ease;
     }
+    #splash svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    /* солнце встаёт */
+    #sSun { animation: sunRise 2.6s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes sunRise {
+      from { transform: translateY(48%); }
+      to   { transform: translateY(0%); }
+    }
+    #sGlow { animation: glowIn 2.8s ease both; transform-origin: 72% 30%; }
+    @keyframes glowIn { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+
+    /* холмы дышат параллаксом */
+    .hill { animation: hillDrift 9s ease-in-out infinite alternate; }
+    .hill.h2 { animation-duration: 12s; animation-delay: -3s; }
+    .hill.h3 { animation-duration: 15s; animation-delay: -6s; }
+    @keyframes hillDrift { from { transform: translateX(-1.2%); } to { transform: translateX(1.2%); } }
+
+    /* дерево растёт с упругим до-ходом */
+    #sTree { transform-origin: 22% 88%; animation: treeGrow 1.6s cubic-bezier(.34,1.56,.64,1) .5s both; }
+    @keyframes treeGrow { from { transform: scale(0); } to { transform: scale(1); } }
+    #sTree .leaf { transform-box: fill-box; transform-origin: center; animation: leafPop .8s cubic-bezier(.34,1.56,.64,1) both; }
+    #sTree .leaf.l1 { animation-delay: 1.2s; }
+    #sTree .leaf.l2 { animation-delay: 1.4s; }
+    #sTree .leaf.l3 { animation-delay: 1.6s; }
+    @keyframes leafPop { from { transform: scale(0); } to { transform: scale(1); } }
+
+    /* мягкие светящиеся частички поднимаются */
+    .mote { opacity: 0; animation: moteRise 4.5s ease-in-out infinite; }
+    @keyframes moteRise {
+      0% { transform: translateY(0); opacity: 0; }
+      20% { opacity: .8; }
+      80% { opacity: .5; }
+      100% { transform: translateY(-90px); opacity: 0; }
+    }
+
+    /* заголовок */
+    #splash .title-wrap {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px; padding: 0 24px;
+      transform: translateY(-8vh);
+    }
     #splash h1 {
-      margin: 0 0 8px; font-size: clamp(28px, 7vw, 52px); color: #4a6b52;
-      text-shadow: 0 2px 0 rgba(255,255,255,0.6);
-      animation: floaty 2.4s ease-in-out infinite;
+      margin: 0; font-weight: 800; letter-spacing: .5px;
+      font-size: clamp(30px, 7.5vw, 58px); color: #3d5c44;
+      opacity: 0; animation: fadeUp 1s ease .9s both;
     }
-    #splash p { margin: 0; color: #6b8f71; font-size: clamp(15px, 3vw, 20px); }
-    .dots { margin-top: 26px; display: flex; gap: 14px; }
-    .dots span {
-      width: 16px; height: 16px; border-radius: 50%;
-      background: #ffb703;
-      animation: bounce 1s ease-in-out infinite;
+    #splash h1 .accent { color: #e0813f; }
+    #splash .sub {
+      margin: 0; color: #5d7a63; font-size: clamp(15px, 3.2vw, 21px);
+      opacity: 0; animation: fadeUp 1s ease 1.5s both;
     }
-    .dots span:nth-child(2) { background: #f2a0b5; animation-delay: 0.15s; }
-    .dots span:nth-child(3) { background: #6cbf6f; animation-delay: 0.3s; }
-    @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
-    @keyframes floaty { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-8px) rotate(1deg); } }
-    /* ---- Выбор друга ---- */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    /* линия загрузки-росток */
+    #splash .bar {
+      position: absolute; left: 50%; bottom: calc(9vh + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: min(46vw, 260px); height: 6px; border-radius: 99px;
+      background: rgba(61,92,68,0.18); overflow: hidden;
+      opacity: 0; animation: fadeUp .6s ease 1.2s both;
+    }
+    #splash .bar i {
+      display: block; height: 100%; width: 0; border-radius: 99px;
+      background: linear-gradient(90deg, #8ed081, #6cbf6f);
+      animation: barGrow 2.3s cubic-bezier(.4,0,.2,1) .3s both;
+    }
+    @keyframes barGrow { from { width: 0; } to { width: 100%; } }
+
+    /* ================= ВЫБОР ДРУГА ================= */
     #select {
       position: fixed; inset: 0; z-index: 15;
       display: none; flex-direction: column; align-items: center; justify-content: flex-end;
-      padding-bottom: calc(60px + env(safe-area-inset-bottom));
+      padding-bottom: calc(56px + env(safe-area-inset-bottom));
       pointer-events: none;
     }
     #select .card {
       pointer-events: auto;
-      background: rgba(255,255,255,0.85); border-radius: 28px;
-      padding: 20px 26px; text-align: center;
-      box-shadow: 0 8px 30px rgba(74,107,82,0.25);
-      animation: pop 0.5s ease;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-radius: 30px; padding: 22px 28px; text-align: center;
+      box-shadow: 0 12px 40px rgba(61,92,68,0.22);
+      animation: cardIn .55s cubic-bezier(.34,1.56,.64,1) both;
     }
-    #select h2 { margin: 0 0 14px; color: #4a6b52; font-size: clamp(20px, 4.5vw, 30px); }
-    #select .row { display: flex; gap: 18px; }
+    @keyframes cardIn { from { transform: translateY(40px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+    #select h2 { margin: 0 0 16px; color: #3d5c44; font-size: clamp(19px, 4.4vw, 28px); font-weight: 700; }
+    #select .row { display: flex; gap: 20px; }
+    .char-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .char-wrap span { color: #5d7a63; font-size: 14px; font-weight: 600; }
     .char {
-      width: clamp(76px, 17vw, 108px); height: clamp(76px, 17vw, 108px);
-      border-radius: 50%; border: 4px solid transparent;
-      background: #fff; font-size: clamp(38px, 9vw, 56px);
+      width: clamp(78px, 17vw, 106px); height: clamp(78px, 17vw, 106px);
+      border-radius: 34%; border: 3px solid rgba(255,255,255,.9);
+      background: linear-gradient(180deg, #ffffff, #eef7ea);
+      font-size: clamp(40px, 9vw, 54px);
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      cursor: pointer; box-shadow: 0 6px 18px rgba(61,92,68,0.18);
+      transition: transform .18s cubic-bezier(.34,1.56,.64,1);
       -webkit-tap-highlight-color: transparent;
+      opacity: 0; animation: charIn .5s cubic-bezier(.34,1.56,.64,1) both;
     }
-    .char:active { transform: scale(0.9); border-color: #ffb703; }
-    @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .char-wrap:nth-child(1) .char { animation-delay: .15s; }
+    .char-wrap:nth-child(2) .char { animation-delay: .28s; }
+    .char-wrap:nth-child(3) .char { animation-delay: .41s; }
+    @keyframes charIn { from { transform: translateY(26px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+    .char:active { transform: scale(.88); }
+
     .fade-out { opacity: 0; pointer-events: none; }
   </style>
 </head>
@@ -79,18 +142,56 @@
   <div id="hint">👆 Нажми на полянку — зверёк побежит туда</div>
 
   <div id="splash">
-    <h1>🌳 Волшебная полянка</h1>
-    <p>сказочный мир для малышей</p>
-    <div class="dots"><span></span><span></span><span></span></div>
+    <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <radialGradient id="gSunset" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffe9a8" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#ffe9a8" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="soft"><feGaussianBlur stdDeviation="8"/></filter>
+      </defs>
+
+      <!-- свечение и солнце -->
+      <g id="sGlow"><circle cx="720" cy="300" r="230" fill="url(#gSunset)"/></g>
+      <g id="sSun"><circle cx="720" cy="300" r="62" fill="#ffdf7e"/></g>
+
+      <!-- холмы -->
+      <path class="hill h3" d="M-50 780 Q 250 640 520 760 T 1100 750 V1050 H-50 Z" fill="#bfe6b1"/>
+      <path class="hill h2" d="M-50 850 Q 300 720 620 830 T 1100 830 V1050 H-50 Z" fill="#a5da92"/>
+      <path class="hill"    d="M-50 930 Q 350 820 700 920 T 1100 910 V1050 H-50 Z" fill="#8ed081"/>
+
+      <!-- дерево -->
+      <g id="sTree">
+        <rect x="205" y="700" width="26" height="150" rx="12" fill="#9a6b4f"/>
+        <circle class="leaf l1" cx="218" cy="640" r="72" fill="#6cbf6f"/>
+        <circle class="leaf l2" cx="268" cy="686" r="46" fill="#7ecb7f"/>
+        <circle class="leaf l3" cx="172" cy="692" r="42" fill="#8fd07a"/>
+      </g>
+
+      <!-- частички -->
+      <g filter="url(#soft)">
+        <circle class="mote" cx="430" cy="620" r="7" fill="#ffffff" style="animation-delay:0s"/>
+        <circle class="mote" cx="560" cy="560" r="5" fill="#fff3c9" style="animation-delay:.9s"/>
+        <circle class="mote" cx="660" cy="630" r="6" fill="#ffffff" style="animation-delay:1.8s"/>
+        <circle class="mote" cx="360" cy="560" r="4" fill="#ffdfef" style="animation-delay:2.6s"/>
+        <circle class="mote" cx="790" cy="600" r="5" fill="#ffffff" style="animation-delay:3.2s"/>
+      </g>
+    </svg>
+
+    <div class="title-wrap">
+      <h1>🌳 Волшебная <span class="accent">полянка</span></h1>
+      <p class="sub">Добрые приключения с пользой</p>
+    </div>
+    <div class="bar"><i></i></div>
   </div>
 
   <div id="select">
     <div class="card">
       <h2>Кто будет твоим другом?</h2>
       <div class="row">
-        <div class="char" data-char="bunny">🐰</div>
-        <div class="char" data-char="fox">🦊</div>
-        <div class="char" data-char="bear">🐻</div>
+        <div class="char-wrap"><div class="char" data-char="bunny">🐰</div><span>Зайка</span></div>
+        <div class="char-wrap"><div class="char" data-char="fox">🦊</div><span>Лисёнок</span></div>
+        <div class="char-wrap"><div class="char" data-char="bear">🐻</div><span>Мишка</span></div>
       </div>
     </div>
   </div>

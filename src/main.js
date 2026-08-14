@@ -592,7 +592,7 @@ function hideHint() {
 }
 
 // ============ ДЕНЬ/НОЧЬ ============
-const DAY_LEN = 150; // секунд полный цикл
+const DAY_LEN = 300; // секунд полный цикл (5 минут, по решению владельца)
 let dayT = 0; // 0..1
 const skyDay = new THREE.Color(0xaee3f5), skyNight = new THREE.Color(0x1c2b4d);
 const sunDay = new THREE.Color(0xfff2d0), sunNight = new THREE.Color(0x8fb4ff);
@@ -606,7 +606,7 @@ const selectEl = document.getElementById('select');
 setTimeout(() => {
   splashEl.classList.add('fade-out');
   setTimeout(() => { splashEl.style.display = 'none'; selectEl.style.display = 'flex'; }, 900);
-}, 2100);
+}, 2600);
 document.querySelectorAll('.char').forEach(btn => {
   btn.addEventListener('click', () => {
     selectEl.classList.add('fade-out');
