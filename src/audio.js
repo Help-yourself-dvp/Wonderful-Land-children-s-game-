@@ -132,12 +132,15 @@ export function play(name) {
 }
 
 // Голосовые реплики NPC (заранее сгенерированные файлы, локальные, офлайн)
+// Реплики встают в очередь: новая начнётся только когда закончится предыдущая.
 const voiceCache = {};
 export function speak(file) {
   if (!ctx || muted || ctx.state !== 'running') return;
   try {
     let a = voiceCache[file];
     if (!a) { a = new Audio(file); voiceCache[file] = a; }
+    const anyPlaying = Object.values(voiceCache).some(x => !x.paused && !x.ended);
+    if (anyPlaying) { setTimeout(() => speak(file), 350); return; }
     a.pause();
     a.currentTime = 0;
     a.volume = 0.95;

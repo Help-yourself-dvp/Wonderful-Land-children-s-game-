@@ -377,6 +377,60 @@ const bubTex = {
 };
 function setBubble(t) { hedgeBubble.material.map = t; hedgeBubble.material.needsUpdate = true; }
 
+// ============ СОВА ============
+const owl = new THREE.Group();
+{
+  const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.5, 14), L(0x9a6b4f));
+  stump.position.y = 0.25; stump.castShadow = true;
+  const stumpTop = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.06, 14), L(0xc9a46e));
+  stumpTop.position.y = 0.53;
+  owl.add(stump, stumpTop);
+  const bird = new THREE.Group();
+  const owlBody = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 18), L(0xb08a5f));
+  owlBody.position.y = 0.42; owlBody.scale.set(1, 1.15, 0.9); owlBody.castShadow = true;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), L(0xf2e3c9));
+  belly.position.set(0, 0.36, 0.16); belly.scale.set(0.85, 1, 0.55);
+  const wingGeo = new THREE.SphereGeometry(0.24, 12, 12);
+  const wingMat = L(0x8a6a44);
+  const wingL = new THREE.Mesh(wingGeo, wingMat);
+  wingL.position.set(-0.36, 0.45, 0); wingL.scale.set(0.5, 0.9, 0.75); wingL.rotation.z = 0.3;
+  const wingR = wingL.clone(); wingR.position.x = 0.36; wingR.rotation.z = -0.3;
+  const eyeWGeo = new THREE.SphereGeometry(0.14, 12, 12);
+  const eyeWM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const eyeWL = new THREE.Mesh(eyeWGeo, eyeWM);
+  eyeWL.position.set(-0.15, 0.72, 0.3); eyeWL.scale.z = 0.5;
+  const eyeWR = eyeWL.clone(); eyeWR.position.x = 0.15;
+  const pupilGeo = new THREE.SphereGeometry(0.07, 10, 10);
+  const pupilM = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
+  const pupilL = new THREE.Mesh(pupilGeo, pupilM);
+  pupilL.position.set(-0.15, 0.72, 0.4);
+  const pupilR = pupilL.clone(); pupilR.position.x = 0.15;
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.15, 8), L(0xf2994c));
+  beak.position.set(0, 0.6, 0.36); beak.rotation.x = Math.PI * 0.6;
+  const tuftGeoO = new THREE.ConeGeometry(0.08, 0.2, 6);
+  const tuftL = new THREE.Mesh(tuftGeoO, wingMat);
+  tuftL.position.set(-0.22, 0.95, 0.02); tuftL.rotation.z = 0.35;
+  const tuftR = tuftL.clone(); tuftR.position.x = 0.22; tuftR.rotation.z = -0.35;
+  bird.add(owlBody, belly, wingL, wingR, eyeWL, eyeWR, pupilL, pupilR, beak, tuftL, tuftR);
+  bird.position.y = 0.55;
+  owl.add(bird);
+  owl.userData.bird = bird;
+}
+const OWL_POS = { x: -6.5, z: 10.5 };
+owl.position.set(OWL_POS.x, 0, OWL_POS.z);
+owl.rotation.y = Math.atan2(0 - OWL_POS.x, 0 - OWL_POS.z);
+scene.add(owl);
+obstacles.push({ x: OWL_POS.x, z: OWL_POS.z, r: 0.55 });
+
+const owlBubble = makeBubbleSprite('🔢', 1.05);
+owlBubble.position.set(OWL_POS.x, 2.5, OWL_POS.z);
+scene.add(owlBubble);
+const owlBubTex = {
+  count: owlBubble.material.map,
+  star: makeBubbleSprite('⭐', 1).material.map,
+};
+function setOwlBubble(t) { owlBubble.material.map = t; owlBubble.material.needsUpdate = true; }
+
 // ============ ДРЕВО ЖЕЛАНИЙ ============
 const TREE_POS = { x: -0.5, z: -2.8 };
 let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10);
@@ -888,6 +942,126 @@ function celebrate() {
   }, 2600);
 }
 
+// ============ МИНИ-ИГРА «СЧИТАЙ-КА» (Сова, отдельный экран) ============
+const cgEl = document.getElementById('countgame');
+const cgItems = document.getElementById('cgItems');
+const cgAnswers = document.getElementById('cgAnswers');
+const cgFinger = document.getElementById('cgFinger');
+const cg = { round: 0, total: 2, correct: 0, lastAction: 0, answered: false, fingerShown: false };
+const CG_SETS = ['🍓', '🌼', '🍄', '⭐', '🐞', '🍒'];
+
+function startOwlDialog() {
+  gameState = 'dialog';
+  setOwlBubble(owlBubTex.count);
+  play('pop');
+  speak('voice/sova_hello.mp3');
+  const dx = OWL_POS.x - hero.position.x, dz = OWL_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog') openCountGame(); }, 3000);
+}
+
+function openCountGame() {
+  gameState = 'countgame';
+  cg.round = 0;
+  cgEl.style.display = 'flex';
+  speak('voice/sova_ask.mp3'); // встанет в очередь после приветствия
+  buildCountRound();
+}
+
+function closeCountGame() {
+  cgEl.style.display = 'none';
+  cgFinger.style.display = 'none';
+}
+
+function buildCountRound() {
+  cg.round++;
+  cg.answered = false;
+  cg.fingerShown = false;
+  cg.lastAction = elapsed;
+  cgItems.innerHTML = '';
+  cgAnswers.innerHTML = '';
+  cgFinger.style.display = 'none';
+
+  const n = cg.round === 1 ? 2 + Math.floor(rand() * 3) : 3 + Math.floor(rand() * 3); // 2..4, 3..5
+  cg.correct = n;
+  const emoji = CG_SETS[Math.floor(rand() * CG_SETS.length)];
+
+  const W = cgItems.clientWidth, H = cgItems.clientHeight;
+  const size = Math.max(44, Math.min(64, W * 0.14));
+  const cols = Math.max(3, Math.floor(W / (size * 1.6)));
+  const rows = 2;
+  const slots = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) slots.push({ c, r });
+  slots.sort(() => rand() - 0.5);
+  for (let i = 0; i < n; i++) {
+    const s = slots[i % slots.length];
+    const el = document.createElement('div');
+    el.className = 'cg-item';
+    el.textContent = emoji;
+    el.style.left = ((s.c + 0.5) / cols * W + (rand() - 0.5) * size * 0.5 - size / 2) + 'px';
+    el.style.top = ((s.r + 0.5) / rows * H + (rand() - 0.5) * size * 0.4 - size / 2) + 'px';
+    el.style.animationDelay = (i * 0.09) + 's';
+    cgItems.appendChild(el);
+  }
+
+  // варианты ответов: правильный + два похожих
+  const opts = new Set([n]);
+  let guard = 0;
+  while (opts.size < 3 && guard++ < 60) {
+    opts.add(Math.max(1, Math.min(7, n - 2 + Math.floor(rand() * 5))));
+  }
+  [...opts].sort(() => rand() - 0.5).forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'cg-answer';
+    b.textContent = v;
+    b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    b.addEventListener('click', () => answerCount(v, b));
+    cgAnswers.appendChild(b);
+  });
+}
+
+function answerCount(v, btn) {
+  if (gameState !== 'countgame' || cg.answered) return;
+  cg.lastAction = elapsed;
+  cg.fingerShown = false;
+  cgFinger.style.display = 'none';
+  Array.from(cgAnswers.children).forEach(b => b.classList.remove('glow'));
+
+  if (v === cg.correct) {
+    cg.answered = true;
+    play('good');
+    btn.classList.add('right');
+    Array.from(cgItems.children).forEach(it => { it.classList.remove('jump'); void it.offsetWidth; it.classList.add('jump'); });
+    setTimeout(() => {
+      if (cg.round >= cg.total) { closeCountGame(); celebrateOwl(); }
+      else { buildCountRound(); speak('voice/sova_ask.mp3'); }
+    }, 850);
+  } else {
+    // Zero Fail: мягкий звук и лёгкое покачивание, попыток бесконечно
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 420);
+  }
+}
+
+function celebrateOwl() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  play('fanfare');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/sova_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(OWL_POS.x, 1.6, OWL_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setOwlBubble(owlBubTex.star);
+  owlBubble.visible = true;
+  setTimeout(() => {
+    gameState = 'explore';
+    setOwlBubble(owlBubTex.count);
+  }, 2600);
+}
+
 // ============ НАВИГАЦИЯ A* ============
 const NAV_N = 64, NAV_MIN = -16, NAV_CELL = 0.5;
 const navBlocked = new Uint8Array(NAV_N * NAV_N);
@@ -996,6 +1170,7 @@ const pointer = new THREE.Vector2();
 let path = null;
 let pendingHedge = false;
 let pendingTree = false;
+let pendingOwl = false;
 let noProgT = 0, lastFinalDist = Infinity;
 const SPEED = 4;
 let elapsed = 0;
@@ -1049,6 +1224,14 @@ window.addEventListener('pointerup', (e) => {
     const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.0) startDialog();
     else { pendingHedge = true; givePath(HEDGE_POS.x + 1.6, HEDGE_POS.z - 1.2); }
+    return;
+  }
+  // тап по Сове
+  const owlHits = rc.intersectObject(owl, true);
+  if (owlHits.length) {
+    const dx = OWL_POS.x - hero.position.x, dz = OWL_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.2) startOwlDialog();
+    else { pendingOwl = true; givePath(OWL_POS.x + 1.5, OWL_POS.z - 1.4); }
     return;
   }
   // тап по Древу Желаний
@@ -1249,7 +1432,7 @@ function animate() {
       }
     }
 
-    if ((pendingHedge || pendingTree) && !path) {
+    if ((pendingHedge || pendingTree || pendingOwl) && !path) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -1259,6 +1442,11 @@ function animate() {
         pendingTree = false;
         const d = Math.hypot(TREE_POS.x - hero.position.x, TREE_POS.z - hero.position.z);
         if (d < 3.2) waterTree();
+      }
+      if (pendingOwl) {
+        pendingOwl = false;
+        const d = Math.hypot(OWL_POS.x - hero.position.x, OWL_POS.z - hero.position.z);
+        if (d < 3.6) startOwlDialog();
       }
     }
 
@@ -1314,10 +1502,13 @@ function animate() {
     }
   }
 
-  // --- ЁЖИК ---
+  // --- ЁЖИК / СОВА ---
   if (hero && (gameState === 'explore' || gameState === 'intro')) {
     hedgehog.position.y = Math.abs(Math.sin(elapsed * 3)) * 0.06;
     hedgeBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
+    owl.userData.bird.rotation.z = Math.sin(elapsed * 1.6) * 0.05;
+    owl.userData.bird.position.y = 0.55 + Math.abs(Math.sin(elapsed * 2.4)) * 0.03;
+    owlBubble.position.y = 2.5 + Math.sin(elapsed * 2.2) * 0.08;
   }
 
   // --- ДРЕВО ---
@@ -1361,6 +1552,20 @@ function animate() {
         mgFinger.style.left = fx + 'px';
         mgFinger.style.top = fy + 'px';
       }
+    }
+  }
+
+  // --- ПОДСКАЗКИ В ИГРЕ «СЧИТАЙ-КА» ---
+  if (gameState === 'countgame' && !cg.answered) {
+    const idle = elapsed - cg.lastAction;
+    const rightBtn = Array.from(cgAnswers.children).find(b => parseInt(b.textContent, 10) === cg.correct);
+    if (rightBtn && idle > 6) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 12 && !cg.fingerShown) {
+      cg.fingerShown = true;
+      const r = rightBtn.getBoundingClientRect();
+      cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
+      cgFinger.style.top = (r.top - r.height * 0.55) + 'px';
+      cgFinger.style.display = 'block';
     }
   }
 
