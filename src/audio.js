@@ -131,6 +131,14 @@ export function play(name) {
   if (fn) fn();
 }
 
+// Звонкий «камешек-колокольчик»: чистый тон + мягкая октава сверху.
+// Используется в мини-игре Светлячка «Звонкие камни».
+export function playNote(freq, { delay = 0, dur = 0.5, vol = 0.26 } = {}) {
+  if (!ctx || muted || ctx.state !== 'running') return;
+  tone(freq, dur, { vol, delay, type: 'sine' });
+  tone(freq * 2, dur * 0.55, { vol: vol * 0.3, delay, type: 'sine' });
+}
+
 // Голосовые реплики NPC (заранее сгенерированные файлы, локальные, офлайн)
 // Правило: голос следует за ДЕЙСТВИЕМ ребёнка. Новая реплика сразу гасит старую
 // (stopVoice внутри speak). Исключение — speak(file, {after:true}): реплика

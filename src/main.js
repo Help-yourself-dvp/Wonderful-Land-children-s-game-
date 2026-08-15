@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused } from './audio.js';
+import { initAudio, play, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused } from './audio.js';
 
 // ============ БАЗА ============
 const scene = new THREE.Scene();
@@ -665,6 +665,91 @@ const sqBubTex = {
 };
 function setSqBubble(t) { sqBubble.material.map = t; sqBubble.material.needsUpdate = true; }
 
+// ============ СВЕТЛЯЧОК («Звонкие камни») ============
+// Ноты-камушки: пентатоника C-D-E-G-A — любая последовательность звучит слаженно.
+const ST_NOTES = [
+  { f: 523.25, c: 0xf28ba8 }, // до — розовый
+  { f: 587.33, c: 0xf5b45e }, // ре — оранжевый
+  { f: 659.25, c: 0xf7e07a }, // ми — жёлтый
+  { f: 783.99, c: 0x8fd694 }, // соль — зелёный
+  { f: 880.00, c: 0x8fc3f0 }, // ля — голубой
+];
+const FIRE_POS = { x: 7.9, z: 8.7 }; // у северо-восточного бережка пруда
+function makeFirefly() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const chitin = L(0x7d68a8), dark = L(0x55457a);
+  // тельце — вытянутое, как капелька
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), chitin);
+  body.position.y = 0.5; body.scale.set(0.82, 1.05, 0.95); body.castShadow = true;
+  // светящееся брюшко-фонарик
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfff3a0 });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 14), bulbMat);
+  bulb.position.set(0, 0.5, -0.17); bulb.scale.set(0.9, 1.2, 0.9);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), dark);
+  head.position.set(0, 0.66, 0.16); head.castShadow = true;
+  const eyeGeo = new THREE.SphereGeometry(0.055, 10, 10);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff6cf });
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eL = new THREE.Mesh(eyeGeo, eyeMat); eL.position.set(-0.085, 0.7, 0.27);
+  const eR = eL.clone(); eR.position.x = 0.085;
+  const pL = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 8), pupilMat); pL.position.set(-0.085, 0.7, 0.318);
+  const pR = pL.clone(); pR.position.x = 0.085;
+  // усики
+  const antGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.16, 5);
+  const aL = new THREE.Mesh(antGeo, dark); aL.position.set(-0.07, 0.84, 0.2); aL.rotation.z = 0.5;
+  const aR = aL.clone(); aR.position.x = 0.07; aR.rotation.z = -0.5;
+  // крылышки — полупрозрачные
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+  const wingGeo = new THREE.CircleGeometry(0.17, 12);
+  const wL = new THREE.Mesh(wingGeo, wingMat); wL.position.set(-0.16, 0.72, -0.02); wL.rotation.set(-0.5, 0.2, 0.9); wL.scale.set(0.6, 1.15, 1);
+  const wR = wL.clone(); wR.position.x = 0.16; wR.rotation.z = -0.9;
+  // лапки-точки
+  const legGeo = new THREE.SphereGeometry(0.035, 6, 6);
+  const legs = [];
+  for (let i = 0; i < 3; i++) {
+    const lz = 0.1 - i * 0.13;
+    const l1 = new THREE.Mesh(legGeo, dark); l1.position.set(-0.14, 0.34 - i * 0.012, lz);
+    const l2 = l1.clone(); l2.position.x = 0.14;
+    legs.push(l1, l2);
+  }
+  bodyG.add(body, bulb, head, eL, eR, pL, pR, aL, aR, wL, wR, ...legs);
+  g.add(bodyG);
+  // тёплый свет фонарика: вечером и ночью ярче
+  const lamp = new THREE.PointLight(0xffe98a, 0.55, 5.5, 1.6);
+  lamp.position.set(0, 1.0, 0.55); // светит вперёд-вниз: и мордочка, и камушки подсвечены
+  g.add(lamp);
+  g.userData = { body: bodyG, bulb, bulbMat, lamp, wL, wR };
+  return g;
+}
+const firefly = makeFirefly();
+firefly.position.set(FIRE_POS.x, 0, FIRE_POS.z);
+firefly.rotation.y = Math.atan2(0 - FIRE_POS.x, -2 - FIRE_POS.z); // смотрит к центру поляны
+scene.add(firefly);
+obstacles.push({ x: FIRE_POS.x, z: FIRE_POS.z, r: 0.55 });
+const svetBubble = makeBubbleSprite('🎵', 0.95);
+svetBubble.position.set(FIRE_POS.x, 2.1, FIRE_POS.z);
+scene.add(svetBubble);
+const svetBubTex = {
+  note: svetBubble.material.map,
+  star: makeBubbleSprite('⭐', 1).material.map,
+};
+function setSvetBubble(t) { svetBubble.material.map = t; svetBubble.material.needsUpdate = true; }
+// пять настоящих камушков-ноток полукругом перед Светлячком — те же цвета, что в мини-игре
+const fireStones = [];
+{
+  for (let i = 0; i < ST_NOTES.length; i++) {
+    const ang = (-0.62 + i * 0.31); // дуга перед носом Светлячка
+    const sx = FIRE_POS.x + Math.sin(firefly.rotation.y + Math.PI + ang) * 1.15;
+    const sz = FIRE_POS.z + Math.cos(firefly.rotation.y + Math.PI + ang) * 1.15;
+    const st = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), L(ST_NOTES[i].c));
+    st.position.set(sx, 0.09, sz); st.scale.set(1, 0.62, 0.92);
+    st.castShadow = true; st.receiveShadow = true;
+    scene.add(st);
+    fireStones.push(st);
+  }
+}
+
 // ============ ДРЕВО ЖЕЛАНИЙ ============
 const TREE_POS = { x: -0.5, z: -2.8 };
 let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10);
@@ -1184,7 +1269,7 @@ function onTaskDone() {
   }
 }
 
-// ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-СТРУЙКА» ============
+// ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-РУЧЕЁК» ============
 // После первой победы у Крота от его норки к Древу прорастает светящийся
 // ручеёк-росток (волна из тёплых точек + росток у подножия). Виден навсегда,
 // ночью светится чуть ярче. Продолжение глав — в следующих версиях.
@@ -2012,6 +2097,180 @@ function celebrateSq() {
   }, 2600);
 }
 
+// ============ МИНИ-ИГРА СВЕТЛЯЧКА «ЗВОНКИЕ КАМНИ» (музыкальная память) ============
+// Правила: Светлячок играет песенку на камушках-нотках, ребёнок повторяет.
+// Zero Fail: ошибся — мягкий «плинг», Светлячок играет песенку ещё раз, медленнее.
+const ST_NOTE_CSS = ['#f28ba8', '#f5b45e', '#f7e07a', '#8fd694', '#8fc3f0'];
+const ST_ROUNDS = [2, 3, 4]; // длина песенки по раундам (3–6 лет)
+const stEl = document.getElementById('stonegame');
+const stField = document.getElementById('stField');
+const stMsg = document.getElementById('stMsg');
+const stProg = document.getElementById('stProg');
+const stFinger = document.getElementById('stFinger');
+const st = { round: 0, seq: [], input: 0, canTap: false, lastAction: 0, fingerShown: false, stones: [], timers: [] };
+
+function startSvetDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_fire') === '1' ? 'voice/svet_again.mp3' : 'voice/svet_hello.mp3');
+  const dx = FIRE_POS.x - hero.position.x, dz = FIRE_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openStoneGame(); }, 2400);
+}
+function openStoneGame() {
+  gameState = 'stonegame';
+  st.round = 0;
+  st.timers.forEach(clearTimeout); st.timers = [];
+  stField.innerHTML = '';
+  st.stones = [];
+  for (let i = 0; i < ST_NOTES.length; i++) {
+    const b = document.createElement('button');
+    b.className = 'st-stone';
+    b.type = 'button';
+    b.style.background = ST_NOTE_CSS[i];
+    b.dataset.idx = i;
+    b.setAttribute('aria-label', 'камушек ' + (i + 1));
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); stTap(i); });
+    stField.appendChild(b);
+    st.stones.push(b);
+  }
+  stEl.style.display = 'flex';
+  stFinger.style.display = 'none';
+  buildStRound();
+}
+function closeStoneGame() {
+  st.canTap = false;
+  st.timers.forEach(clearTimeout); st.timers = [];
+  stEl.style.display = 'none';
+  stFinger.style.display = 'none';
+}
+function buildStRound() {
+  st.seq = [];
+  let prev = -1;
+  for (let i = 0; i < ST_ROUNDS[st.round]; i++) {
+    let n = Math.floor(Math.random() * ST_NOTES.length);
+    if (n === prev) n = (n + 1 + Math.floor(Math.random() * 3)) % ST_NOTES.length; // без одинаковых подряд
+    st.seq.push(n); prev = n;
+  }
+  st.input = 0;
+  st.canTap = false; st.fingerShown = false;
+  st.lastAction = elapsed;
+  stFinger.style.display = 'none';
+  st.stones.forEach(s => { s.classList.remove('glow', 'lit', 'shake'); s.disabled = true; });
+  stProg.innerHTML = ST_ROUNDS.map((_, i) => `<i class="${i < st.round ? 'on' : ''}"></i>`).join('');
+  stMsg.textContent = 'Слушай песенку…';
+  st.timers.push(setTimeout(() => stPlaySeq(1, () => {
+    if (gameState !== 'stonegame') return;
+    stMsg.textContent = 'Твоя очередь!';
+    st.stones.forEach(s => { s.disabled = false; });
+    st.canTap = true;
+    st.lastAction = elapsed;
+  }), 650));
+}
+// Светлячок играет песенку: камушки подсвечиваются и звенят по очереди
+function stPlaySeq(tempo, cb) {
+  const step = 640 * tempo, litFor = 430 * tempo;
+  st.seq.forEach((note, i) => {
+    st.timers.push(setTimeout(() => {
+      if (gameState !== 'stonegame') return;
+      const el = st.stones[note];
+      el.classList.add('lit');
+      playNote(ST_NOTES[note].f);
+      stFireflyPulse();
+      st.timers.push(setTimeout(() => el.classList.remove('lit'), litFor));
+    }, i * step));
+  });
+  st.timers.push(setTimeout(() => { if (cb) cb(); }, st.seq.length * step + 220 * tempo));
+}
+// фонарик Светлячка подмигивает в такт (видно за прозрачной карточкой)
+function stFireflyPulse() {
+  const { bulb } = firefly.userData;
+  bulb.scale.set(1.15, 1.55, 1.12);
+  setTimeout(() => bulb.scale.set(0.9, 1.2, 0.9), 300);
+}
+function stTap(i) {
+  if (gameState !== 'stonegame' || !st.canTap) return;
+  st.lastAction = elapsed;
+  st.fingerShown = false;
+  stFinger.style.display = 'none';
+  st.stones.forEach(s => s.classList.remove('glow'));
+  const el = st.stones[i];
+  el.classList.add('lit');
+  setTimeout(() => el.classList.remove('lit'), 260);
+  if (i === st.seq[st.input]) {
+    playNote(ST_NOTES[i].f, { dur: 0.42 });
+    st.input++;
+    if (st.input >= st.seq.length) {
+      st.canTap = false;
+      st.stones.forEach(s => { s.disabled = true; });
+      play('good');
+      stMsg.textContent = 'Ура! Песенка получилась! 🎉';
+      stProg.innerHTML = ST_ROUNDS.map((_, k) => `<i class="${k <= st.round ? 'on' : ''}"></i>`).join('');
+      st.timers.push(setTimeout(() => {
+        if (gameState !== 'stonegame') return;
+        st.round++;
+        if (st.round >= ST_ROUNDS.length) { closeStoneGame(); celebrateFirefly(); }
+        else buildStRound();
+      }, 1250));
+    }
+  } else {
+    // мягкий отказ: «плинг», качание камушка — и Светлячок играет ещё раз, помедленнее
+    play('bad');
+    el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 450);
+    st.canTap = false;
+    st.stones.forEach(s => { s.disabled = true; s.classList.remove('glow'); });
+    stFinger.style.display = 'none';
+    st.input = 0;
+    speak('voice/svet_try.mp3');
+    stMsg.textContent = 'Слушай ещё разок…';
+    st.timers.push(setTimeout(() => stPlaySeq(1.3, () => {
+      if (gameState !== 'stonegame') return;
+      stMsg.textContent = 'Теперь ты!';
+      st.stones.forEach(s => { s.disabled = false; });
+      st.canTap = true;
+      st.lastAction = elapsed;
+    }), 2300));
+  }
+}
+document.getElementById('hintStBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  if (gameState !== 'stonegame' || !st.canTap) return;
+  st.lastAction = elapsed;
+  st.fingerShown = false;
+  stFinger.style.display = 'none';
+  const next = st.stones[st.seq[st.input]];
+  if (!next) return;
+  // честная подсказка: звенит и светится ровно тот камушек, который нужен сейчас
+  next.classList.add('glow', 'lit');
+  playNote(ST_NOTES[st.seq[st.input]].f);
+  setTimeout(() => { next.classList.remove('lit'); }, 500);
+});
+function celebrateFirefly() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_fire', '1');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/svet_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(FIRE_POS.x, 1.4, FIRE_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setSvetBubble(svetBubTex.star);
+  svetBubble.visible = true;
+  setTimeout(() => {
+    gameState = 'explore';
+    setSvetBubble(svetBubTex.note);
+    checkStory();
+  }, 2600);
+}
+
 // ============ СЮЖЕТНЫЕ КАРТОЧКИ («одна большая сказка») ============
 const storyOv = document.getElementById('storyOv');
 const storyEmoji = document.getElementById('storyEmoji');
@@ -2160,6 +2419,7 @@ let pendingOwl = false;
 let pendingFrog = false;
 let pendingMole = false;
 let pendingSq = false;
+let pendingFire = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -2266,6 +2526,15 @@ window.addEventListener('pointerup', (e) => {
     const dx = SQRL_POS.x - hero.position.x, dz = SQRL_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.4) startSqDialog();
     else { pendingSq = true; givePath(SQRL_POS.x + 1.5, SQRL_POS.z - 1.2); }
+    return;
+  }
+  // тап по Светлячку (или по его звонким камушкам)
+  const fireHits = rc.intersectObject(firefly, true);
+  const stoneHits = rc.intersectObjects(fireStones, false);
+  if (fireHits.length || stoneHits.length) {
+    const dx = FIRE_POS.x - hero.position.x, dz = FIRE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startSvetDialog();
+    else { pendingFire = true; givePath(FIRE_POS.x - 1.6, FIRE_POS.z - 1.5); }
     return;
   }
   // тап по Древу Желаний
@@ -2404,6 +2673,7 @@ document.getElementById('skipIntro').addEventListener('click', () => finishIntro
 buildNavGrid();
 const camOffsetBase = new THREE.Vector3(0, 14, 11.5);
 const camOffset = camOffsetBase.clone();
+let portraitCam = null; // только для скрытого режима портретных скриншотов (#solo-*)
 const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
@@ -2549,7 +2819,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -2564,6 +2834,11 @@ function animate() {
         pendingSq = false;
         const d = Math.hypot(SQRL_POS.x - hero.position.x, SQRL_POS.z - hero.position.z);
         if (d < 3.6) startSqDialog();
+      }
+      if (pendingFire) {
+        pendingFire = false;
+        const d = Math.hypot(FIRE_POS.x - hero.position.x, FIRE_POS.z - hero.position.z);
+        if (d < 3.6) startSvetDialog();
       }
       if (pendingTree) {
         pendingTree = false;
@@ -2727,6 +3002,13 @@ function animate() {
     sq.userData.body.position.y = Math.abs(Math.sin(elapsed * 2.4)) * 0.06;
     sq.userData.tail.rotation.x = Math.sin(elapsed * 3) * 0.16;
     sq.userData.tailTip.rotation.x = Math.sin(elapsed * 3) * 0.2;
+    // Светлячок: парит над камушками, быстро машет крылышками, ночью фонарик ярче
+    firefly.userData.body.position.y = 0.12 + Math.sin(elapsed * 2.1) * 0.09;
+    firefly.userData.wL.rotation.z = 0.9 + Math.sin(elapsed * 21) * 0.5;
+    firefly.userData.wR.rotation.z = -0.9 - Math.sin(elapsed * 21) * 0.5;
+    firefly.userData.lamp.intensity = 0.45 + nightness * 1.6 + Math.sin(elapsed * 3.2) * 0.12;
+    firefly.userData.bulbMat.color.setHex(nightness > 0.3 ? 0xffd95e : 0xfff3a0);
+    svetBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     sqBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
   }
 
@@ -2822,6 +3104,20 @@ function animate() {
       cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
       cgFinger.style.top = (r.top - 74) + 'px';
       cgFinger.style.display = 'block';
+    }
+  }
+
+  // --- ПОДСКАЗКИ В ИГРЕ «ЗВОНКИЕ КАМНИ» (Светлячок) ---
+  if (gameState === 'stonegame' && st.canTap) {
+    const idle = elapsed - st.lastAction;
+    const next = st.stones[st.seq[st.input]];
+    if (next && idle > 18) next.classList.add('glow');
+    if (next && idle > 26 && !st.fingerShown) {
+      st.fingerShown = true;
+      const r = next.getBoundingClientRect();
+      stFinger.style.left = (r.left + r.width * 0.18) + 'px';
+      stFinger.style.top = (r.top - 74) + 'px';
+      stFinger.style.display = 'block';
     }
   }
 
@@ -2986,7 +3282,11 @@ function animate() {
   }
 
   // --- КАМЕРА (в обычном режиме следует; в интро — по ключевым кадрам выше) ---
-  if (hero && gameState !== 'intro') {
+  if (portraitCam) {
+    // режим портретных скриншотов (#solo-*): камера стоит на месте
+    camera.position.copy(portraitCam.pos);
+    lookTarget.copy(portraitCam.look);
+  } else if (hero && gameState !== 'intro') {
     const wanted = new THREE.Vector3().copy(hero.position).add(camOffset);
     camera.position.lerp(wanted, 0.06);
     lookTarget.lerp(hero.position, 0.08);
@@ -3000,7 +3300,7 @@ function animate() {
 animate();
 
 // --- СКРЫТЫЙ ТЕСТ-РЕЖИМ (только для автоматических скриншотов разметки; в игре не срабатывает) ---
-// Открыть с хэшем: #shot-world | #shot-hedge | #shot-owl | #shot-frog | #shot-mole | #shot-sq
+// Открыть с хэшем: #shot-world | #shot-hedge | #shot-owl | #shot-frog | #shot-mole | #shot-sq | #shot-fire
 if (location.hash.indexOf('#shot') === 0) {
   setTimeout(() => {
     try {
@@ -3014,7 +3314,47 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'frog') openBridgeGame();
       else if (kind === 'mole') openMoleGame();
       else if (kind === 'sq') openSqGame();
+      else if (kind === 'fire') openStoneGame();
     } catch (e) { document.title = 'SHOT-ERR ' + e.message; }
+  }, 900);
+}
+
+// --- СКРЫТЫЙ РЕЖИМ ПОРТРЕТОВ (#solo-bunny|fox|bear|hedge|owl|frog|mole|sq|fire[-night]) ---
+// Одного жителя ставим на «сцену» лицом к камере — удобно сравнивать скины.
+if (location.hash.indexOf('#solo') === 0) {
+  setTimeout(() => {
+    try {
+      splashEl.style.display = 'none';
+      selectEl.style.display = 'none';
+      // прячем HUD — чистые портреты
+      ['muteBtn', 'pauseBtn', 'drops', 'albumBtn', 'hint', 'skipIntro'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      spawnHero('fox');
+      hero.visible = false;
+      wolves.forEach(w => { w.g.visible = false; });
+      gameState = 'explore';
+      dayT = 0.12; // утро — ровный мягкий свет
+      let name = location.hash.slice(6);
+      if (name.endsWith('-night')) { dayT = 0.6; name = name.slice(0, -6); }
+      let subj = null, dist = 3.1, lookY = 0.62;
+      if (name === 'bunny' || name === 'fox' || name === 'bear') { subj = makeChar(name); scene.add(subj); dist = 3.2; }
+      else if (name === 'hedge') subj = hedgehog;
+      else if (name === 'owl') { subj = owl; dist = 3.4; lookY = 0.85; }
+      else if (name === 'frog') { subj = frog; dist = 2.8; lookY = 0.55; }
+      else if (name === 'mole') { subj = mole; dist = 2.3; lookY = 0.5; }
+      else if (name === 'sq') { subj = sq; dist = 2.3; lookY = 0.6; }
+      else if (name === 'fire') { subj = firefly; dist = 1.55; lookY = 0.62; }
+      if (subj) {
+        // остальных жителей и их облачка прячем — чистое сравнение скинов
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble]]
+          .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
+        if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
+        subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
+        subj.rotation.y = 0; // лицом к камере (передняя часть модели смотрит на +z)
+        portraitCam = { pos: new THREE.Vector3(0, 1.5, 12.4 + dist), look: new THREE.Vector3(0, lookY, 12.4) };
+      }
+    } catch (e) { document.title = 'SOLO-ERR ' + e.message; }
   }, 900);
 }
 
