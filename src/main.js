@@ -1185,8 +1185,8 @@ function onTaskDone() {
 }
 
 // ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-СТРУЙКА» ============
-// После первой победы у Крота от его норки к Древу прорастает светящаяся
-// струйка-росток (волна из тёплых точек + росток у подножия). Видна навсегда,
+// После первой победы у Крота от его норки к Древу прорастает светящийся
+// ручеёк-росток (волна из тёплых точек + росток у подножия). Виден навсегда,
 // ночью светится чуть ярче. Продолжение глав — в следующих версиях.
 let sproutGroup = null;
 const sproutDots = [];
@@ -1231,7 +1231,7 @@ function revealSprout() {
   sproutDots.forEach(d => d.scale.setScalar(0.001));
   sproutGroup.userData.leafSprout.scale.setScalar(0.001);
 }
-// если историю уже открыли раньше — струйка всегда на месте
+// если историю уже открыли раньше — ручеёк всегда на месте
 if (localStorage.getItem('wm_story_mole') === '1') {
   buildSprout();
   sproutGroup.visible = true;
@@ -1242,7 +1242,7 @@ function checkMoleStory() {
   revealSprout();
   showStory({
     key: 'wm_story_mole', emoji: '💧', voice: 'voice/story_sprout.mp3',
-    text: 'Крот сдержал слово! Смотри — от его норки к Дереву потянулась светящаяся струйка-росток! Древо теперь пьёт и из-под земли… Продолжение следует!',
+    text: 'Крот сдержал слово! Смотри — от его норки к Дереву потянулся светящийся ручеёк-росток! Древо теперь пьёт и под землёй… Продолжение следует!',
   });
   return true;
 }
@@ -1293,7 +1293,10 @@ function openMinigame() {
       el.textContent = color === 'red' ? mgDom.pair.a : mgDom.pair.b;
       el.dataset.color = color;
       const x = Math.min(rect.width * (0.12 + col * 0.26) + rand() * 8, rect.width - 78);
-      const y = Math.min(rect.height * (0.05 + row * 0.2) + rand() * 6, rect.height - 200);
+      // полоса появления плодов — над корзинами, ровно в два ряда и на ЛЮБОЙ высоте экрана
+      // (фикс v0.11.1: на низком поле старый зажим «-200» скидывал все плоды в одну кучу наверху)
+      const zoneH = Math.max(rect.height - 150, 90);
+      const y = Math.max(6, Math.min(rect.height * (0.04 + row * 0.42) + rand() * 6, zoneH));
       el.style.left = x + 'px';
       el.style.top = y + 'px';
       const a = { el, color, done: false, home: { x, y } };
@@ -1787,7 +1790,7 @@ function moleDuck(h, fast) {
   h.up = false;
   h.b.classList.remove('up');
   h.hole.classList.remove('glow');
-  ml.timer = Math.max(ml.timer, fast ? 0.3 : 0.6);
+  ml.timer = Math.max(ml.timer, fast ? 0.7 : 0.95); // спокойные паузы между выглядываниями
 }
 function moleTap(h) {
   if (gameState !== 'molegame' || !h.up || ml.got >= ML_TOTAL) return;
@@ -1804,7 +1807,7 @@ function moleTap(h) {
     h.carrot = false;
     h.carr.style.display = 'none';
     moleDuck(h, true);
-    ml.timer = 0.45; // следующий почти сразу — держим динамику
+    ml.timer = 0.8; // следующий чуть погодя — темп комфортный малышу
     if (ml.got >= ML_TOTAL) {
       setTimeout(() => { if (gameState === 'molegame') { closeMoleGame(); celebrateMole(); } }, 700);
     }
@@ -1838,7 +1841,7 @@ function celebrateMole() {
   spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
   setTimeout(() => {
     gameState = 'explore';
-    // первая победа у Крота открывает главу «Корешок-струйка» (вместо обычной сюжетной карточки)
+    // первая победа у Крота открывает главу «Корешок-ручеёк» (вместо обычной сюжетной карточки)
     if (!checkMoleStory()) checkStory();
   }, 2600);
 }
@@ -2727,7 +2730,7 @@ function animate() {
     sqBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
   }
 
-  // Длинная сказка: струйка-росток от Крота к Дереву (пульс + волна роста при открытии)
+  // Длинная сказка: ручеёк-росток от Крота к Дереву (пульс + волна роста при открытии)
   if (sproutGroup && sproutGroup.visible) {
     if (sproutGrowT >= 0) {
       sproutGrowT += dt;
@@ -2823,12 +2826,14 @@ function animate() {
   }
 
   // --- ИГРА «ВЕРНИ МОРКОВКУ!» (Крот): появление/ныряние + честные авто-подсказки ---
+  // Темп (правка по фидбеку v0.10.0): Крот сидит наверху заметно дольше,
+  // паузы между выглядываниями спокойные — игра посильна и 3-летнему, и взрослому не «пулемёт».
   if (gameState === 'molegame') {
     if (ml.slow > 0) ml.slow -= dt;
     const upH = ml.holes.find(h => h.up);
     if (upH) {
       upH.t += dt;
-      const limit = (upH.carrot ? 2.2 : 1.8) * (ml.slow > 0 ? 1.8 : 1);
+      const limit = (upH.carrot ? 3.0 : 2.4) * (ml.slow > 0 ? 1.75 : 1);
       if (upH.t > limit) moleDuck(upH);
     } else if (ml.got < ML_TOTAL) {
       ml.timer -= dt;
@@ -2993,6 +2998,25 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
+// --- СКРЫТЫЙ ТЕСТ-РЕЖИМ (только для автоматических скриншотов разметки; в игре не срабатывает) ---
+// Открыть с хэшем: #shot-world | #shot-hedge | #shot-owl | #shot-frog | #shot-mole | #shot-sq
+if (location.hash.indexOf('#shot') === 0) {
+  setTimeout(() => {
+    try {
+      splashEl.style.display = 'none';
+      selectEl.style.display = 'none';
+      spawnHero('fox');
+      gameState = 'explore';
+      const kind = location.hash.slice(6);
+      if (kind === 'hedge') { mgDom.pair = MG_PAIRS[0]; openMinigame(); }
+      else if (kind === 'owl') openCountGame();
+      else if (kind === 'frog') openBridgeGame();
+      else if (kind === 'mole') openMoleGame();
+      else if (kind === 'sq') openSqGame();
+    } catch (e) { document.title = 'SHOT-ERR ' + e.message; }
+  }, 900);
+}
 
 // Скольжение вдоль препятствий: точку, попавшую внутрь круга, выносим по нормали —
 // тангенциальная составляющая движения сохраняется, визуально это плавный обход без отскоков.

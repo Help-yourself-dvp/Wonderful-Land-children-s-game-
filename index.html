@@ -241,10 +241,20 @@
       position: relative;
       pointer-events: auto;
       width: min(96vw, 900px);
+      max-height: 94vh;          /* защита: карточка НИКОГДА не выходит за экран */
+      overflow-y: auto;          /* если вдруг не влезла — прокрутится, а не обрежется */
       background: linear-gradient(180deg, #fffdf4, #f3f8e8);
       border-radius: 28px; padding: 14px 16px 18px; box-sizing: border-box;
       box-shadow: 0 18px 60px rgba(0,0,0,0.28);
       animation: cardIn .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    /* низкие экраны (альбомный телефон): поля мини-игр компактнее, чтобы всё помещалось */
+    @media (max-height: 480px) {
+      .mg-card { padding: 10px 14px 12px; border-radius: 22px; max-height: 96vh; }
+      .cg-title { font-size: clamp(17px, 4vh, 22px); margin: 0 0 5px; }
+      .mg-field { height: min(56vh, 320px); }
+      .cg-field, .bg-field, .ml-field, .sq-field { height: min(60vh, 340px); }
+      .ml-counter, .sq-msg { font-size: 15px; margin-bottom: 4px; }
     }
     .mg-head { display: flex; justify-content: center; gap: 18px; margin-bottom: 8px; }
     .mg-rule {
@@ -353,7 +363,7 @@
     .ml-mole {
       position: absolute; left: 50%; bottom: 20%; width: 92%; aspect-ratio: 1;
       transform: translateX(-50%) translateY(160%);
-      transition: transform .16s cubic-bezier(.34,1.4,.64,1);
+      transition: transform .22s cubic-bezier(.34,1.35,.64,1);
       background: none; border: none; padding: 0; -webkit-tap-highlight-color: transparent; cursor: pointer;
     }
     .ml-mole.up { transform: translateX(-50%) translateY(0); }
@@ -563,7 +573,7 @@
       <p class="sub">Добрые приключения с пользой</p>
     </div>
     <div class="bar"><i></i></div>
-    <div id="verTag">v0.11.0</div>
+    <div id="verTag">v0.11.1</div>
   </div>
 
   <div id="select">
