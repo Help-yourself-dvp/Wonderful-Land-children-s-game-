@@ -800,13 +800,37 @@ function buildTreeStage(s) {
       new THREE.MeshBasicMaterial({ color: 0xffe9a3, transparent: true, opacity: 0.8 }));
     ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
     g.add(ring);
-    // Волшебная звезда на макушке — цель сюжета
+    // Волшебная звезда на макушке — цель сюжета.
+    // Сперва светит «тихонько» (только Древу). После главы 2 «Звонкое созвучие» —
+    // сияет для всей полянки: золотое гало + свет-маяк + ночной хоровод огоньков.
     const starTop = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0),
       new THREE.MeshBasicMaterial({ color: 0xffe066 }));
     starTop.position.y = 3.65;
     starTop.scale.set(1, 1.35, 1);
     g.add(starTop);
+    // гало-мягкое сияние вокруг звезды (включается в главе 2)
+    const hc = document.createElement('canvas'); hc.width = hc.height = 128;
+    const hx = hc.getContext('2d');
+    const hgrad = hx.createRadialGradient(64, 64, 4, 64, 64, 62);
+    hgrad.addColorStop(0, 'rgba(255,244,190,0.95)');
+    hgrad.addColorStop(0.35, 'rgba(255,230,140,0.45)');
+    hgrad.addColorStop(1, 'rgba(255,230,140,0)');
+    hx.fillStyle = hgrad; hx.fillRect(0, 0, 128, 128);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(hc), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    halo.position.y = 3.65;
+    halo.scale.setScalar(2.4);
+    halo.visible = false;
+    g.add(halo);
+    // тёплый свет-маяк от звезды (сильнее ночью)
+    const beacon = new THREE.PointLight(0xffe9a3, 0, 9, 1.7);
+    beacon.position.set(0, 3.7, 0);
+    g.add(beacon);
     g.userData.star = starTop;
+    g.userData.halo = halo;
+    g.userData.beacon = beacon;
   }
   return g;
 }
@@ -848,6 +872,34 @@ const treeSparkMat = new THREE.PointsMaterial({
 });
 const treeSparks = new THREE.Points(treeSparkGeo, treeSparkMat);
 scene.add(treeSparks);
+
+// --- Глава 2 «Звонкое созвучие»: засиявшая звезда (достижение «помог всем») ---
+let starLit = localStorage.getItem('wm_story_all6') === '1';
+// Хоровод звонких огоньков вокруг кроны — танцует по ночам, пока сияет звезда
+const CHOIR_N = 14;
+const choirGeo = new THREE.BufferGeometry();
+const choirPos = new Float32Array(CHOIR_N * 3);
+for (let i = 0; i < CHOIR_N; i++) {
+  const a = (i / CHOIR_N) * Math.PI * 2;
+  const r = 1.6 + (i % 3) * 0.35;
+  choirPos.set([Math.cos(a) * r, 2.7 + (i % 4) * 0.28, Math.sin(a) * r], i * 3);
+}
+choirGeo.setAttribute('position', new THREE.BufferAttribute(choirPos, 3));
+const choirMat = new THREE.PointsMaterial({
+  color: 0xffe08a, size: 0.21, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+});
+const choirLights = new THREE.Points(choirGeo, choirMat);
+choirLights.position.set(TREE_POS.x, 0, TREE_POS.z);
+scene.add(choirLights);
+function applyStarLit() {
+  const g3 = treeStages[3];
+  if (!g3 || !g3.userData.halo) return;
+  g3.userData.halo.visible = starLit;
+  g3.userData.beacon.intensity = starLit ? 0.5 : 0;
+  if (g3.userData.star) g3.userData.star.material.color.setHex(starLit ? 0xfff4b8 : 0xffe066);
+}
+applyStarLit();
 // материалы Дерева для ночного свечения
 const treeGlowMats = new Set();
 treeStages.forEach(g => g && g.traverse(m => { if (m.material && m.material.isMeshLambertMaterial) treeGlowMats.add(m.material); }));
@@ -2295,7 +2347,13 @@ document.getElementById('storyNext').addEventListener('click', () => {
   storyOv.style.display = 'none';
   stopVoice();
   play('pop');
-  gameState = 'explore';
+  if (ch2AfterCard) {
+    // карточка главы 2 была приглашением — теперь сама церемония
+    ch2AfterCard = false;
+    setTimeout(() => startChoirCeremony(), 350);
+  } else {
+    gameState = 'explore';
+  }
 });
 function checkStory() {
   for (const s of STORIES) {
@@ -2305,6 +2363,124 @@ function checkStory() {
       break;
     }
   }
+  // ДЛИННАЯ СКАЗКА, ГЛАВА 2 «Звонкое созвучие»: помог ВСЕМ шестерым жителям
+  const ALL6 = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met_mole', 'wm_met_sq', 'wm_met_fire'];
+  const allMet = ALL6.every(k => localStorage.getItem(k) === '1');
+  if (allMet && localStorage.getItem('wm_story_all6') !== '1' && gameState === 'explore') {
+    if (treeStage === 3) {
+      // Дерево доросло до звезды — большой праздник: друзья поют хором
+      localStorage.setItem('wm_story_all6', '1');
+      setTimeout(() => { if (gameState === 'explore') startChapter2(); }, 900);
+    } else if (localStorage.getItem('wm_story6hint') !== '1') {
+      // Дерево ещё растёт — мягкая подсказка поливать капельками
+      localStorage.setItem('wm_story6hint', '1');
+      setTimeout(() => showStory({ emoji: '🌳', voice: 'voice/story2_hint.mp3',
+        text: 'Ты помог всем шестерым друзьям! Осталось одно: поливай Древо капельками, чтобы оно доросло до звезды. Тогда друзья споют самую дружную песню!' }), 700);
+    }
+  }
+}
+
+// ============ ГЛАВА 2 «ЗВОНКОЕ СОЗВУЧИЕ» (церемония у Древа) ============
+// Все жители собираются полукругом у Древа, каждый добавляет свой звук,
+// Светлячок играет песенку на камушках — и звезда засияет для всей полянки.
+// Zero Fail и здесь: церемония — чистая радость, награда за всю Локацию 1.
+let ch2AfterCard = false;
+let ch2Run = 0;           // защита от повторного запуска
+let ch2Timers = [];
+let ch2Gather = [];       // плавное схождение жителей к Древу (в animate)
+let ch2Hops = new Map();  // радостные подскоки по битам
+function startChapter2() {
+  ch2AfterCard = true;
+  showStory({ emoji: '🎵', voice: 'voice/story2_narr.mp3',
+    text: 'Ты помог всем шестерым друзьям! Осталась одна мечта Древа: чтобы его звезда светила не только ему, а всей полянке. Нажимай «Дальше» — начинается самая дружная песня!' });
+}
+function startChoirCeremony() {
+  const my = ++ch2Run;
+  ch2Timers.forEach(clearTimeout); ch2Timers = [];
+  gameState = 'ceremony';
+  stopVoice();
+  // герой встаёт перед Древом лицом к звезде
+  const standX = TREE_POS.x, standZ = TREE_POS.z + 3.6;
+  givePath(standX, standZ);
+  // жители плавно сходятся полукругом на дальней стороне и по флангам
+  const npcs = [hedgehog, owl, frog, mole, sq, firefly];
+  const angles = [-2.2, -1.35, -0.5, 0.5, 1.35, 2.2];
+  const names = ['hedge', 'owl', 'frog', 'mole', 'sq', 'fire'];
+  ch2Gather = npcs.map((npc, i) => {
+    const a = angles[i], r = 2.45;
+    return {
+      npc, name: names[i],
+      ox: npc.position.x, oz: npc.position.z, ory: npc.rotation.y,
+      tx: TREE_POS.x + Math.sin(a) * r, tz: TREE_POS.z + Math.cos(a) * r,
+      try_: Math.atan2(TREE_POS.x - (TREE_POS.x + Math.sin(a) * r), TREE_POS.z - (TREE_POS.z + Math.cos(a) * r)),
+      t: 0,
+    };
+  });
+  // ждём, пока герой подойдёт (но не вечно), затем начинаем песню
+  const waitHero = () => {
+    if (my !== ch2Run) return;
+    const d = Math.hypot(hero.position.x - standX, hero.position.z - standZ);
+    if (d < 0.9 || (waitHero.tries = (waitHero.tries || 0) + 1) > 12) {
+      hero.rotation.y = Math.atan2(TREE_POS.x - hero.position.x, TREE_POS.z - hero.position.z);
+      ch2Beats(my);
+    } else {
+      ch2Timers.push(setTimeout(waitHero, 700));
+    }
+  };
+  ch2Timers.push(setTimeout(waitHero, 2600));
+}
+function ch2Beats(my) {
+  if (my !== ch2Run) return;
+  // каждый житель добавляет свой звук (подскок + облачко вспыхивает)
+  const beats = [
+    { name: 'hedge', sfx: () => play('pop') },
+    { name: 'owl', sfx: () => play('good') },
+    { name: 'frog', sfx: () => play('pickup') },
+    { name: 'mole', sfx: () => play('tickle') },
+    { name: 'sq', sfx: () => play('whoosh') },
+    { name: 'fire', sfx: () => [523.25, 659.25, 783.99, 880].forEach((f, i) => playNote(f, { delay: i * 0.14, dur: 0.4 })) },
+  ];
+  beats.forEach((b, i) => {
+    ch2Timers.push(setTimeout(() => {
+      if (my !== ch2Run) return;
+      const g = ch2Gather.find(c => c.name === b.name);
+      if (g) ch2Hops.set(g.npc, 0.5);
+      b.sfx();
+    }, 900 * (i + 1)));
+  });
+  // финальный аккорд: звезда ЗАСИЯЛА для всех
+  ch2Timers.push(setTimeout(() => {
+    if (my !== ch2Run) return;
+    play('fanfare');
+    setTimeout(() => play('drop'), 350);
+    starLit = true;
+    applyStarLit();
+    const g3 = treeStages[3];
+    if (g3 && g3.userData.halo) { // вспышка гала
+      g3.userData.halo.scale.setScalar(4.2);
+      g3.userData.halo.material.opacity = 1;
+    }
+    const starPos = new THREE.Vector3(TREE_POS.x, 3.65, TREE_POS.z);
+    spawnBurst(starPos, 22);
+    spawnBurst(starPos.clone().add(new THREE.Vector3(0.8, -0.5, 0.4)), 12);
+    spawnBurst(starPos.clone().add(new THREE.Vector3(-0.8, -0.4, -0.3)), 12);
+    ch2Gather.forEach(c => ch2Hops.set(c.npc, 0.55)); // все подпрыгивают от радости
+    treeRoot.scale.setScalar(1.18);
+  }, 900 * 7));
+  // Древо благодарит
+  ch2Timers.push(setTimeout(() => { if (my === ch2Run) speak('voice/story2_tree.mp3'); }, 900 * 8.2));
+  // финал: карточка + жители возвращаются домой
+  ch2Timers.push(setTimeout(() => {
+    if (my !== ch2Run) return;
+    gameState = 'story';
+    storyEmoji.textContent = '🌟';
+    storyText.textContent = 'Звезда засияла для всей полянки! По ночам вокруг Древа танцуют звонкие огоньки. Свет звезды — как маяк: по нём мы найдём новые земли. Продолжение следует!';
+    storyOv.style.display = 'flex';
+    // жители плавно плывут обратно на свои места (под карточкой)
+    ch2Gather.forEach(c => {
+      c.tx = c.ox; c.tz = c.oz; c.try_ = c.ory; c.goingHome = true;
+    });
+  }, 900 * 10.5));
 }
 
 // ============ НАВИГАЦИЯ A* ============
@@ -3044,9 +3220,45 @@ function animate() {
   if (treeStages[3] && treeStages[3].visible && treeStages[3].userData.star) {
     const st = treeStages[3].userData.star;
     st.rotation.y = elapsed * 1.6;
-    const sp = 1 + Math.sin(elapsed * 3) * 0.08;
+    const amp = starLit ? 0.18 : 0.08; // после главы 2 звезда «дышит» сильнее
+    const sp = 1 + Math.sin(elapsed * 3) * amp;
     st.scale.set(sp, 1.35 * sp, sp);
+    const g3 = treeStages[3];
+    if (g3.userData.halo && g3.userData.halo.visible) {
+      // плавное успокоение гала после вспышки + ночное сияние
+      const h = g3.userData.halo;
+      const target = 2.4 + Math.sin(elapsed * 3) * 0.35;
+      h.scale.setScalar(h.scale.x + (target - h.scale.x) * 0.04);
+      h.material.opacity = starLit ? (0.28 + nightness * 0.62) : 0;
+    }
+    if (g3.userData.beacon) {
+      g3.userData.beacon.intensity = starLit ? (0.45 + nightness * 1.9 + Math.sin(elapsed * 3) * 0.22) : 0;
+    }
   }
+  // хоровод звонких огоньков (глава 2, ночью)
+  choirLights.rotation.y = elapsed * 0.55;
+  choirLights.visible = !!(treeStages[3] && treeStages[3].visible);
+  choirMat.opacity = starLit ? nightness * (0.55 + Math.sin(elapsed * 2.3) * 0.3) : 0;
+
+  // --- ЦЕРЕМОНИЯ ГЛАВЫ 2: жители плавно сходятся к Древу / расходятся домой ---
+  if (ch2Gather.length) {
+    for (let i = ch2Gather.length - 1; i >= 0; i--) {
+      const c = ch2Gather[i];
+      c.npc.position.x += (c.tx - c.npc.position.x) * 0.045;
+      c.npc.position.z += (c.tz - c.npc.position.z) * 0.045;
+      let dr = c.try_ - c.npc.rotation.y;
+      while (dr > Math.PI) dr -= Math.PI * 2;
+      while (dr < -Math.PI) dr += Math.PI * 2;
+      c.npc.rotation.y += dr * 0.06;
+      if (Math.hypot(c.tx - c.npc.position.x, c.tz - c.npc.position.z) < 0.04) ch2Gather.splice(i, 1);
+    }
+  }
+  // радостные подскоки по битам песни
+  ch2Hops.forEach((t, npc) => {
+    const nt = t - dt;
+    if (nt <= 0) { npc.position.y = 0; ch2Hops.delete(npc); }
+    else { npc.position.y = Math.sin((1 - nt / 0.55) * Math.PI) * 0.3; ch2Hops.set(npc, nt); }
+  });
   // мягкое золотое свечение Дерева ночью + медленный хоровод искр
   const tglow = nightness * (0.16 + Math.sin(elapsed * 2) * 0.05);
   treeGlowMats.forEach(m => m.emissive.setRGB(tglow, tglow * 0.82, tglow * 0.25));
@@ -3306,6 +3518,13 @@ if (location.hash.indexOf('#shot') === 0) {
     try {
       splashEl.style.display = 'none';
       selectEl.style.display = 'none';
+      // загрузочный таймер игры повторно покажет выбор героя на ~3.5с —
+      // первые 8с принудительно держим заставку и выбор скрытыми
+      const keepHidden = setInterval(() => {
+        splashEl.style.display = 'none';
+        selectEl.style.display = 'none';
+      }, 250);
+      setTimeout(() => clearInterval(keepHidden), 8000);
       spawnHero('fox');
       gameState = 'explore';
       const kind = location.hash.slice(6);
@@ -3315,6 +3534,17 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'mole') openMoleGame();
       else if (kind === 'sq') openSqGame();
       else if (kind === 'fire') openStoneGame();
+      else if (kind === 'choir' || kind === 'choirnight') {
+        // сценка главы 2: форсируем взрослое Древо и запускаем церемонию
+        if (treeStage !== 3) {
+          treeStages[treeStage].visible = false;
+          treeStage = 3;
+          treeStages[3].visible = true;
+        }
+        if (kind === 'choirnight') dayT = 0.6;
+        starLit = false; applyStarLit();
+        startChoirCeremony();
+      }
     } catch (e) { document.title = 'SHOT-ERR ' + e.message; }
   }, 900);
 }
@@ -3326,6 +3556,12 @@ if (location.hash.indexOf('#solo') === 0) {
     try {
       splashEl.style.display = 'none';
       selectEl.style.display = 'none';
+      // см. примечание в #shot: держим заставку и выбор скрытыми первые 8с
+      const keepHiddenSolo = setInterval(() => {
+        splashEl.style.display = 'none';
+        selectEl.style.display = 'none';
+      }, 250);
+      setTimeout(() => clearInterval(keepHiddenSolo), 8000);
       // прячем HUD — чистые портреты
       ['muteBtn', 'pauseBtn', 'drops', 'albumBtn', 'hint', 'skipIntro'].forEach(id => {
         const el = document.getElementById(id); if (el) el.style.display = 'none';
