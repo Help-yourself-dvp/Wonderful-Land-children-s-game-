@@ -326,6 +326,51 @@
     @keyframes fingerBob { from { transform: translateY(0); } to { transform: translateY(10px); } }
 
     /* ================= ПОДСКАЗКА КНОПКОЙ / СЮЖЕТНЫЕ КАРТОЧКИ ================= */
+    /* ================= МИНИ-ИГРА «ВЕРНИ МОРКОВКУ!» (Крот) ================= */
+    #molegame {
+      position: fixed; inset: 0; z-index: 25; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .ml-counter { text-align: center; font-size: clamp(16px, 3.4vh, 22px); font-weight: 700; color: #7a5a40; margin: 0 0 8px; }
+    .ml-field {
+      position: relative; height: min(58vh, 420px); border-radius: 20px;
+      background: linear-gradient(180deg, #bfe6a8, #93cf7d);
+      display: grid; grid-template-columns: repeat(5, 1fr); align-items: end;
+      gap: 4px; padding: 0 10px 14px; overflow: hidden;
+    }
+    .ml-hole { position: relative; height: clamp(76px, 19vh, 128px); }
+    .ml-mound {
+      position: absolute; left: 6%; right: 6%; bottom: 0; height: 36%;
+      border-radius: 50% 50% 42% 42% / 62% 62% 38% 38%;
+      background: radial-gradient(ellipse at 50% 18%, #8a684c, #6e4f35 72%);
+      box-shadow: inset 0 -4px 8px rgba(0,0,0,0.22);
+    }
+    .ml-mound::after {
+      content: ''; position: absolute; left: 20%; right: 20%; top: 12%; height: 30%;
+      border-radius: 50%; background: #46311f;
+    }
+    .ml-mole {
+      position: absolute; left: 50%; bottom: 20%; width: 92%; aspect-ratio: 1;
+      transform: translateX(-50%) translateY(160%);
+      transition: transform .16s cubic-bezier(.34,1.4,.64,1);
+      background: none; border: none; padding: 0; -webkit-tap-highlight-color: transparent; cursor: pointer;
+    }
+    .ml-mole.up { transform: translateX(-50%) translateY(0); }
+    .ml-mole svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); }
+    .ml-carrot { position: absolute; right: -2%; bottom: 2%; font-size: clamp(18px, 4.2vh, 30px); display: none; }
+    .ml-mole.caught svg { animation: mlCatch .38s ease; filter: drop-shadow(0 0 10px #ffe27a); }
+    .ml-mole.giggle svg { animation: mgShake .4s ease; }
+    .ml-hole.glow::before {
+      content: ''; position: absolute; left: -4%; right: -4%; top: -4%; bottom: 18%;
+      border-radius: 50%; border: 4px dashed #ffd166;
+      animation: basketGlow .7s ease-in-out infinite alternate;
+    }
+    @keyframes mlCatch {
+      30% { transform: scale(1.18) rotate(-6deg); }
+      62% { transform: scale(0.94) rotate(4deg); }
+    }
+
     .mg-hint {
       position: absolute; top: 6px; right: 6px; z-index: 5;
       width: 52px; height: 52px; border-radius: 50%; border: none;
@@ -422,6 +467,16 @@
     <div class="cg-finger" id="bgFinger" style="display:none">👇</div>
   </div>
 
+  <div id="molegame">
+    <div class="mg-card">
+      <button class="mg-hint" id="hintMoleBtn" aria-label="подсказка">💡</button>
+      <div class="cg-title">🥕 Верни морковку!</div>
+      <div class="ml-counter" id="mlCounter">🥕 0 из 6</div>
+      <div class="ml-field" id="mlField"></div>
+    </div>
+    <div class="cg-finger" id="mlFinger" style="display:none">👇</div>
+  </div>
+
   <div id="storyOv">
     <div class="mg-card story-card">
       <div class="story-emoji" id="storyEmoji">🌟</div>
@@ -467,7 +522,7 @@
       <p class="sub">Добрые приключения с пользой</p>
     </div>
     <div class="bar"><i></i></div>
-    <div id="verTag">v0.9.1</div>
+    <div id="verTag">v0.10.0</div>
   </div>
 
   <div id="select">

@@ -560,6 +560,54 @@ const frogBubTex = {
 };
 function setFrogBubble(t) { frogBubble.material.map = t; frogBubble.material.needsUpdate = true; }
 
+// ============ КРОТ В КАСКЕ (у огородика — «кто таскает морковку?») ============
+function makeMole() {
+  const g = new THREE.Group();
+  const furC = L(0x6b4f3a);
+  // кучка рыхлой земли
+  const mound = new THREE.Mesh(new THREE.SphereGeometry(0.95, 18, 12), L(0x7a5a40));
+  mound.position.y = -0.55; mound.scale.set(1.35, 0.75, 1.35);
+  mound.castShadow = true; mound.receiveShadow = true;
+  // голова с шахтёрской каской
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 20), furC);
+  skull.castShadow = true;
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 12), L(0xd99a90));
+  snout.position.set(0, -0.06, 0.44); snout.scale.set(1, 0.8, 1.05);
+  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), L(0xc9768a));
+  noseTip.position.set(0, 0.0, 0.62);
+  const eyeGeo = new THREE.SphereGeometry(0.055, 10, 10);
+  const eyeL = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0x2b2118 }));
+  eyeL.position.set(-0.2, 0.14, 0.42);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.2;
+  const helmet = new THREE.Mesh(
+    new THREE.SphereGeometry(0.44, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.4),
+    L(0xf2c94c)
+  );
+  helmet.position.y = 0.17;
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.49, 0.49, 0.055, 20), L(0xd9ad3a));
+  brim.position.y = 0.17;
+  // фонарик на каске — ночью светится
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), new THREE.MeshBasicMaterial({ color: 0xfff3b0 }));
+  lamp.position.set(0, 0.36, 0.38);
+  const pawGeo = new THREE.SphereGeometry(0.15, 10, 10);
+  const pawL = new THREE.Mesh(pawGeo, furC); pawL.position.set(-0.44, -0.34, 0.28); pawL.scale.set(1.15, 0.6, 1.25);
+  const pawR = pawL.clone(); pawR.position.x = 0.44;
+  head.add(skull, snout, noseTip, eyeL, eyeR, helmet, brim, lamp, pawL, pawR);
+  g.add(mound, head);
+  g.userData = { head, lamp };
+  return g;
+}
+const MOLE_POS = { x: 4.8, z: -4.6 }; // рядом с огородиком (грядки 2.5,-6)
+const mole = makeMole();
+mole.position.set(MOLE_POS.x, 0, MOLE_POS.z);
+mole.rotation.y = Math.atan2(-2 - MOLE_POS.x, -1 - MOLE_POS.z);
+scene.add(mole);
+obstacles.push({ x: MOLE_POS.x, z: MOLE_POS.z, r: 0.75 });
+const moleBubble = makeBubbleSprite('🥕', 0.85);
+moleBubble.position.set(MOLE_POS.x, 2.05, MOLE_POS.z);
+scene.add(moleBubble);
+
 // ============ ДРЕВО ЖЕЛАНИЙ ============
 const TREE_POS = { x: -0.5, z: -2.8 };
 let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10);
@@ -788,6 +836,7 @@ function makeChar(type) {
   }
   g.add(bodyG);
   g.userData.bodyG = bodyG;
+  g.userData.gait = type || 'bunny'; // у каждого зверя — своя походка
   return g;
 }
 
@@ -938,10 +987,10 @@ function spawnBurst(pos, n = 10) {
 }
 
 // ============ СОСТОЯНИЕ ============
-let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | celebrate | story
+let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | molegame | celebrate | story
 let dialogToken = 0;
 function clearPendings() {
-  pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingHouse = false;
+  pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingHouse = false;
   path = null; finalTarget = null;
 }
 
@@ -1545,6 +1594,134 @@ function celebrateFrog() {
   }, 2600);
 }
 
+// ============ МИНИ-ИГРА «ВЕРНИ МОРКОВКУ!» (Крот, отдельный экран) ============
+// Механика: Крот выглядывает из норок. Если в лапках МОРКОВКА — стучим ловчее,
+// возвращаем её на грядку (счёт до 6). Если лапки пустые — это Крот просто поздороваться
+// выскочил: его не трогаем (учим вниманию и выбору по признаку). Zero Fail: промах/ошибка
+// никогда не наказываются, морковки не убавляются, игра никогда не «проигрывается».
+const mlEl = document.getElementById('molegame');
+const mlField = document.getElementById('mlField');
+const mlFinger = document.getElementById('mlFinger');
+const mlCounter = document.getElementById('mlCounter');
+const ML_TOTAL = 6;
+const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: false };
+
+const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
+  + '<ellipse cx="20" cy="76" rx="11" ry="6" fill="#5c4030"/>'
+  + '<ellipse cx="80" cy="76" rx="11" ry="6" fill="#5c4030"/>'
+  + '<circle cx="50" cy="52" r="30" fill="#6b4f3a"/>'
+  + '<path d="M20 45 A30 30 0 0 1 80 45 Z" fill="#f2c94c"/>'
+  + '<ellipse cx="50" cy="46" rx="31" ry="4.5" fill="#d9ad3a"/>'
+  + '<circle cx="50" cy="26" r="6.5" fill="#fff3b0"/>'
+  + '<circle cx="38" cy="53" r="4" fill="#2b2118"/><circle cx="62" cy="53" r="4" fill="#2b2118"/>'
+  + '<circle cx="39.3" cy="51.7" r="1.3" fill="#ffffff"/><circle cx="63.3" cy="51.7" r="1.3" fill="#ffffff"/>'
+  + '<ellipse cx="50" cy="65" rx="9.5" ry="7" fill="#d99a90"/>'
+  + '<circle cx="50" cy="62.2" r="3.2" fill="#c9768a"/>'
+  + '</svg>';
+
+function startMoleDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_mole') === '1' ? 'voice/mole_again.mp3' : 'voice/mole_hello.mp3');
+  speak('voice/mole_ask.mp3', { after: true });
+  const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, 2600);
+}
+function openMoleGame() {
+  gameState = 'molegame';
+  ml.got = 0; ml.slow = 0; ml.fingerShown = false;
+  ml.lastAction = elapsed; ml.timer = 0.7;
+  mlCounter.textContent = '🥕 0 из ' + ML_TOTAL;
+  mlField.innerHTML = '';
+  ml.holes = [];
+  for (let i = 0; i < 5; i++) {
+    const hole = document.createElement('div');
+    hole.className = 'ml-hole';
+    const mound = document.createElement('div');
+    mound.className = 'ml-mound';
+    const b = document.createElement('button');
+    b.className = 'ml-mole';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Крот в норке');
+    b.innerHTML = MOLE_SVG + '<span class="ml-carrot">🥕</span>';
+    const h = { hole, b, carr: null, up: false, carrot: false, t: 0 };
+    h.carr = b.querySelector('.ml-carrot');
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); moleTap(h); });
+    hole.appendChild(mound);
+    hole.appendChild(b);
+    mlField.appendChild(hole);
+    ml.holes.push(h);
+  }
+  mlEl.style.display = 'flex';
+  mlFinger.style.display = 'none';
+}
+function closeMoleGame() {
+  mlEl.style.display = 'none';
+  mlFinger.style.display = 'none';
+}
+function moleDuck(h, fast) {
+  h.up = false;
+  h.b.classList.remove('up');
+  h.hole.classList.remove('glow');
+  ml.timer = Math.max(ml.timer, fast ? 0.3 : 0.6);
+}
+function moleTap(h) {
+  if (gameState !== 'molegame' || !h.up || ml.got >= ML_TOTAL) return;
+  ml.lastAction = elapsed;
+  mlFinger.style.display = 'none';
+  ml.fingerShown = false;
+  ml.holes.forEach(x => x.hole.classList.remove('glow'));
+  if (h.carrot) {
+    ml.got++;
+    mlCounter.textContent = '🥕 ' + ml.got + ' из ' + ML_TOTAL;
+    play('good');
+    h.b.classList.add('caught');
+    setTimeout(() => h.b.classList.remove('caught'), 380);
+    h.carrot = false;
+    h.carr.style.display = 'none';
+    moleDuck(h, true);
+    ml.timer = 0.45; // следующий почти сразу — держим динамику
+    if (ml.got >= ML_TOTAL) {
+      setTimeout(() => { if (gameState === 'molegame') { closeMoleGame(); celebrateMole(); } }, 700);
+    }
+  } else {
+    // лапки пустые — это просто привет! Мягкая «ошибка» без наказания: хихиканье и нырок
+    play('bad');
+    h.b.classList.add('giggle');
+    setTimeout(() => h.b.classList.remove('giggle'), 420);
+    moleDuck(h, true);
+  }
+}
+document.getElementById('hintMoleBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  ml.slow = 8; // «не спеши»: 8 секунд Крот выглядывает подольше — для самых маленьких
+  const btn = document.getElementById('hintMoleBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+function celebrateMole() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_mole', '1');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/mole_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(MOLE_POS.x, 1.4, MOLE_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setTimeout(() => {
+    gameState = 'explore';
+    checkStory();
+  }, 2600);
+}
+
 // ============ СЮЖЕТНЫЕ КАРТОЧКИ («одна большая сказка») ============
 const storyOv = document.getElementById('storyOv');
 const storyEmoji = document.getElementById('storyEmoji');
@@ -1691,6 +1868,7 @@ let pendingHedge = false;
 let pendingTree = false;
 let pendingOwl = false;
 let pendingFrog = false;
+let pendingMole = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -1781,6 +1959,14 @@ window.addEventListener('pointerup', (e) => {
     const dx = FROG_POS.x - hero.position.x, dz = FROG_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.2) startFrogDialog();
     else { pendingFrog = true; givePath(FROG_POS.x - 1.7, FROG_POS.z - 1.6); }
+    return;
+  }
+  // тап по Кроту (кучка земли у огородика)
+  const moleHits = rc.intersectObject(mole, true);
+  if (moleHits.length) {
+    const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 4.2) startMoleDialog();
+    else { pendingMole = true; givePath(MOLE_POS.x - 1.5, MOLE_POS.z + 1.4); }
     return;
   }
   // тап по Древу Желаний
@@ -2017,9 +2203,30 @@ function animate() {
           }
         } else blockedT = 0;
         gone += moved;
-        const hop = Math.abs(Math.sin(gone * 9)) * 0.13;
-        hero.position.y = hop;
-        charData.bodyG.rotation.x = 0.1 + hop * 0.8;
+        // У каждого героя — свой узнаваемый аллюр (правка по фидбеку v0.9.x):
+        // Зайка прыгает спокойно (~2.7 прыжка в сек, не «дрель»), Лисёнок бежит
+        // лёгкой трусцой почти без прыжков, Мишка неспешно переваливается с боку на бок.
+        const gt = charData.gait || 'bunny';
+        let flop = 0.5;
+        if (gt === 'bunny') {
+          const hop = Math.abs(Math.sin(gone * 2.05)) * 0.115;
+          hero.position.y = hop;
+          charData.bodyG.rotation.x = 0.05 + hop * 0.75;
+          hero.rotation.z *= 0.8;
+          flop = 4.5;
+        } else if (gt === 'fox') {
+          const bob = Math.abs(Math.sin(gone * 3.3)) * 0.045;
+          hero.position.y = bob;
+          charData.bodyG.rotation.x = 0.05 + bob * 1.2;
+          hero.rotation.z = Math.sin(gone * 1.85) * 0.05; // лёгкое покачивание на бегу
+          flop = 2.0;
+        } else { // bear
+          const bob = Math.abs(Math.sin(gone * 2.55)) * 0.055;
+          hero.position.y = bob;
+          charData.bodyG.rotation.x = 0.04 + bob * 1.0;
+          hero.rotation.z = Math.sin(gone * 1.55) * 0.115; // вразвалочку
+          flop = 2.2;
+        }
         // поворачиваемся только при заметном смещении — никакой дрожи головой на месте
         if (moved > Math.max(0.0025, step * 0.35)) {
           const wantYaw = Math.atan2(mdx, mdz);
@@ -2028,11 +2235,12 @@ function animate() {
           while (dyy < -Math.PI) dyy += Math.PI * 2;
           hero.rotation.y += dyy * 0.3;
         }
-        charData.ears.forEach(e => e.rotation.x = -hop * 6);
-        if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hop * 6);
+        charData.ears.forEach(e => e.rotation.x = -hero.position.y * flop);
+        if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hero.position.y * flop);
       }
     } else {
       hero.position.y += (0 - hero.position.y) * 0.25;
+      hero.rotation.z += (0 - hero.rotation.z) * 0.18; // выпрямить корпус после походки
       charData.bodyG.rotation.x += (0 - charData.bodyG.rotation.x) * 0.15;
       charData.ears.forEach(e => e.rotation.x = Math.sin(elapsed * 2) * 0.05);
       if (charData.inners) charData.inners.forEach(e => e.rotation.x = Math.sin(elapsed * 2) * 0.05);
@@ -2042,11 +2250,16 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
         if (d < 3.4) startDialog();
+      }
+      if (pendingMole) {
+        pendingMole = false;
+        const d = Math.hypot(MOLE_POS.x - hero.position.x, MOLE_POS.z - hero.position.z);
+        if (d < 4.4) startMoleDialog();
       }
       if (pendingTree) {
         pendingTree = false;
@@ -2200,6 +2413,12 @@ function animate() {
     frog.userData.body.position.y = fhop * 0.1;
     frog.userData.body.scale.y = 0.92 + fhop * 0.08;
     frogBubble.position.y = 2.2 + Math.sin(elapsed * 2.2) * 0.08;
+    // Крот: голова то выглядывает, то прячется, фонарик светится ночью
+    const mp = (Math.sin(elapsed * 1.25) + 1) / 2;
+    mole.userData.head.position.y = 0.08 + mp * 0.55;
+    mole.userData.head.rotation.y = Math.sin(elapsed * 0.85) * 0.35;
+    mole.userData.lamp.material.color.setHex(nightness > 0.3 ? 0xffe27a : 0xfff3b0);
+    moleBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
   }
 
   // золотая стрелка-проводник над Ёжиком: прыгает и машет, пока малыш не подошёл
@@ -2277,6 +2496,38 @@ function animate() {
       cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
       cgFinger.style.top = (r.top - 74) + 'px';
       cgFinger.style.display = 'block';
+    }
+  }
+
+  // --- ИГРА «ВЕРНИ МОРКОВКУ!» (Крот): появление/ныряние + честные авто-подсказки ---
+  if (gameState === 'molegame') {
+    if (ml.slow > 0) ml.slow -= dt;
+    const upH = ml.holes.find(h => h.up);
+    if (upH) {
+      upH.t += dt;
+      const limit = (upH.carrot ? 2.2 : 1.8) * (ml.slow > 0 ? 1.8 : 1);
+      if (upH.t > limit) moleDuck(upH);
+    } else if (ml.got < ML_TOTAL) {
+      ml.timer -= dt;
+      if (ml.timer <= 0) {
+        const i = Math.floor(Math.random() * ml.holes.length);
+        const h = ml.holes[i];
+        h.up = true; h.t = 0;
+        h.carrot = Math.random() < 0.72;
+        // авто-подсказки по правилам интерфейса: 18 с — свечение, 26 с — пальчик НАД норкой
+        const idle = elapsed - ml.lastAction;
+        if (idle > 18) { h.carrot = true; h.hole.classList.add('glow'); }
+        h.b.classList.add('up');
+        h.carr.style.display = h.carrot ? 'block' : 'none';
+        play('pop');
+        if (idle > 26 && !ml.fingerShown) {
+          ml.fingerShown = true;
+          const r = h.b.getBoundingClientRect();
+          mlFinger.style.left = (r.left + r.width * 0.22) + 'px';
+          mlFinger.style.top = (r.top - 74) + 'px';
+          mlFinger.style.display = 'block';
+        }
+      }
     }
   }
 
