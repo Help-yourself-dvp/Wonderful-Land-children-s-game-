@@ -608,6 +608,63 @@ const moleBubble = makeBubbleSprite('🥕', 0.85);
 moleBubble.position.set(MOLE_POS.x, 2.05, MOLE_POS.z);
 scene.add(moleBubble);
 
+// ============ БЕЛКА (у западного дерева — «Прятки-норки») ============
+function makeSquirrel() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const fur = L(0xe08840), cream = L(0xfff0dd), dark = L(0x8a4f22);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 18), fur);
+  body.position.y = 0.34; body.scale.set(0.92, 1.15, 0.85); body.castShadow = true;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 14), cream);
+  belly.position.set(0, 0.32, 0.16); belly.scale.set(0.8, 1, 0.5);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 18, 18), fur);
+  head.position.set(0, 0.78, 0.08); head.castShadow = true;
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), cream);
+  muzzle.position.set(0, 0.72, 0.28); muzzle.scale.set(1, 0.8, 0.9);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), L(0x4a3325));
+  nose.position.set(0, 0.76, 0.37);
+  const eyeGeo = new THREE.SphereGeometry(0.05, 10, 10);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.12, 0.83, 0.27);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.12;
+  // ушки с тёмными кисточками
+  const earGeo = new THREE.ConeGeometry(0.075, 0.22, 8);
+  const eL = new THREE.Mesh(earGeo, fur); eL.position.set(-0.14, 1.02, 0.02); eL.rotation.z = 0.18;
+  const eR = new THREE.Mesh(earGeo, fur); eR.position.set(0.14, 1.02, 0.02); eR.rotation.z = -0.18;
+  const tuftGeo = new THREE.ConeGeometry(0.038, 0.1, 6);
+  const tL = new THREE.Mesh(tuftGeo, dark); tL.position.set(-0.165, 1.13, 0.02); tL.rotation.z = 0.18;
+  const tR = new THREE.Mesh(tuftGeo, dark); tR.position.set(0.165, 1.13, 0.02); tR.rotation.z = -0.18;
+  // большой пушистый хвост — вопросительным знаком за спиной
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 16), fur);
+  tail.position.set(0, 0.72, -0.3); tail.scale.set(0.85, 1.7, 0.55); tail.castShadow = true;
+  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), cream);
+  tailTip.position.set(0, 1.12, -0.34); tailTip.scale.set(0.8, 1, 0.5);
+  const pawGeo = new THREE.SphereGeometry(0.08, 10, 10);
+  const pawL = new THREE.Mesh(pawGeo, fur); pawL.position.set(-0.15, 0.5, 0.26);
+  const pawR = pawL.clone(); pawR.position.x = 0.15;
+  // орешек в лапках
+  const nut = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), L(0x9c6b3d));
+  nut.position.set(0, 0.52, 0.3);
+  bodyG.add(body, belly, head, muzzle, nose, eyeL, eyeR, eL, eR, tL, tR, tail, tailTip, pawL, pawR, nut);
+  g.add(bodyG);
+  g.userData = { body: bodyG, tail, tailTip };
+  return g;
+}
+const SQRL_POS = { x: -7.4, z: 5.6 }; // у дерева на западной опушке
+const sq = makeSquirrel();
+sq.position.set(SQRL_POS.x, 0, SQRL_POS.z);
+sq.rotation.y = Math.atan2(0 - SQRL_POS.x, 0 - SQRL_POS.z);
+scene.add(sq);
+obstacles.push({ x: SQRL_POS.x, z: SQRL_POS.z, r: 0.55 });
+const sqBubble = makeBubbleSprite('🌰', 0.95);
+sqBubble.position.set(SQRL_POS.x, 2.3, SQRL_POS.z);
+scene.add(sqBubble);
+const sqBubTex = {
+  nut: sqBubble.material.map,
+  star: makeBubbleSprite('⭐', 1).material.map,
+};
+function setSqBubble(t) { sqBubble.material.map = t; sqBubble.material.needsUpdate = true; }
+
 // ============ ДРЕВО ЖЕЛАНИЙ ============
 const TREE_POS = { x: -0.5, z: -2.8 };
 let treeStage = parseInt(localStorage.getItem('wm_tree_stage') || '1', 10);
@@ -990,7 +1047,7 @@ function spawnBurst(pos, n = 10) {
 let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | molegame | celebrate | story
 let dialogToken = 0;
 function clearPendings() {
-  pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingHouse = false;
+  pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
   path = null; finalTarget = null;
 }
 
@@ -1125,6 +1182,69 @@ function onTaskDone() {
   if (after > before) {
     albumBtn.classList.remove('pop'); void albumBtn.offsetWidth; albumBtn.classList.add('pop');
   }
+}
+
+// ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-СТРУЙКА» ============
+// После первой победы у Крота от его норки к Древу прорастает светящаяся
+// струйка-росток (волна из тёплых точек + росток у подножия). Видна навсегда,
+// ночью светится чуть ярче. Продолжение глав — в следующих версиях.
+let sproutGroup = null;
+const sproutDots = [];
+let sproutGrowT = -1; // -1 = уже выросла (или ещё не начата), >=0 = идёт волна роста
+function buildSprout() {
+  if (sproutGroup) return sproutGroup;
+  sproutGroup = new THREE.Group();
+  const N = 13;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    // неровная земляная дорожка от норки к Древу
+    const x = MOLE_POS.x + (TREE_POS.x - MOLE_POS.x) * t + Math.sin(t * Math.PI * 3) * 0.4;
+    const z = MOLE_POS.z + (TREE_POS.z - MOLE_POS.z) * t + Math.cos(t * Math.PI * 2.2) * 0.3;
+    const dot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.085, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xcde86a, transparent: true, opacity: 0.65, depthWrite: false })
+    );
+    dot.position.set(x, 0.07, z);
+    dot.userData.idx = i;
+    sproutGroup.add(dot);
+    sproutDots.push(dot);
+  }
+  // маленький росток у подножия Дерева
+  const spr = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.38, 6), L(0x6fbf4a));
+  stem.position.y = 0.19;
+  const lfGeo = new THREE.SphereGeometry(0.12, 8, 6);
+  const lfL = new THREE.Mesh(lfGeo, L(0x86d957)); lfL.scale.set(1.5, 0.42, 0.75); lfL.position.set(-0.13, 0.37, 0); lfL.rotation.z = 0.5;
+  const lfR = lfL.clone(); lfR.position.x = 0.13; lfR.rotation.z = -0.5;
+  spr.add(stem, lfL, lfR);
+  spr.position.set(TREE_POS.x + 0.95, 0, TREE_POS.z + 0.65);
+  sproutGroup.add(spr);
+  sproutGroup.userData.leafSprout = spr;
+  sproutGroup.visible = false;
+  scene.add(sproutGroup);
+  return sproutGroup;
+}
+function revealSprout() {
+  buildSprout();
+  sproutGroup.visible = true;
+  sproutGrowT = 0; // волна роста в animate
+  sproutDots.forEach(d => d.scale.setScalar(0.001));
+  sproutGroup.userData.leafSprout.scale.setScalar(0.001);
+}
+// если историю уже открыли раньше — струйка всегда на месте
+if (localStorage.getItem('wm_story_mole') === '1') {
+  buildSprout();
+  sproutGroup.visible = true;
+}
+function checkMoleStory() {
+  if (localStorage.getItem('wm_story_mole') === '1') return false;
+  localStorage.setItem('wm_story_mole', '1');
+  revealSprout();
+  showStory({
+    key: 'wm_story_mole', emoji: '💧', voice: 'voice/story_sprout.mp3',
+    text: 'Крот сдержал слово! Смотри — от его норки к Дереву потянулась светящаяся струйка-росток! Древо теперь пьёт и из-под земли… Продолжение следует!',
+  });
+  return true;
 }
 
 // ============ МИНИ-ИГРА «УРОЖАЙНЫЙ ДЕНЬ» (отдельный экран) ============
@@ -1718,6 +1838,173 @@ function celebrateMole() {
   spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
   setTimeout(() => {
     gameState = 'explore';
+    // первая победа у Крота открывает главу «Корешок-струйка» (вместо обычной сюжетной карточки)
+    if (!checkMoleStory()) checkStory();
+  }, 2600);
+}
+
+// ============ МИНИ-ИГРА «ПРЯТКИ-НОРКИ» (Белка, отдельный экран) ============
+// Классика на память без проигрыша: Белка показывает оре́х на грибочке, «накрывает»
+// его, и малыш вспоминает, где он. 3 раунда: 3, 3 и 4 грибочка (в последнем —
+// местами меняются два грибочка — следим глазами). Ошибка — мягкий «плинг» и пробуем дальше.
+const sqEl = document.getElementById('sqgame');
+const sqField = document.getElementById('sqField');
+const sqNut = document.getElementById('sqNut');
+const sqFinger = document.getElementById('sqFinger');
+const sqMsg = document.getElementById('sqMsg');
+const SQ_ROUNDS = [
+  { n: 3, shuffle: false },
+  { n: 3, shuffle: false },
+  { n: 4, shuffle: true },
+];
+const SQ_SLOTS = { 3: [18, 45, 72], 4: [12, 35, 58, 81] };
+const sg = { round: 0, mushs: [], answer: 0, canTap: false, answered: false, lastAction: 0, fingerShown: false };
+
+function startSqDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_sq') === '1' ? 'voice/sq_again.mp3' : 'voice/sq_hello.mp3');
+  speak('voice/sq_ask.mp3', { after: true });
+  const dx = SQRL_POS.x - hero.position.x, dz = SQRL_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openSqGame(); }, 2600);
+}
+function openSqGame() {
+  gameState = 'sqgame';
+  sg.round = 0;
+  sqEl.style.display = 'flex';
+  sqFinger.style.display = 'none';
+  buildSqRound();
+}
+function closeSqGame() {
+  sqEl.style.display = 'none';
+  sqFinger.style.display = 'none';
+}
+function buildSqRound() {
+  const cfg = SQ_ROUNDS[sg.round];
+  sg.mushs = [];
+  sg.canTap = false; sg.answered = false; sg.fingerShown = false;
+  sg.lastAction = elapsed;
+  sqFinger.style.display = 'none';
+  sqMsg.textContent = 'Смотри: вот оре́шек!';
+  Array.from(sqField.querySelectorAll('.sq-shroom')).forEach(el => el.remove());
+  const slots = SQ_SLOTS[cfg.n];
+  for (let i = 0; i < cfg.n; i++) {
+    const b = document.createElement('button');
+    b.className = 'sq-shroom';
+    b.type = 'button';
+    b.textContent = '🍄';
+    b.style.left = slots[i] + '%';
+    b.dataset.idx = i;
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); sqTap(i); });
+    sqField.appendChild(b);
+    sg.mushs.push(b);
+  }
+  sg.answer = Math.floor(rand() * cfg.n);
+  // Белка «выкладывает» орех на выбранный грибочек
+  sqNut.style.top = '34%';
+  sqNut.style.opacity = '1';
+  sqNut.style.left = slots[sg.answer] + '%';
+  sqNut.style.display = 'block';
+  sqNut.classList.remove('pop'); void sqNut.offsetWidth; sqNut.classList.add('pop');
+  setTimeout(() => {
+    if (gameState !== 'sqgame') return;
+    sqNut.style.display = 'none'; // грибочек «накрыл» орех!
+    play('pop');
+    const cover = sg.mushs[sg.answer];
+    cover.classList.add('right');
+    setTimeout(() => { if (cover) cover.classList.remove('right'); }, 550);
+    sqMsg.textContent = 'Где оре́шек?';
+    if (cfg.shuffle) {
+      // внимание-внимание: грибочки плавно меняются местами!
+      setTimeout(() => {
+        if (gameState !== 'sqgame') return;
+        sqSwap(0, 2); play('whoosh');
+        setTimeout(() => {
+          if (gameState !== 'sqgame') return;
+          sqSwap(1, 3); play('whoosh');
+          setTimeout(() => { sg.canTap = true; }, 680);
+        }, 780);
+      }, 500);
+    } else {
+      sg.canTap = true;
+    }
+  }, 1600);
+}
+function sqSwap(a, b) {
+  if (!sg.mushs[a] || !sg.mushs[b]) return;
+  const la = sg.mushs[a].style.left, lb = sg.mushs[b].style.left;
+  sg.mushs[a].style.left = lb;
+  sg.mushs[b].style.left = la;
+}
+function sqTap(i) {
+  if (gameState !== 'sqgame' || !sg.canTap || sg.answered) return;
+  sg.lastAction = elapsed;
+  sg.fingerShown = false;
+  sqFinger.style.display = 'none';
+  sg.mushs.forEach(m => m.classList.remove('glow'));
+  const btn = sg.mushs[i];
+  if (i === sg.answer) {
+    sg.answered = true;
+    play('good');
+    btn.classList.add('right');
+    sqNut.style.left = btn.style.left;
+    sqNut.style.top = '30%';
+    sqNut.style.display = 'block';
+    sqNut.classList.remove('pop'); void sqNut.offsetWidth; sqNut.classList.add('pop');
+    sqMsg.textContent = 'Ура! Он здесь! 🎉';
+    setTimeout(() => {
+      if (gameState !== 'sqgame') return;
+      sg.round++;
+      if (sg.round >= SQ_ROUNDS.length) { closeSqGame(); celebrateSq(); }
+      else buildSqRound();
+    }, 1200);
+  } else {
+    // мягкий отказ: грибочек покачался, оре́х остаётся на месте — пробуем ещё
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => { if (btn) btn.classList.remove('shake'); }, 450);
+  }
+}
+document.getElementById('hintSqBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  if (gameState !== 'sqgame' || !sg.canTap || sg.answered) return;
+  const right = sg.mushs[sg.answer];
+  if (!right) return;
+  // «подсмотреть»: грибочек слегка приподнимается и виден краешек ореха
+  right.classList.add('glow');
+  right.style.transform = 'translate(-50%, -74%)';
+  sqNut.style.left = right.style.left;
+  sqNut.style.opacity = '0.55';
+  sqNut.style.display = 'block';
+  setTimeout(() => {
+    right.style.transform = '';
+    right.classList.remove('glow');
+    sqNut.style.opacity = '1';
+    if (gameState === 'sqgame' && !sg.answered) sqNut.style.display = 'none';
+  }, 900);
+});
+function celebrateSq() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_sq', '1');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/sq_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(SQRL_POS.x, 1.4, SQRL_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setSqBubble(sqBubTex.star);
+  sqBubble.visible = true;
+  setTimeout(() => {
+    gameState = 'explore';
+    setSqBubble(sqBubTex.nut);
     checkStory();
   }, 2600);
 }
@@ -1869,6 +2156,7 @@ let pendingTree = false;
 let pendingOwl = false;
 let pendingFrog = false;
 let pendingMole = false;
+let pendingSq = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -1967,6 +2255,14 @@ window.addEventListener('pointerup', (e) => {
     const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 4.2) startMoleDialog();
     else { pendingMole = true; givePath(MOLE_POS.x - 1.5, MOLE_POS.z + 1.4); }
+    return;
+  }
+  // тап по Белке
+  const sqHits = rc.intersectObject(sq, true);
+  if (sqHits.length) {
+    const dx = SQRL_POS.x - hero.position.x, dz = SQRL_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startSqDialog();
+    else { pendingSq = true; givePath(SQRL_POS.x + 1.5, SQRL_POS.z - 1.2); }
     return;
   }
   // тап по Древу Желаний
@@ -2250,7 +2546,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -2260,6 +2556,11 @@ function animate() {
         pendingMole = false;
         const d = Math.hypot(MOLE_POS.x - hero.position.x, MOLE_POS.z - hero.position.z);
         if (d < 4.4) startMoleDialog();
+      }
+      if (pendingSq) {
+        pendingSq = false;
+        const d = Math.hypot(SQRL_POS.x - hero.position.x, SQRL_POS.z - hero.position.z);
+        if (d < 3.6) startSqDialog();
       }
       if (pendingTree) {
         pendingTree = false;
@@ -2419,6 +2720,28 @@ function animate() {
     mole.userData.head.rotation.y = Math.sin(elapsed * 0.85) * 0.35;
     mole.userData.lamp.material.color.setHex(nightness > 0.3 ? 0xffe27a : 0xfff3b0);
     moleBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
+    // Белка: подпрыгивает, виляет большим хвостом
+    sq.userData.body.position.y = Math.abs(Math.sin(elapsed * 2.4)) * 0.06;
+    sq.userData.tail.rotation.x = Math.sin(elapsed * 3) * 0.16;
+    sq.userData.tailTip.rotation.x = Math.sin(elapsed * 3) * 0.2;
+    sqBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
+  }
+
+  // Длинная сказка: струйка-росток от Крота к Дереву (пульс + волна роста при открытии)
+  if (sproutGroup && sproutGroup.visible) {
+    if (sproutGrowT >= 0) {
+      sproutGrowT += dt;
+      sproutDots.forEach((d) => {
+        const k = Math.min(Math.max((sproutGrowT - d.userData.idx * 0.22) / 0.3, 0.001), 1);
+        d.scale.setScalar(k);
+      });
+      const leafK = Math.min(Math.max((sproutGrowT - sproutDots.length * 0.22) / 0.5, 0.001), 1);
+      sproutGroup.userData.leafSprout.scale.setScalar(leafK);
+      if (sproutGrowT > sproutDots.length * 0.22 + 1.2) sproutGrowT = -1;
+    }
+    sproutDots.forEach((d) => {
+      d.material.opacity = (0.5 + Math.sin(elapsed * 2 + d.userData.idx * 0.5) * 0.2) * (0.75 + nightness * 0.45);
+    });
   }
 
   // золотая стрелка-проводник над Ёжиком: прыгает и машет, пока малыш не подошёл
@@ -2528,6 +2851,20 @@ function animate() {
           mlFinger.style.display = 'block';
         }
       }
+    }
+  }
+
+  // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
+  if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
+    const idle = elapsed - sg.lastAction;
+    const rightBtn = sg.mushs[sg.answer];
+    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 26 && !sg.fingerShown) {
+      sg.fingerShown = true;
+      const r = rightBtn.getBoundingClientRect();
+      sqFinger.style.left = (r.left + r.width * 0.18) + 'px';
+      sqFinger.style.top = (r.top - 74) + 'px';
+      sqFinger.style.display = 'block';
     }
   }
 
