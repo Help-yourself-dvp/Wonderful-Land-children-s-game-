@@ -859,11 +859,70 @@ function makeWolf() {
 function spawnWolf() {
   play('whoosh');
   if (!wolfWarned) { wolfWarned = true; speak('voice/wolf_warn.mp3'); }
-  const a = rand() * Math.PI * 2;
+  // ищем точку появления, свободную от деревьев и построек — волк не «вылезает» из кустов
+  let sx = 0, sz = 0, tries = 0;
+  do {
+    const a = rand() * Math.PI * 2;
+    sx = Math.cos(a) * (ISLAND_R - 2);
+    sz = Math.sin(a) * (ISLAND_R - 2);
+    tries++;
+  } while (tries < 12 && obstacles.some(ob => Math.hypot(sx - ob.x, sz - ob.z) < ob.r + 1.0));
   const g = makeWolf();
-  g.position.set(Math.cos(a) * (ISLAND_R - 2), 0, Math.sin(a) * (ISLAND_R - 2));
+  g.position.set(sx, 0, sz);
   scene.add(g);
-  wolves.push({ g, mode: 'hunt', cooldown: 0, fadeT: 0 });
+  wolves.push({ g, mode: 'hunt', cooldown: 0, fadeT: 0, stuckT: 0, avoidT: 0, avoidSign: 1 });
+}
+
+// Мягкие облачка «пуф!» — эффектное исчезновение без «треугольников» прозрачности
+let poofTex = null;
+const poofs = [];
+function getPoofTex() {
+  if (poofTex) return poofTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const rg = g.createRadialGradient(64, 64, 6, 64, 64, 62);
+  rg.addColorStop(0, 'rgba(255,252,240,0.95)');
+  rg.addColorStop(0.55, 'rgba(238,236,222,0.5)');
+  rg.addColorStop(1, 'rgba(238,236,222,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+  poofTex = new THREE.CanvasTexture(c);
+  return poofTex;
+}
+function spawnPoof(pos, n = 5) {
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: getPoofTex(), transparent: true, depthWrite: false }));
+    s.position.set(pos.x + (rand() - 0.5) * 1.0, pos.y + 0.35 + rand() * 0.6, pos.z + (rand() - 0.5) * 1.0);
+    s.scale.setScalar(0.45 + rand() * 0.4);
+    s.userData.life = 0;
+    s.userData.maxLife = 0.55 + rand() * 0.3;
+    scene.add(s);
+    poofs.push(s);
+  }
+}
+
+// Золотая стрелка-подсказка «иди сюда!» — ведёт малыша к Ёжику после вступления
+function makeArrowTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.lineJoin = 'round';
+  g.fillStyle = '#ffd166'; g.strokeStyle = '#ffffff'; g.lineWidth = 9;
+  g.beginPath();
+  g.moveTo(64, 116);
+  g.lineTo(26, 72); g.lineTo(47, 72); g.lineTo(47, 16);
+  g.lineTo(81, 16); g.lineTo(81, 72); g.lineTo(102, 72);
+  g.closePath();
+  g.stroke(); g.fill();
+  return new THREE.CanvasTexture(c);
+}
+const guideArrow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeArrowTex(), transparent: true, depthWrite: false }));
+guideArrow.scale.set(0.85, 0.85, 1);
+guideArrow.visible = false;
+scene.add(guideArrow);
+let guideOn = false;
+function showGuideArrow() {
+  if (localStorage.getItem('wm_met_hedge') === '1') return; // ёжик уже знаком
+  guideOn = true;
+  guideArrow.visible = true;
 }
 
 const bursts = [];
@@ -1027,15 +1086,21 @@ const basketEls = { red: document.getElementById('basketRed'), green: document.g
 const mgDom = { apples: [], done: 0, total: 6, lastAction: 0, fingerFlip: 0 };
 
 const MG_PAIRS = [
-  { a: '🍎', b: '🍏', ca: '#e26d5c', cb: '#7fb069' },
-  { a: '🍊', b: '🫐', ca: '#f2994c', cb: '#5b8fd9' },
-  { a: '🍓', b: '🍋', ca: '#e05263', cb: '#f2d24c' },
+  { id: 'apples', a: '🍎', b: '🍏', ca: '#e26d5c', cb: '#7fb069' },
+  { id: 'orange', a: '🍊', b: '🫐', ca: '#f2994c', cb: '#5b8fd9' },
+  { id: 'berry', a: '🍓', b: '🍋', ca: '#e05263', cb: '#f2d24c' },
 ];
+// у каждой пары фруктов — СВОЯ озвучка Ёжика, слова всегда совпадают с картинкой
+const HEDGE_ASKS = {
+  apples: 'voice/hedge_ask_a.mp3',
+  orange: 'voice/hedge_ask_b.mp3',
+  berry: 'voice/hedge_ask_c.mp3',
+};
 function openMinigame() {
   gameState = 'minigame';
   mgDom.done = 0;
   mgDom.lastAction = elapsed;
-  mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
+  if (!mgDom.pair) mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
   document.getElementById('mgEmojiA').textContent = mgDom.pair.a;
   document.getElementById('mgDotA').style.background = mgDom.pair.ca;
   document.getElementById('mgEmojiB').textContent = mgDom.pair.b;
@@ -1072,6 +1137,7 @@ function openMinigame() {
 function closeMinigame() {
   mgEl.style.display = 'none';
   mgFinger.style.display = 'none';
+  mgDom.pair = null;
 }
 
 let appleDrag = null;
@@ -1189,7 +1255,11 @@ function startDialog() {
   setBubble(bubTex.work);
   play('pop');
   stopVoice();
+  guideOn = false; guideArrow.visible = false;
+  // фрукты выбираем ДО озвучки — Ёжик озвучивает именно то, что появится на экране
+  mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
   speak(localStorage.getItem('wm_met_hedge') === '1' ? 'voice/hedge_again.mp3' : 'voice/hedge_hello.mp3');
+  speak(HEDGE_ASKS[mgDom.pair.id], { after: true });
   const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
   setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMinigame(); }, 2400);
@@ -1624,6 +1694,7 @@ let pendingFrog = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
+let blockedT = 0; // сколько герой упирается в препятствие
 let gone = 0; // пройденный путь — двигает анимацию прыжков
 let noProgT = 0, lastFinalDist = Infinity;
 const SPEED = 4;
@@ -1643,6 +1714,7 @@ function givePath(x, z) {
   path = p;
   finalTarget = { x, z };
   repathCount = 0;
+  blockedT = 0;
   noProgT = 0; lastFinalDist = Infinity;
 }
 function tapGround(clientX, clientY) {
@@ -1663,6 +1735,12 @@ function tapGround(clientX, clientY) {
 let downX = 0, downY = 0, downT = 0;
 window.addEventListener('pointerdown', (e) => {
   initAudio();
+  // первое касание на экране выбора героя — рассказчица объясняет, что тут делать
+  if (!selectSpoken && selectEl.style.display === 'flex') {
+    selectSpoken = true;
+    // чуть ждём: аудиоконтекст успевает проснуться после первого касания
+    setTimeout(() => { if (selectEl.style.display === 'flex' && !hero) speak('voice/select_char.mp3'); }, 180);
+  }
   downX = e.clientX; downY = e.clientY; downT = performance.now();
 });
 window.addEventListener('pointerup', (e) => {
@@ -1741,6 +1819,7 @@ function smoothstep(a, b, x) { const t = Math.max(0, Math.min(1, (x - a) / (b - 
 // ============ ЗАСТАВКА / ВЫБОР / ВСТУПЛЕНИЕ ============
 const splashEl = document.getElementById('splash');
 const selectEl = document.getElementById('select');
+let selectSpoken = false;
 const muteBtn = document.getElementById('muteBtn');
 if (muteBtn) {
   muteBtn.textContent = isMuted() ? '🔇' : '🔊';
@@ -1808,17 +1887,33 @@ function startIntro() {
   treeBubble.visible = true;
   play('pop');
   speak('voice/intro.mp3');
+  // Облёт подгоняем под РЕАЛЬНУЮ длину рассказа, чтобы голос не обрывался на полуслове.
+  const baseDur = introSteps.reduce((s, x) => s + x.dur, 0);
+  const base = introSteps.map(x => x.dur);
+  try {
+    const probe = new Audio('voice/intro.mp3');
+    probe.addEventListener('loadedmetadata', () => {
+      if (gameState !== 'intro') return;
+      if (probe.duration && isFinite(probe.duration) && probe.duration > 3) {
+        const k = (probe.duration + 0.5) / baseDur;
+        introSteps.forEach((s, i) => { s.dur = base[i] * k; });
+      }
+    });
+  } catch (e) {}
   document.getElementById('skipIntro').style.display = 'block';
 }
-function finishIntro() {
+function finishIntro(skipped) {
   if (gameState !== 'intro') return;
   gameState = 'explore';
-  stopVoice();
   document.getElementById('skipIntro').style.display = 'none';
   const hint = document.getElementById('hint');
   if (hint) hint.style.opacity = '1';
+  // в конце — ведём малыша к Ёжику: голос + золотая стрелка над ним
+  if (skipped) { stopVoice(); speak('voice/intro_go.mp3'); }
+  else speak('voice/intro_go.mp3', { after: true }); // дождётся конца рассказа
+  showGuideArrow();
 }
-document.getElementById('skipIntro').addEventListener('click', finishIntro);
+document.getElementById('skipIntro').addEventListener('click', () => finishIntro(true));
 
 // ============ ЦИКЛ ============
 buildNavGrid();
@@ -1910,11 +2005,23 @@ function animate() {
         const mdx = sl[0] - hero.position.x, mdz = sl[1] - hero.position.z;
         hero.position.x = sl[0]; hero.position.z = sl[1];
         const moved = Math.hypot(mdx, mdz);
+        // уперся в препятствие: копим «застревание» и один раз мягко перестраиваем путь
+        if (moved < step * 0.3) {
+          blockedT += dt;
+          if (blockedT > 0.3 && squashT <= 0) squashT = 0.35; // лёгкий «буп!» носом
+          if (blockedT > 0.55 && repathCount < 1 && finalTarget) {
+            repathCount++;
+            blockedT = 0; noProgT = 0; lastFinalDist = Infinity;
+            const np = findPath(hero.position.x, hero.position.z, finalTarget.x, finalTarget.z);
+            if (np && np.length) path = np;
+          }
+        } else blockedT = 0;
         gone += moved;
         const hop = Math.abs(Math.sin(gone * 9)) * 0.13;
         hero.position.y = hop;
         charData.bodyG.rotation.x = 0.1 + hop * 0.8;
-        if (moved > 0.0008) {
+        // поворачиваемся только при заметном смещении — никакой дрожи головой на месте
+        if (moved > Math.max(0.0025, step * 0.35)) {
           const wantYaw = Math.atan2(mdx, mdz);
           let dyy = wantYaw - hero.rotation.y;
           while (dyy > Math.PI) dyy -= Math.PI * 2;
@@ -2005,42 +2112,63 @@ function animate() {
           spawnBurst(hero.position);
         } else if (d > 0.9) {
           const sp = 2.6 * dt;
-          w.g.position.x += (dx / d) * sp; w.g.position.z += (dz / d) * sp;
-          resolveCollision(w.g.position);
+          let dirx = dx / d, dirz = dz / d;
+          // временный обход: если недавно застрял — идём под углом
+          if (w.avoidT > 0) {
+            w.avoidT -= dt;
+            const ang = w.avoidSign * 1.05;
+            const cs = Math.cos(ang), sn = Math.sin(ang);
+            const rx = dirx * cs - dirz * sn, rz = dirx * sn + dirz * cs;
+            dirx = rx; dirz = rz;
+          }
+          // скользим вдоль препятствий, как герой — никаких застреваний в кустах
+          const sl = slideCollide(w.g.position.x + dirx * sp, w.g.position.z + dirz * sp);
+          const mdx = sl[0] - w.g.position.x, mdz = sl[1] - w.g.position.z;
+          w.g.position.x = sl[0]; w.g.position.z = sl[1];
+          const moved = Math.hypot(mdx, mdz);
+          if (moved < sp * 0.35) w.stuckT = (w.stuckT || 0) + dt; else w.stuckT = Math.max(0, (w.stuckT || 0) - dt * 2);
+          if (w.stuckT > 0.5) { w.stuckT = 0; w.avoidT = 0.85; w.avoidSign = rand() < 0.5 ? 1 : -1; }
           // волк никогда не уходит за видимый край полянки
           const dc = Math.hypot(w.g.position.x, w.g.position.z);
           if (dc > 13.4) { const k = 13.4 / dc; w.g.position.x *= k; w.g.position.z *= k; }
-          w.g.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+          if (moved > 0.0008) w.g.rotation.y = Math.atan2(mdx, mdz) - Math.PI / 2;
           w.g.position.y = Math.abs(Math.sin(elapsed * 8)) * 0.08;
         } else {
           w.g.position.y = 0;
         }
       } else {
         w.cooldown -= dt;
-        w.g.position.y = 0;
-        w.fadeT = (w.fadeT || 0) + dt;
-        const d = Math.hypot(w.g.position.x, w.g.position.z);
-        if (d > 0.001) {
-          const ex = w.g.position.x / d, ez = w.g.position.z / d;
-          w.g.position.x += ex * 3 * dt;
-          w.g.position.z += ez * 3 * dt;
-          w.g.rotation.y = Math.atan2(ex, ez) - Math.PI / 2;
-        }
-        // растворение: волк тает прямо на глазах, не дойдя до края
-        if (w.fadeT > 1.2) {
-          const o = Math.max(0, 1 - (w.fadeT - 1.2) * 1.3);
-          w.g.traverse(m => { if (m.material) { m.material.transparent = true; m.material.opacity = o; } });
-          w.g.scale.setScalar(0.55 + 0.45 * o);
-          if (o <= 0 || d > ISLAND_R - 0.5) {
-            spawnBurst(new THREE.Vector3(w.g.position.x, 0.7, w.g.position.z), 8);
-            play('whoosh');
-            scene.remove(w.g); wolves.splice(wi, 1);
-            continue;
+        if (!w.vanishing) {
+          w.g.position.y = 0;
+          w.fadeT = (w.fadeT || 0) + dt;
+          const d = Math.hypot(w.g.position.x, w.g.position.z);
+          if (d > 0.001) {
+            const ex = w.g.position.x / d, ez = w.g.position.z / d;
+            const sl = slideCollide(w.g.position.x + ex * 3 * dt, w.g.position.z + ez * 3 * dt);
+            const mdx = sl[0] - w.g.position.x, mdz = sl[1] - w.g.position.z;
+            w.g.position.x = sl[0]; w.g.position.z = sl[1];
+            if (Math.hypot(mdx, mdz) > 0.0008) w.g.rotation.y = Math.atan2(mdx, mdz) - Math.PI / 2;
           }
+          const dc = Math.hypot(w.g.position.x, w.g.position.z);
+          if (dc > ISLAND_R - 0.6) { const k = (ISLAND_R - 0.6) / dc; w.g.position.x *= k; w.g.position.z *= k; }
+          // недолго убегает — и эффектный «ПУФ!»: волчок-юла, облачка и салют искр
+          if (w.fadeT > 1.2) {
+            w.vanishing = true;
+            w.vanishT = 0;
+            spawnPoof(w.g.position, 6);
+            spawnBurst(new THREE.Vector3(w.g.position.x, 0.9, w.g.position.z), 16);
+            play('pop'); play('whoosh');
+          }
+        } else {
+          w.vanishT += dt;
+          const k = Math.max(0.001, 1 - w.vanishT / 0.5);
+          w.g.scale.set(k, Math.max(0.001, k * 0.6), k); // сплющивается и сжимается
+          w.g.rotation.y += dt * 16;                      // крутится юлой
+          w.g.position.y = Math.sin(Math.min(w.vanishT / 0.5, 1) * Math.PI) * 0.5; // подскок
+          if (w.vanishT >= 0.5) { scene.remove(w.g); wolves.splice(wi, 1); continue; }
         }
-        if (w.cooldown <= 0 && !hiding) {
+        if (w.cooldown <= 0 && !hiding && !w.vanishing) {
           w.mode = 'hunt'; w.fadeT = 0;
-          w.g.traverse(m => { if (m.material) m.material.opacity = 1; });
           w.g.scale.setScalar(1);
         }
       }
@@ -2072,6 +2200,14 @@ function animate() {
     frog.userData.body.position.y = fhop * 0.1;
     frog.userData.body.scale.y = 0.92 + fhop * 0.08;
     frogBubble.position.y = 2.2 + Math.sin(elapsed * 2.2) * 0.08;
+  }
+
+  // золотая стрелка-проводник над Ёжиком: прыгает и машет, пока малыш не подошёл
+  if (guideOn) {
+    guideArrow.position.set(HEDGE_POS.x, 3.05 + Math.abs(Math.sin(elapsed * 2.6)) * 0.28, HEDGE_POS.z);
+    guideArrow.material.rotation = Math.sin(elapsed * 2.6) * 0.09;
+    const gp = 0.85 + Math.sin(elapsed * 5) * 0.07;
+    guideArrow.scale.set(gp, gp, 1);
   }
 
   // --- ДРЕВО ---
@@ -2238,6 +2374,16 @@ function animate() {
     m.rotation.x += dt * 4; m.rotation.y += dt * 3;
     m.material.opacity -= dt * 0.7;
     if (m.material.opacity <= 0.05 || m.position.y < 0) { scene.remove(m); bursts.splice(i, 1); }
+  }
+
+  // облачка «пуф!» растут и тают
+  for (let i = poofs.length - 1; i >= 0; i--) {
+    const s = poofs[i];
+    s.userData.life += dt;
+    const k = s.userData.life / s.userData.maxLife;
+    s.scale.setScalar(s.scale.x + dt * 3.2);
+    s.material.opacity = Math.max(0, 0.95 * (1 - k));
+    if (k >= 1) { scene.remove(s); s.material.dispose(); poofs.splice(i, 1); }
   }
 
   if (markerLife > 0) {
