@@ -224,12 +224,92 @@
       align-items: center; justify-content: center;
       background: rgba(61,92,68,0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     }
-    #pauseOv .big {
-      width: 120px; height: 120px; border-radius: 50%; border: none;
-      background: #fff; font-size: 56px; cursor: pointer;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.3); -webkit-tap-highlight-color: transparent;
+    .pause-card {
+      position: relative; text-align: center; padding: 26px 34px 22px; max-width: min(88vw, 460px);
+      background: linear-gradient(180deg, #fffdf5, #fdeec9);
+      border-radius: 34px; border: 4px solid #ffe3a3;
+      box-shadow: 0 18px 60px rgba(40,60,45,0.4), inset 0 2px 0 #fff;
+      overflow: hidden;
     }
-    #pauseOv .big:active { transform: scale(.92); }
+    .pause-card::before, .pause-card::after { /* звёздочки-опахала в углах карточки */
+      content: ''; position: absolute; width: 90px; height: 90px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,214,120,0.85), rgba(255,214,120,0) 68%);
+      animation: pauseFloat 3.2s ease-in-out infinite;
+    }
+    .pause-card::before { left: -34px; top: -34px; }
+    .pause-card::after { right: -30px; bottom: -30px; animation-delay: 1.6s; }
+    @keyframes pauseFloat { 0%,100% { transform: translateY(0) scale(1); opacity:.8; } 50% { transform: translateY(9px) scale(1.12); opacity:1; } }
+    .pause-title { font-size: clamp(22px, 5vh, 30px); font-weight: 900; color: #7a5a40; margin: 0 0 2px; }
+    .pause-sub { font-size: clamp(14px, 3vh, 18px); font-weight: 700; color: #a98a63; margin: 0 0 18px; }
+    .pause-play {
+      position: relative; z-index: 2; display: block; margin: 0 auto; padding: 16px 40px;
+      border: none; border-radius: 999px; cursor: pointer;
+      font-size: clamp(24px, 5.6vh, 34px); font-weight: 900; color: #fff; letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #8fd97f, #4fae62);
+      box-shadow: 0 10px 26px rgba(79,174,98,0.45), inset 0 -5px 0 rgba(0,0,0,0.14), inset 0 2px 0 rgba(255,255,255,0.5);
+      animation: pausePulse 2.1s ease-in-out infinite;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .pause-play:active { transform: scale(.94); animation: none; }
+    @keyframes pausePulse { 0%,100% { transform: scale(1); box-shadow: 0 10px 26px rgba(79,174,98,.45), inset 0 -5px 0 rgba(0,0,0,.14), inset 0 2px 0 rgba(255,255,255,.5); } 50% { transform: scale(1.045); box-shadow: 0 14px 34px rgba(79,174,98,.6), inset 0 -5px 0 rgba(0,0,0,.14), inset 0 2px 0 rgba(255,255,255,.5); } }
+    .pause-row { position: relative; z-index: 2; display: flex; gap: 14px; justify-content: center; margin-top: 18px; }
+    .pause-mini {
+      min-width: 64px; height: 64px; border-radius: 50%; cursor: pointer;
+      background: #fff8e0; border: 3px solid #ffd98c; font-size: 27px;
+      box-shadow: 0 5px 14px rgba(120,90,50,0.22); -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation; padding: 0 14px;
+    }
+    .pause-mini:active { transform: scale(.92); }
+    .pause-mini span.lbl { display: block; font-size: 11px; font-weight: 800; color: #a98a63; margin-top: -3px; }
+
+    /* ================= РОДИТЕЛЬСКИЙ УГОЛОК ================= */
+    #gateOv, #parentOv, #breakOv {
+      position: fixed; inset: 0; z-index: 45; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(50,62,96,0.5); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
+    }
+    .gate-card, .parent-card, .break-card {
+      width: min(92vw, 520px); max-height: 92vh; overflow-y: auto; text-align: center;
+      background: linear-gradient(180deg, #fdfcff, #e9ecfb);
+      border-radius: 30px; border: 4px solid #c9d2f2; padding: 22px 24px;
+      box-shadow: 0 18px 60px rgba(40,50,90,0.45); box-sizing: border-box;
+    }
+    .gate-card h2, .parent-card h2 { margin: 0 0 6px; font-size: 24px; color: #4a4a78; }
+    .gate-q { font-size: 44px; font-weight: 900; color: #4a4a78; margin: 14px 0 18px; letter-spacing: 1px; }
+    .gate-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .gate-answers button {
+      padding: 14px 0; font-size: 30px; font-weight: 900; color: #4a5aa8;
+      background: #fff; border: 3px solid #b9c4ee; border-radius: 18px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .gate-answers button:active { transform: scale(.95); }
+    .gate-note { margin-top: 14px; font-size: 13px; color: #8a8ab0; }
+    .parent-card h3 { margin: 16px 0 8px; font-size: 17px; color: #6a6aa0; text-align: left; }
+    .parent-stats { width: 100%; border-collapse: collapse; font-size: 16px; color: #44445f; }
+    .parent-stats td { padding: 6px 8px; border-bottom: 1px dashed #d5dbf0; text-align: left; }
+    .parent-stats td:last-child { text-align: right; font-weight: 800; color: #4a5aa8; }
+    .limit-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .limit-row button {
+      padding: 10px 14px; border-radius: 999px; border: 3px solid #b9c4ee; background: #fff;
+      font-size: 16px; font-weight: 800; color: #4a5aa8; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .limit-row button.on { background: #4a5aa8; color: #fff; border-color: #4a5aa8; }
+    .parent-reset {
+      margin-top: 10px; padding: 12px 18px; border-radius: 16px; border: 3px solid #f0b9b9;
+      background: #fff; color: #b05555; font-size: 15px; font-weight: 800; cursor: pointer;
+    }
+    .parent-reset.arm { background: #b05555; color: #fff; }
+    .parent-note { margin-top: 14px; font-size: 12.5px; line-height: 1.45; color: #8a8ab0; }
+    .parent-close { margin-top: 14px; padding: 12px 30px; border-radius: 999px; border: none;
+      background: #4a5aa8; color: #fff; font-size: 18px; font-weight: 900; cursor: pointer; }
+    .break-card { border-color: #ffe3a3; background: linear-gradient(180deg, #fffdf5, #fdf0d0); }
+    .break-zzz { font-size: 60px; animation: pauseFloat 3s ease-in-out infinite; }
+    .break-card h2 { margin: 6px 0 8px; font-size: 24px; color: #7a5a40; }
+    .break-card p { margin: 0 0 16px; font-size: 17px; font-weight: 700; color: #a98a63; }
+    .break-ok { padding: 14px 38px; border-radius: 999px; border: none; font-size: 22px; font-weight: 900;
+      color: #fff; background: linear-gradient(135deg, #8fd97f, #4fae62); cursor: pointer;
+      box-shadow: 0 8px 20px rgba(79,174,98,0.4); }
 
     /* ================= МИНИ-ИГРА «УРОЖАЙНЫЙ ДЕНЬ» (отдельный экран) ================= */
     #minigame {
@@ -579,7 +659,51 @@
     </div>
   </div>
 
-  <div id="pauseOv"><button class="big" id="pauseResume">▶</button></div>
+  <div id="pauseOv">
+    <div class="pause-card">
+      <div class="pause-title">Пауза 🌼</div>
+      <div class="pause-sub">Сказка подождёт — она никуда не убежит!</div>
+      <button class="pause-play" id="pauseResume">▶ Играем дальше!</button>
+      <div class="pause-row">
+        <button class="pause-mini" id="pauseMute" aria-label="звук">🔊<span class="lbl">звук</span></button>
+        <button class="pause-mini" id="pauseParent" aria-label="родителям">👪<span class="lbl">взрослым</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gateOv">
+    <div class="gate-card">
+      <h2>Родительский уголок</h2>
+      <div style="font-size:15px;color:#6a6aa0">Дверка для взрослых — реши пример:</div>
+      <div class="gate-q" id="gateQ">7 + 8 = ?</div>
+      <div class="gate-answers" id="gateAnswers"></div>
+      <div class="gate-note">Эта задачка не пропустит малышей в настройки —<br>в игре всё равно ничего испортить нельзя 🌿</div>
+    </div>
+  </div>
+
+  <div id="parentOv">
+    <div class="parent-card">
+      <h2>👪 Родительский уголок</h2>
+      <h3>📊 Как малыш растёт</h3>
+      <table class="parent-stats" id="parentStats"></table>
+      <h3>⏱ Таймер отдыха (напоминание)</h3>
+      <div class="limit-row" id="limitRow"></div>
+      <h3>🔄 Заново</h3>
+      <button class="parent-reset" id="parentReset">Стереть прогресс и начать сказку сначала</button>
+      <div class="parent-note">Волшебная полянка работает полностью офлайн: без рекламы, без покупок, без интернета.
+        Весь прогресс хранится только на этом устройстве и никуда не отправляется. Версия <span id="parentVer">0.14.0</span>.</div>
+      <button class="parent-close" id="parentClose">Закрыть</button>
+    </div>
+  </div>
+
+  <div id="breakOv">
+    <div class="break-card">
+      <div class="break-zzz">😴</div>
+      <h2>Полянка засыпает…</h2>
+      <p>Зверята улеглись поудобнее, глазки закрылись.<br>Сказка подождёт — погуляй, попей водички,<br>а потом можно поиграть снова!</p>
+      <button class="break-ok" id="breakOk">Хорошо!</button>
+    </div>
+  </div>
 
   <div id="rotate"><div class="phone">📱</div>Поверни устройство —<br>так играть удобнее!</div>
 
@@ -616,7 +740,7 @@
       <p class="sub">Добрые приключения с пользой</p>
     </div>
     <div class="bar"><i></i></div>
-    <div id="verTag">v0.13.0</div>
+    <div id="verTag">v0.14.0</div>
   </div>
 
   <div id="select">

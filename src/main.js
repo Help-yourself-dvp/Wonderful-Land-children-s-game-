@@ -1320,6 +1320,11 @@ function onTaskDone() {
     albumBtn.classList.remove('pop'); void albumBtn.offsetWidth; albumBtn.classList.add('pop');
   }
 }
+// счётчики побед у каждого жителя — для «Как малыш растёт» в Родительском уголке
+function bumpWin(k) {
+  const key = 'wm_wins_' + k;
+  localStorage.setItem(key, String(parseInt(localStorage.getItem(key) || '0', 10) + 1));
+}
 
 // ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-РУЧЕЁК» ============
 // После первой победы у Крота от его норки к Древу прорастает светящийся
@@ -1581,7 +1586,7 @@ function celebrate() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_hedge', '1');
+  localStorage.setItem('wm_met_hedge', '1'); bumpWin('hedge');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/hedge_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
@@ -1712,7 +1717,7 @@ function celebrateOwl() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_owl', '1');
+  localStorage.setItem('wm_met_owl', '1'); bumpWin('owl');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/sova_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(OWL_POS.x, 1.6, OWL_POS.z), 14);
@@ -1840,7 +1845,7 @@ function celebrateFrog() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_frog', '1');
+  localStorage.setItem('wm_met_frog', '1'); bumpWin('frog');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/frog_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(FROG_POS.x, 1.4, FROG_POS.z), 14);
@@ -1971,7 +1976,7 @@ function celebrateMole() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_mole', '1');
+  localStorage.setItem('wm_met_mole', '1'); bumpWin('mole');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/mole_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(MOLE_POS.x, 1.4, MOLE_POS.z), 14);
@@ -2135,7 +2140,7 @@ function celebrateSq() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_sq', '1');
+  localStorage.setItem('wm_met_sq', '1'); bumpWin('sq');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/sq_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(SQRL_POS.x, 1.4, SQRL_POS.z), 14);
@@ -2309,7 +2314,7 @@ function celebrateFirefly() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_fire', '1');
+  localStorage.setItem('wm_met_fire', '1'); bumpWin('fire');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/svet_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(FIRE_POS.x, 1.4, FIRE_POS.z), 14);
@@ -2773,6 +2778,7 @@ if (pauseBtn) {
     paused = true;
     pauseOv.style.display = 'flex';
     setGamePaused(true);
+    document.getElementById('pauseMute').firstChild.textContent = isMuted() ? '🔇' : '🔊';
   });
 }
 document.getElementById('pauseResume').addEventListener('click', () => {
@@ -2780,6 +2786,140 @@ document.getElementById('pauseResume').addEventListener('click', () => {
   pauseOv.style.display = 'none';
   setGamePaused(false);
   play('pop');
+});
+
+// ============ РОДИТЕЛЬСКИЙ УГОЛОК ============
+// Доступ только из паузы и только через «взрослую» задачку —
+// для ребёнка ничего не ломается, для родителя всё на виду.
+const gateOv = document.getElementById('gateOv');
+const gateQ = document.getElementById('gateQ');
+const gateAnswers = document.getElementById('gateAnswers');
+const parentOv = document.getElementById('parentOv');
+const breakOv = document.getElementById('breakOv');
+let parentLimitMin = parseFloat(localStorage.getItem('wm_parent_limit') || '0');
+let sessSec = 0, playSecUnsaved = 0, breakShown = false;
+
+document.getElementById('pauseMute').addEventListener('click', () => {
+  initAudio();
+  const m = toggleMute();
+  muteBtn.textContent = m ? '🔇' : '🔊';
+  document.getElementById('pauseMute').firstChild.textContent = m ? '🔇' : '🔊';
+  play('pop');
+});
+document.getElementById('pauseParent').addEventListener('click', () => {
+  play('pop');
+  pauseOv.style.display = 'none';
+  openGate();
+});
+function openGate() {
+  const a = 6 + Math.floor(Math.random() * 9), b = 5 + Math.floor(Math.random() * 9);
+  const sum = a + b;
+  gateQ.textContent = a + ' + ' + b + ' = ?';
+  const opts = new Set([sum]);
+  const deltas = [1, -1, 2, -2, 3, -3, 10, -10];
+  while (opts.size < 4) {
+    const d = sum + deltas[Math.floor(Math.random() * deltas.length)];
+    if (d > 0) opts.add(d);
+  }
+  const arr = Array.from(opts).sort(() => Math.random() - 0.5);
+  gateAnswers.innerHTML = '';
+  arr.forEach(v => {
+    const bEl = document.createElement('button');
+    bEl.type = 'button';
+    bEl.textContent = v;
+    bEl.addEventListener('click', () => {
+      if (v === sum) {
+        play('good');
+        gateOv.style.display = 'none';
+        openParent();
+      } else {
+        play('bad'); // тихий «плинг» и новый пример — без наказаний и для взрослых
+        openGate();
+      }
+    });
+    gateAnswers.appendChild(bEl);
+  });
+  gateOv.style.display = 'flex';
+}
+function statRow(label, val) {
+  return '<tr><td>' + label + '</td><td>' + val + '</td></tr>';
+}
+function openParent() {
+  const wins = k => parseInt(localStorage.getItem('wm_wins_' + k) || '0', 10);
+  const s1 = localStorage.getItem('wm_story_mole') === '1' ? '✅' : 'пока ждёт';
+  const s2 = starLit ? '✅' : 'пока ждёт';
+  const playMin = Math.round(parseInt(localStorage.getItem('wm_playsec') || '0', 10) / 60);
+  document.getElementById('parentStats').innerHTML =
+    statRow('🦔 Ёжик — побед', wins('hedge')) +
+    statRow('🦉 Сова — побед', wins('owl')) +
+    statRow('🐸 Лягушка — побед', wins('frog')) +
+    statRow('🐾 Крот — побед', wins('mole')) +
+    statRow('🐿️ Белка — побед', wins('sq')) +
+    statRow('✨ Светлячок — побед', wins('fire')) +
+    statRow('📖 Наклейки в альбоме', unlockedCount() + ' из ' + STICKERS.length) +
+    statRow('💧 Капельки сейчас', dropsCount) +
+    statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
+    statRow('📗 Сказка: «Корешок-ручеёк»', s1) +
+    statRow('📗 Сказка: «Звонкое созвучие»', s2) +
+    statRow('⏱ Всего в игре', playMin + ' мин');
+  renderLimitRow();
+  parentOv.style.display = 'flex';
+}
+function renderLimitRow() {
+  const row = document.getElementById('limitRow');
+  const opts = [[0, 'Выкл'], [10, '10 мин'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин']]; // по ГДД: 15/30/45 (+10 для малышей)
+  row.innerHTML = '';
+  opts.forEach(([v, lbl]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = lbl;
+    if (parentLimitMin === v) b.classList.add('on');
+    b.addEventListener('click', () => {
+      parentLimitMin = v;
+      localStorage.setItem('wm_parent_limit', String(v));
+      sessSec = 0; breakShown = false; // новая настройка — новый отсчёт
+      play('pop');
+      renderLimitRow();
+    });
+    row.appendChild(b);
+  });
+}
+document.getElementById('parentClose').addEventListener('click', () => {
+  parentOv.style.display = 'none';
+  pauseOv.style.display = 'flex'; // вернулись в паузу — игра всё ещё заморожена
+  play('pop');
+});
+// «Стереть прогресс»: удерживать 2.5 с — защита от случайных пальчиков
+const resetBtn = document.getElementById('parentReset');
+let resetT = null;
+resetBtn.addEventListener('pointerdown', () => {
+  resetBtn.classList.add('arm');
+  resetBtn.textContent = 'Держи ещё — и сказка начнётся сначала…';
+  resetT = setTimeout(() => {
+    Object.keys(localStorage).filter(k => k.indexOf('wm_') === 0).forEach(k => localStorage.removeItem(k));
+    location.reload();
+  }, 2500);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => resetBtn.addEventListener(ev, () => {
+  clearTimeout(resetT);
+  resetBtn.classList.remove('arm');
+  resetBtn.textContent = 'Стереть прогресс и начать сказку сначала';
+}));
+// Мягкая карточка «отдохни» по таймеру
+function showBreak() {
+  breakShown = true;
+  paused = true;
+  setGamePaused(true);
+  dayT = 0.62; // по ГДД: наступает ночь — полянка засыпает вместе с малышом
+  breakOv.style.display = 'flex';
+  play('pop');
+}
+document.getElementById('breakOk').addEventListener('click', () => {
+  breakOv.style.display = 'none';
+  paused = false;
+  setGamePaused(false);
+  sessSec = 0; // полный новый интервал после отдыха
+  play('good');
 });
 document.querySelectorAll('.char').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2876,6 +3016,15 @@ function animate() {
   if (paused) { renderer.render(scene, camera); return; }
   const dt = 1 / 60;
   elapsed += dt;
+
+  // --- РОДИТЕЛЬСКИЙ УЧЁТ: общее время игры + мягкое напоминание об отдыхе ---
+  sessSec += dt;
+  playSecUnsaved += dt;
+  if (playSecUnsaved >= 30) {
+    playSecUnsaved -= 30;
+    localStorage.setItem('wm_playsec', String(parseInt(localStorage.getItem('wm_playsec') || '0', 10) + 30));
+  }
+  if (parentLimitMin > 0 && !breakShown && sessSec >= parentLimitMin * 60 && gameState === 'explore') showBreak();
 
   // --- ДЕНЬ/НОЧЬ (во сне в домике ночь пролетает быстро) ---
   dayT = (dayT + (dt * (hiding ? 22 : 1)) / DAY_LEN) % 1;
@@ -3534,6 +3683,10 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'mole') openMoleGame();
       else if (kind === 'sq') openSqGame();
       else if (kind === 'fire') openStoneGame();
+      else if (kind === 'pause') { document.getElementById('pauseBtn').click(); }
+      else if (kind === 'gate') { paused = true; openGate(); }
+      else if (kind === 'parent') { paused = true; openParent(); }
+      else if (kind === 'break') { showBreak(); }
       else if (kind === 'choir' || kind === 'choirnight') {
         // сценка главы 2: форсируем взрослое Древо и запускаем церемонию
         if (treeStage !== 3) {
