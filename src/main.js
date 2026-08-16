@@ -904,6 +904,345 @@ applyStarLit();
 const treeGlowMats = new Set();
 treeStages.forEach(g => g && g.traverse(m => { if (m.material && m.material.isMeshLambertMaterial) treeGlowMats.add(m.material); }));
 
+// ============ ЛОКАЦИИ (Локация 1 «Лесная полянка» + Локация 2 «Речной берег») ============
+// Обе полянки живут в ОДНОЙ сцене: Речной берег стоит далеко на севере (z + 150),
+// своего центра и своего набора препятствий у навигации нет — препятствия хранятся
+// в МИРОВЫХ координатах обеих локаций, а локальным бывает только «центр острова».
+const LOCS = [
+  { x: 0, z: 0, name: 'Лесная полянка', sub: 'тёплый домик у ручья' },
+  { x: 0, z: 150, name: 'Речной берег', sub: 'здесь живёт Бобр-строитель' },
+];
+let curLoc = 0;
+const LOC2 = LOCS[1];
+// отдельный «шумовой» генератор для декора Л2 — НЕ трогаем общий rand(),
+// чтобы не сдвинуть выверенную рассадку Локации 1
+const r2 = (() => { let s = 987; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+
+// мягкое свечение для огоньков арки
+let glowTex2 = null;
+function makeGlowTex() {
+  if (glowTex2) return glowTex2;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const rg = g.createRadialGradient(32, 32, 3, 32, 32, 30);
+  rg.addColorStop(0, 'rgba(255,255,255,1)');
+  rg.addColorStop(0.4, 'rgba(210,245,255,0.7)');
+  rg.addColorStop(1, 'rgba(210,245,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+  glowTex2 = new THREE.CanvasTexture(c);
+  return glowTex2;
+}
+
+// ----- остров Речного берега -----
+{
+  const ground2 = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R * 0.88, 1.8, 48), L(0x8ed081));
+  ground2.position.set(LOC2.x, -0.9, LOC2.z);
+  ground2.receiveShadow = true;
+  scene.add(ground2);
+  // разнотравье
+  for (let i = 0; i < 12; i++) {
+    const a = r2() * Math.PI * 2, rr = 2 + Math.sqrt(r2()) * 11.5;
+    const patch = new THREE.Mesh(
+      new THREE.CircleGeometry(1.0 + r2() * 1.4, 20),
+      new THREE.MeshLambertMaterial({ color: r2() > 0.5 ? 0x84cc78 : 0x9adb8a, transparent: true, opacity: 0.5 })
+    );
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set(LOC2.x + Math.cos(a) * rr, 0.015 + i * 0.001, LOC2.z + Math.sin(a) * rr);
+    scene.add(patch);
+  }
+  for (const [x, z, rr, c] of [[-8, -9, 2.8, 0x7ecb74], [8.6, -7.2, 2.2, 0x86cf78], [-10.5, 7.8, 2.0, 0x94d687]]) {
+    const hill = new THREE.Mesh(new THREE.SphereGeometry(rr, 24, 16), L(c));
+    hill.scale.y = 0.38; hill.position.set(LOC2.x + x, 0, LOC2.z + z); hill.receiveShadow = true;
+    scene.add(hill);
+  }
+}
+
+// ----- РЕЧКА: мягкая S-излучина через весь остров, у берега — мостик -----
+// Полочка функции одна на всех: и для воды, и для препятствий, и для бликов.
+const riverX = (worldZ) => LOC2.x + 1.3 * Math.sin((worldZ - LOC2.z) * 0.25);
+const RIVER_PTS = [];
+for (let lz = -14; lz <= 14.01; lz += 1.7) RIVER_PTS.push(lz);
+{
+  const waterM = L(0x7ecbe8);
+  RIVER_PTS.forEach((lz, i) => {
+    const w = new THREE.Mesh(new THREE.CircleGeometry(2.3, 28), waterM);
+    w.rotation.x = -Math.PI / 2;
+    w.position.set(riverX(LOC2.z + lz), 0.045 + i * 0.0004, LOC2.z + lz);
+    scene.add(w);
+    // река — препятствие, но у мостика (|lz| < 2.4) оставляем проход
+    if (Math.abs(lz) >= 2.4) obstacles.push({ x: riverX(LOC2.z + lz), z: LOC2.z + lz, r: 2.05 });
+  });
+  // кувшинки
+  for (const lz of [-7.2, -5.4, 6.6, 8.4]) {
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(0.42, 14), L(0x5fbf7a));
+    pad.rotation.x = -Math.PI / 2;
+    pad.position.set(riverX(LOC2.z + lz) + (r2() - 0.5) * 1.6, 0.07, LOC2.z + lz);
+    scene.add(pad);
+  }
+  // камыши по берегам
+  const reedRows = [[-11.6, 1], [-9.2, -1], [-6.6, 1], [-4.2, -1], [4.1, 1], [5.9, -1], [7.8, 1], [10.2, -1], [12.2, 1]];
+  for (const [lz, side] of reedRows) {
+    const bx = riverX(LOC2.z + lz) + side * (2.6 + r2() * 0.5);
+    const bz = LOC2.z + lz + (r2() - 0.5) * 0.6;
+    const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.5, 8), L(0x5aa860));
+    reed.position.set(bx, 0.75, bz);
+    reed.rotation.z = (r2() - 0.5) * 0.15;
+    const tip = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.3, 4, 8), L(0x8a5a3b));
+    tip.position.set(bx + (r2() - 0.5) * 0.06, 1.62, bz);
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.9, 6), L(0x6fbf5f));
+    leaf.position.set(bx + 0.12, 0.55, bz); leaf.rotation.z = 0.5;
+    scene.add(reed, tip, leaf);
+  }
+}
+// блики-блёстки, которые «плывут» по речке (оживляет воду без шейдеров)
+const riverFlows = [];
+for (let i = 0; i < 7; i++) {
+  const fl = new THREE.Mesh(new THREE.CircleGeometry(0.28, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false }));
+  fl.rotation.x = -Math.PI / 2;
+  fl.scale.set(2.1, 1, 1);
+  fl.userData.off = i * 4.1;
+  scene.add(fl);
+  riverFlows.push(fl);
+}
+
+// ----- МОСТИК через речку (проходимый: навигация видит «коридор») -----
+{
+  const deckM = L(0xb07b4f);
+  for (let i = 0; i < 7; i++) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.12, 3.0), i % 2 ? L(0xbd8760) : deckM);
+    plank.position.set(LOC2.x - 3.06 + i * 1.02, 0.12, LOC2.z);
+    plank.castShadow = true; plank.receiveShadow = true;
+    scene.add(plank);
+  }
+  // перильца: столбики + верхняя планка; в навигации — круглые препятствия
+  for (const sz of [-1.55, 1.55]) {
+    for (let i = 0; i < 5; i++) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.6, 8), L(0x8a5a3b));
+      post.position.set(LOC2.x - 3 + i * 1.5, 0.3 + 0.14, LOC2.z + sz);
+      scene.add(post);
+    }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.1, 0.14), L(0x9a6b4f));
+    rail.position.set(LOC2.x, 0.66, LOC2.z + sz);
+    scene.add(rail);
+    for (let i = 0; i < 5; i++) obstacles.push({ x: LOC2.x - 3 + i * 1.5, z: LOC2.z + sz, r: 0.38 });
+  }
+}
+
+// ----- ИВЫ (склонённые лиственные «зонтики») -----
+function makeWillow(x, z) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.4, 2.5, 10), L(0x9a6b4f));
+  trunk.position.y = 1.25; trunk.castShadow = true;
+  g.add(trunk);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(1.15, 14, 14), L(0x7ecb74));
+  top.position.y = 3.05; top.scale.set(1, 1.3, 1); top.castShadow = true;
+  g.add(top);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.85, 12, 12), L(i % 2 ? 0x6fbf5f : 0x84cc78));
+    leaf.scale.set(0.72, 1.9, 0.72);
+    leaf.position.set(Math.cos(a) * 1.05, 2.05, Math.sin(a) * 1.05);
+    g.add(leaf);
+  }
+  g.position.set(x, 0, z);
+  swayList.push({ obj: top, speed: 0.9, amp: 0.03 });
+  return g;
+}
+for (const [x, z] of [[-7.5, -8], [7.8, 9.8], [-9.8, 5.2]]) {
+  scene.add(makeWillow(LOC2.x + x, LOC2.z + z));
+  obstacles.push({ x: LOC2.x + x, z: LOC2.z + z, r: 0.55 });
+}
+
+// ----- ХАТКА БОБРА (купол из веточек у воды) -----
+{
+  const lodge = new THREE.Group();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), L(0x8a6a4a));
+  dome.scale.set(1.25, 0.78, 1.25); dome.position.y = 0.04;
+  dome.castShadow = true;
+  lodge.add(dome);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 1.8, 6), L(i % 2 ? 0x6f452c : 0x9a6b4f));
+    stick.position.set(Math.cos(a) * 0.95, 0.75, Math.sin(a) * 0.95);
+    stick.rotation.z = Math.cos(a) * 0.72; stick.rotation.x = -Math.sin(a) * 0.72;
+    lodge.add(stick);
+  }
+  lodge.position.set(LOC2.x - 6.2, 0, LOC2.z - 4.5);
+  scene.add(lodge);
+  obstacles.push({ x: LOC2.x - 6.2, z: LOC2.z - 4.5, r: 1.7 });
+}
+// поленница заготовок — Бобр строит!
+{
+  const pile = new THREE.Group();
+  for (const [dx, dy, ry] of [[-0.5, 0.22, 0.2], [0.45, 0.22, -0.15], [0, 0.62, 0.35]]) {
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.5, 10), L(0xc98d5a));
+    log.rotation.z = Math.PI / 2; log.rotation.y = ry;
+    log.position.set(dx, dy, 0);
+    log.castShadow = true;
+    pile.add(log);
+  }
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.4), L(0xd8a566));
+  plank.position.set(0.2, 0.85, 0.3); plank.rotation.y = 0.5;
+  pile.add(plank);
+  pile.position.set(LOC2.x + 5.8, 0, LOC2.z + 5.5);
+  scene.add(pile);
+  obstacles.push({ x: LOC2.x + 5.8, z: LOC2.z + 5.5, r: 1.1 });
+}
+// камешки на берегу
+for (const [x, z, rr] of [[8.9, -3.4, 0.45], [-9.2, -2.6, 0.4], [10.6, 4.4, 0.35]]) {
+  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(rr, 2), L(0xb9c1c9));
+  stone.position.set(LOC2.x + x, rr * 0.55, LOC2.z + z); stone.castShadow = true;
+  scene.add(stone);
+  obstacles.push({ x: LOC2.x + x, z: LOC2.z + z, r: rr + 0.08 });
+}
+
+// ----- СТРЕКОЗЫ над речкой (дневное оживление Л2) -----
+const dragonflies = [];
+for (let i = 0; i < 3; i++) {
+  const g = new THREE.Group();
+  const bodyDf = new THREE.Mesh(new THREE.CapsuleGeometry(0.032, 0.5, 4, 8),
+    new THREE.MeshBasicMaterial({ color: [0x35a8e8, 0xe87e9f, 0x4fc46a][i] }));
+  bodyDf.rotation.z = Math.PI / 2;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+    new THREE.MeshBasicMaterial({ color: [0x35a8e8, 0xe87e9f, 0x4fc46a][i] }));
+  head.position.set(0.29, 0.01, 0);
+  g.add(bodyDf, head);
+  // четыре прозрачных крылышка: две пары вдоль тельца
+  const wings = [];
+  const wGeo = new THREE.PlaneGeometry(0.09, 0.3);
+  const wMat = new THREE.MeshBasicMaterial({ color: 0xeaf8ff, transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false });
+  for (const [wx, wz, dir] of [[0.07, 0.16, 1], [0.07, -0.16, -1], [-0.07, 0.14, 1], [-0.07, -0.14, -1]]) {
+    const w = new THREE.Mesh(wGeo, wMat);
+    w.position.set(wx, 0.05, wz); w.rotation.x = -Math.PI / 2;
+    g.add(w); wings.push({ w, dir });
+  }
+  g.userData = { wings, t: i * 2.3, cz: LOC2.z - 4 + i * 4.5 };
+  scene.add(g);
+  dragonflies.push(g);
+}
+
+// ----- ВОЛШЕБНАЯ АРКА (портал между локациями — по ГДД: ивовая арка + закрутка светлячков) -----
+function makePortal() {
+  const g = new THREE.Group();
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.17, 12, 30, Math.PI), L(0x8a5a3b));
+  arch.castShadow = true;
+  const arch2 = new THREE.Mesh(new THREE.TorusGeometry(1.86, 0.1, 10, 28, Math.PI), L(0x7ba05a));
+  // светящаяся «плёнка» внутри арки
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(1.48, 26),
+    new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false }));
+  disc.position.y = 0.12;
+  // закрутка светлячков
+  const orbs = [];
+  for (let i = 0; i < 9; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex(), color: 0xaef2ff, transparent: true, depthWrite: false }));
+    s.scale.setScalar(0.4);
+    g.add(s); orbs.push(s);
+  }
+  g.add(arch, arch2, disc);
+  g.userData = { orbs, disc };
+  g.visible = false;
+  return g;
+}
+const portalL1 = makePortal();
+portalL1.position.set(12.4, 0.02, 0.2);
+portalL1.rotation.y = Math.atan2(-12.4, -0.2); // лицом к центру полянки
+scene.add(portalL1);
+const portalL2 = makePortal();
+portalL2.position.set(LOC2.x - 11.5, 0.02, LOC2.z + 3.0);
+portalL2.rotation.y = Math.atan2(11.5, -3.0);
+scene.add(portalL2);
+obstacles.push({ x: 12.4, z: 0.2, r: 0.9 });
+obstacles.push({ x: LOC2.x - 11.5, z: LOC2.z + 3.0, r: 0.9 });
+// точка подхода к арке на Л1 — с СЕВЕРО-востока (с юга мешает бревнышко у пруда)
+const PORTAL_APPR = [{ x: 10.9, z: -1.1 }, { x: LOC2.x - 10.0, z: LOC2.z + 3.0 }];
+const LOC_EXIT = [
+  { x: 11.15, z: -0.9, ry: -Math.PI / 2 },
+  { x: LOC2.x - 10.05, z: LOC2.z + 3.0, ry: Math.atan2(10.05, -3) },
+];
+function revealPortal(withFx) {
+  if (portalL1.visible) return;
+  portalL1.visible = true;
+  portalL2.visible = true;
+  if (!withFx) return;
+  spawnBurst(new THREE.Vector3(12.4, 1.6, 0.2), 16);
+  play('drop');
+}
+portalL1.visible = starLit;
+portalL2.visible = starLit;
+
+// ============ БОБР-СТРОИТЕЛЬ (Локация 2) ============
+function makeBeaver() {
+  const g = new THREE.Group();
+  const fur = L(0x8a5a3b);
+  const darkFur = L(0x6f452c);
+  const bodyG = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 18), fur);
+  body.position.y = 0.55; body.scale.set(1, 0.94, 1.05); body.castShadow = true;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 14), L(0xd9b48a));
+  belly.position.set(0, 0.5, 0.28); belly.scale.set(0.85, 0.85, 0.55);
+  // мордочка с носиком и фирменными зубками
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), L(0x9a6b45));
+  snout.position.set(0, 0.78, 0.48); snout.scale.set(1, 0.85, 0.9);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), L(0x4a2f22));
+  nose.position.set(0, 0.86, 0.65);
+  const toothM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const toothGeo = new THREE.BoxGeometry(0.055, 0.09, 0.03);
+  const tL = new THREE.Mesh(toothGeo, toothM); tL.position.set(-0.035, 0.72, 0.645);
+  const tR = new THREE.Mesh(toothGeo, toothM); tR.position.set(0.035, 0.72, 0.645);
+  // глазки
+  const eyeGeo = new THREE.SphereGeometry(0.055, 10, 10);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eL = new THREE.Mesh(eyeGeo, eyeM); eL.position.set(-0.17, 0.92, 0.42);
+  const eR = new THREE.Mesh(eyeGeo, eyeM); eR.position.set(0.17, 0.92, 0.42);
+  const glintGeo = new THREE.SphereGeometry(0.02, 8, 8);
+  const glintM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const gl = new THREE.Mesh(glintGeo, glintM); gl.position.set(-0.155, 0.94, 0.465);
+  const gr = new THREE.Mesh(glintGeo, glintM); gr.position.set(0.185, 0.94, 0.465);
+  // ушки-кнопки
+  const earGeo = new THREE.SphereGeometry(0.1, 10, 10);
+  const earL = new THREE.Mesh(earGeo, darkFur); earL.position.set(-0.24, 1.02, 0.05); earL.scale.set(1, 1, 0.55);
+  const earR = new THREE.Mesh(earGeo, darkFur); earR.position.set(0.24, 1.02, 0.05); earR.scale.set(1, 1, 0.55);
+  // лапки держат дощечку — Бобр всегда при деле
+  const pawGeo = new THREE.SphereGeometry(0.12, 10, 10);
+  const pL = new THREE.Mesh(pawGeo, darkFur); pL.position.set(-0.3, 0.5, 0.42); pL.scale.set(0.85, 1.1, 0.85);
+  const pR = new THREE.Mesh(pawGeo, darkFur); pR.position.set(0.3, 0.5, 0.42); pR.scale.set(0.85, 1.1, 0.85);
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.5), L(0xd8a566));
+  plank.position.set(0, 0.48, 0.5); plank.rotation.x = 0.5; plank.rotation.z = 0.12;
+  // ножки
+  const footGeo = new THREE.SphereGeometry(0.14, 10, 10);
+  const fL = new THREE.Mesh(footGeo, darkFur); fL.position.set(-0.24, 0.12, 0.16); fL.scale.set(1.1, 0.55, 1.35);
+  const fR = new THREE.Mesh(footGeo, darkFur); fR.position.set(0.24, 0.12, 0.16); fR.scale.set(1.1, 0.55, 1.35);
+  // хвост-лопасть сзади — «визитная карточка» бобра
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.44, 14, 12), darkFur);
+  tail.position.set(0, 0.14, -0.62); tail.scale.set(0.55, 0.15, 1.05);
+  tail.castShadow = true;
+  // косынка строителя — колечком на шейке (не на мордочке!)
+  const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.08, 10, 18), L(0xe26d5c));
+  scarf.position.set(0, 0.64, 0.06); scarf.rotation.x = Math.PI / 2;
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), L(0xd15a4a));
+  knot.position.set(0, 0.6, 0.44); knot.scale.set(1.25, 0.9, 0.9);
+  bodyG.add(body, belly, snout, nose, tL, tR, eL, eR, gl, gr, earL, earR, pL, pR, plank, fL, fR, scarf, knot);
+  g.add(bodyG, tail);
+  g.userData = { body: bodyG, tail };
+  return g;
+}
+const BEAVER_POS = { x: LOC2.x + 2.7, z: LOC2.z + 3.7 };
+const beaver = makeBeaver();
+beaver.position.set(BEAVER_POS.x, 0.02, BEAVER_POS.z);
+beaver.rotation.y = Math.atan2(LOC2.x - BEAVER_POS.x, LOC2.z - BEAVER_POS.z); // лицом к мостику
+scene.add(beaver);
+obstacles.push({ x: BEAVER_POS.x, z: BEAVER_POS.z, r: 0.55 });
+const BEAVER_APPR = { x: BEAVER_POS.x - 1.3, z: BEAVER_POS.z - 1.5 };
+const beaverBubble = makeBubbleSprite('🔷', 1.0);
+beaverBubble.position.set(BEAVER_POS.x, 2.35, BEAVER_POS.z);
+scene.add(beaverBubble);
+const beaverBubTex = {
+  puzzle: beaverBubble.material.map,
+  star: makeBubbleSprite('⭐', 1).material.map,
+};
+function setBeaverBubble(t) { beaverBubble.material.map = t; beaverBubble.material.needsUpdate = true; }
+
 const treeBubble = makeBubbleSprite('💧', 0.95);
 treeBubble.position.set(TREE_POS.x, 2.6, TREE_POS.z);
 scene.add(treeBubble);
@@ -1162,10 +1501,26 @@ guideArrow.scale.set(0.85, 0.85, 1);
 guideArrow.visible = false;
 scene.add(guideArrow);
 let guideOn = false;
+let guideMode = 'hedge'; // 'hedge' | 'portal' | 'beaver'
+const guidePos = { x: HEDGE_POS.x, y: 3.05, z: HEDGE_POS.z };
 function showGuideArrow() {
   if (localStorage.getItem('wm_met_hedge') === '1') return; // ёжик уже знаком
+  guideMode = 'hedge';
+  guidePos.x = HEDGE_POS.x; guidePos.y = 3.05; guidePos.z = HEDGE_POS.z;
   guideOn = true;
   guideArrow.visible = true;
+}
+// та же стрелочка умеет вести и к другим местам (арка, Бобр)
+function showGuideArrowAt(x, y, z, mode) {
+  guideMode = mode;
+  guidePos.x = x; guidePos.y = y; guidePos.z = z;
+  guideOn = true;
+  guideArrow.visible = true;
+}
+function hideGuideArrow(mode) {
+  if (mode && guideMode !== mode) return; // чужую стрелку не гасим
+  guideOn = false;
+  guideArrow.visible = false;
 }
 
 const bursts = [];
@@ -1181,10 +1536,11 @@ function spawnBurst(pos, n = 10) {
 }
 
 // ============ СОСТОЯНИЕ ============
-let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | molegame | celebrate | story
+let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | molegame | sqgame | stonegame | beavergame | celebrate | story | ceremony | travel
 let dialogToken = 0;
 function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
+  pendingBeaver = pendingPortal = false;
   path = null; finalTarget = null;
 }
 
@@ -1569,7 +1925,7 @@ function startDialog() {
   setBubble(bubTex.work);
   play('pop');
   stopVoice();
-  guideOn = false; guideArrow.visible = false;
+  hideGuideArrow('hedge');
   // фрукты выбираем ДО озвучки — Ёжик озвучивает именно то, что появится на экране
   mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
   speak(localStorage.getItem('wm_met_hedge') === '1' ? 'voice/hedge_again.mp3' : 'voice/hedge_hello.mp3');
@@ -2328,6 +2684,169 @@ function celebrateFirefly() {
   }, 2600);
 }
 
+// ============ МИНИ-ИГРА «ДОЩЕЧКИ ДЛЯ МОСТИКА» (Бобр, Локация 2) ============
+// Механика: в мостике не хватает дощечек. У пустого места виден силуэт «окошка»
+// определённой формы (круглое / квадратное / треугольное / прямоугольное) — малыш
+// выбирает такую же среди запасных дощечек. Геометрические формы — тема 3–6 лет,
+// озвучка всегда совпадает с картинкой (у каждой формы своя фраза-файл).
+// Zero Fail: ошибка = мягкий «плинг» и покачивание, дощечки не отбираются.
+const bvrEl = document.getElementById('beavergame');
+const bvBridge = document.getElementById('bvBridge');
+const bvAnswers = document.getElementById('bvAnswers');
+const bvLabel = document.getElementById('bvLabel');
+const bvFinger = document.getElementById('bvFinger');
+const bv = { round: 0, total: 3, target: '', order: [], answered: false, lastAction: 0, fingerShown: false };
+const BV_SHAPES = ['circle', 'square', 'triangle', 'rect'];
+const BV_ASK = {
+  circle: 'voice/bobr_ask_circle.mp3', square: 'voice/bobr_ask_square.mp3',
+  triangle: 'voice/bobr_ask_triangle.mp3', rect: 'voice/bobr_ask_rect.mp3',
+};
+
+function startBeaverDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  hideGuideArrow('beaver');
+  setBeaverBubble(beaverBubTex.puzzle);
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_beaver') === '1' ? 'voice/bobr_again.mp3' : 'voice/bobr_hello.mp3');
+  const dx = BEAVER_POS.x - hero.position.x, dz = BEAVER_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBeaverGame(); }, 3200);
+}
+
+function openBeaverGame() {
+  gameState = 'beavergame';
+  bv.round = 0;
+  // порядок форм выбираем ДО озвучки: фраза Бобра всегда совпадает с картинкой
+  bv.order = [...BV_SHAPES].sort(() => rand() - 0.5).slice(0, bv.total);
+  bvrEl.style.display = 'flex';
+  buildBeaverRound();
+}
+function closeBeaverGame() {
+  bvrEl.style.display = 'none';
+  bvFinger.style.display = 'none';
+}
+
+function buildBeaverRound() {
+  bv.round++;
+  bv.answered = false;
+  bv.fingerShown = false;
+  bv.lastAction = elapsed;
+  bvBridge.innerHTML = '';
+  bvAnswers.innerHTML = '';
+  bvFinger.style.display = 'none';
+  bv.target = bv.order[bv.round - 1];
+  bvLabel.textContent = 'Какой дощечки не хватает?';
+
+  // три окошка мостика: уложенные дощечки, текущее (силуэт-подсказка), пустые
+  for (let i = 0; i < bv.total; i++) {
+    const slot = document.createElement('div');
+    if (i < bv.round - 1) {
+      slot.className = 'bv-slot';
+      const sh = document.createElement('span');
+      sh.className = 'shp ' + bv.order[i];
+      slot.appendChild(sh);
+    } else if (i === bv.round - 1) {
+      slot.className = 'bv-slot wait';
+      slot.id = 'bvWait';
+      const sh = document.createElement('span');
+      sh.className = 'shp ' + bv.target + ' ghost';
+      slot.appendChild(sh);
+    } else {
+      slot.className = 'bv-slot empty';
+    }
+    slot.style.animationDelay = (i * 0.08) + 's';
+    bvBridge.appendChild(slot);
+  }
+
+  // варианты: нужная форма + соседи; к третьему раунду — все четыре
+  const nOpts = bv.round >= 3 ? 4 : 3;
+  const opts = [bv.target, ...BV_SHAPES.filter(s => s !== bv.target)].slice(0, nOpts);
+  opts.sort(() => rand() - 0.5).forEach(v => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cg-answer bv-answer';
+    b.dataset.e = v;
+    b.setAttribute('aria-label', 'дощечка');
+    const sh = document.createElement('span');
+    sh.className = 'shp ' + v;
+    b.appendChild(sh);
+    b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', () => answerBeaver(v, b));
+    bvAnswers.appendChild(b);
+  });
+  speak(BV_ASK[bv.target], { after: true });
+}
+
+function answerBeaver(v, btn) {
+  if (gameState !== 'beavergame' || bv.answered) return;
+  bv.lastAction = elapsed;
+  bv.fingerShown = false;
+  bvFinger.style.display = 'none';
+  Array.from(bvAnswers.children).forEach(b => b.classList.remove('glow'));
+  if (v === bv.target) {
+    bv.answered = true;
+    play('good');
+    btn.classList.add('right');
+    const wait = document.getElementById('bvWait');
+    if (wait) {
+      wait.classList.remove('wait');
+      wait.classList.add('done');
+      wait.innerHTML = '';
+      const sh = document.createElement('span');
+      sh.className = 'shp ' + v;
+      wait.appendChild(sh);
+    }
+    setTimeout(() => {
+      if (bv.round >= bv.total) { closeBeaverGame(); celebrateBeaver(); }
+      else { buildBeaverRound(); }
+    }, 950);
+  } else {
+    // мягкий отказ: покачались — и пробуем ещё
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 420);
+  }
+}
+
+function celebrateBeaver() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_beaver', '1'); bumpWin('beaver');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/bobr_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(BEAVER_POS.x, 1.4, BEAVER_POS.z), 14);
+  spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
+  setBeaverBubble(beaverBubTex.star);
+  beaverBubble.visible = true;
+  setTimeout(() => {
+    gameState = 'explore';
+    setBeaverBubble(beaverBubTex.puzzle);
+    checkStory();
+  }, 2600);
+}
+
+document.getElementById('hintBvrBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  const b = Array.from(bvAnswers.children).find(x => x.dataset.e === bv.target);
+  if (b) {
+    b.classList.add('glow');
+    const r = b.getBoundingClientRect();
+    bvFinger.style.left = (r.left + r.width * 0.18) + 'px';
+    bvFinger.style.top = (r.top - 74) + 'px'; // пальчик НАД кнопкой — не закрывает форму
+    bvFinger.style.display = 'block';
+  }
+  stopVoice();
+  speak(BV_ASK[bv.target], { after: true });
+});
+
 // ============ СЮЖЕТНЫЕ КАРТОЧКИ («одна большая сказка») ============
 const storyOv = document.getElementById('storyOv');
 const storyEmoji = document.getElementById('storyEmoji');
@@ -2348,6 +2867,18 @@ function showStory(s) {
   play('pop');
   speak(s.voice);
 }
+// После главы 2 (да и у «ветеранов» на старте): рассказчица зовёт к волшебной арке.
+let pendingPortalArrow = false;
+function maybeAnnouncePortal() {
+  if (!starLit || localStorage.getItem('wm_portal_seen') === '1') return;
+  localStorage.setItem('wm_portal_seen', '1');
+  revealPortal(false);
+  pendingPortalArrow = true; // стрелочка к арке встанет сразу после закрытия карточки
+  showStory({
+    emoji: '🌉', voice: 'voice/portal_hint.mp3',
+    text: 'Смотри! На краю полянки появилась волшебная арка из ивовых ветвей. За ней — Речной берег: там живёт Бобр-строитель. Подойди к арке — и она перенесёт нас в гости!',
+  });
+}
 document.getElementById('storyNext').addEventListener('click', () => {
   storyOv.style.display = 'none';
   stopVoice();
@@ -2358,6 +2889,12 @@ document.getElementById('storyNext').addEventListener('click', () => {
     setTimeout(() => startChoirCeremony(), 350);
   } else {
     gameState = 'explore';
+    if (pendingPortalArrow) {
+      pendingPortalArrow = false;
+      showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
+    }
+    // возможно, пора рассказать про арку (например, звезда только что засияла)
+    setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 700);
   }
 });
 function checkStory() {
@@ -2460,6 +2997,7 @@ function ch2Beats(my) {
     setTimeout(() => play('drop'), 350);
     starLit = true;
     applyStarLit();
+    revealPortal(true); // свет звезды открыл дорогу на новые земли — появилась волшебная арка
     const g3 = treeStages[3];
     if (g3 && g3.userData.halo) { // вспышка гала
       g3.userData.halo.scale.setScalar(4.2);
@@ -2489,20 +3027,24 @@ function ch2Beats(my) {
 }
 
 // ============ НАВИГАЦИЯ A* ============
+// Сетка «переезжает» вслед за героем: navOX/navOZ — левый нижний угол поля 16×16
+// вокруг центра ТЕКУЩЕЙ локации. Препятствия обеих локаций уже мировые.
 const NAV_N = 64, NAV_MIN = -16, NAV_CELL = 0.5;
+let navOX = NAV_MIN, navOZ = NAV_MIN;
 const navBlocked = new Uint8Array(NAV_N * NAV_N);
 function cellOf(x, z) {
   return {
-    i: Math.max(0, Math.min(NAV_N - 1, Math.round((x - NAV_MIN) / NAV_CELL))),
-    j: Math.max(0, Math.min(NAV_N - 1, Math.round((z - NAV_MIN) / NAV_CELL))),
+    i: Math.max(0, Math.min(NAV_N - 1, Math.round((x - navOX) / NAV_CELL))),
+    j: Math.max(0, Math.min(NAV_N - 1, Math.round((z - navOZ) / NAV_CELL))),
   };
 }
-function worldOf(i, j) { return { x: NAV_MIN + i * NAV_CELL, z: NAV_MIN + j * NAV_CELL }; }
+function worldOf(i, j) { return { x: navOX + i * NAV_CELL, z: navOZ + j * NAV_CELL }; }
 function buildNavGrid() {
   navBlocked.fill(0);
+  const cx = LOCS[curLoc].x, cz = LOCS[curLoc].z;
   for (let i = 0; i < NAV_N; i++) for (let j = 0; j < NAV_N; j++) {
     const { x, z } = worldOf(i, j);
-    if (Math.hypot(x, z) > ISLAND_R - 0.7) { navBlocked[j * NAV_N + i] = 1; continue; }
+    if (Math.hypot(x - cx, z - cz) > ISLAND_R - 0.7) { navBlocked[j * NAV_N + i] = 1; continue; }
     for (const ob of obstacles) {
       if (Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.6) { navBlocked[j * NAV_N + i] = 1; break; }
     }
@@ -2601,6 +3143,8 @@ let pendingFrog = false;
 let pendingMole = false;
 let pendingSq = false;
 let pendingFire = false;
+let pendingBeaver = false;
+let pendingPortal = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -2632,7 +3176,7 @@ function tapGround(clientX, clientY) {
   const hit = new THREE.Vector3();
   const rc = castAt(clientX, clientY);
   if (rc.ray.intersectPlane(groundPlane, hit)) {
-    if (Math.hypot(hit.x, hit.z) > ISLAND_R - 1) return;
+    if (Math.hypot(hit.x - LOCS[curLoc].x, hit.z - LOCS[curLoc].z) > ISLAND_R - 1) return;
     givePath(hit.x, hit.z);
     const last = path[path.length - 1];
     marker.position.set(last.x, 0.06, last.z);
@@ -2642,6 +3186,7 @@ function tapGround(clientX, clientY) {
   }
 }
 
+// модификатор спауна волков: щекотуны живут только на Лесной полянке
 let downX = 0, downY = 0, downT = 0;
 window.addEventListener('pointerdown', (e) => {
   initAudio();
@@ -2718,6 +3263,21 @@ window.addEventListener('pointerup', (e) => {
     else { pendingFire = true; givePath(FIRE_POS.x - 1.6, FIRE_POS.z - 1.5); }
     return;
   }
+  // тап по волшебной арке (только когда она уже есть и мы в «её» локации)
+  const portalObj = curLoc === 0 ? portalL1 : portalL2;
+  if (portalObj.visible && rc.intersectObject(portalObj, true).length) {
+    const ap = PORTAL_APPR[curLoc];
+    if (Math.hypot(ap.x - hero.position.x, ap.z - hero.position.z) < 2.0) travelTo(1 - curLoc);
+    else { pendingPortal = true; givePath(ap.x, ap.z); }
+    return;
+  }
+  // тап по Бобру (Локация 2)
+  if (curLoc === 1 && rc.intersectObject(beaver, true).length) {
+    const dx = BEAVER_POS.x - hero.position.x, dz = BEAVER_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startBeaverDialog();
+    else { pendingBeaver = true; givePath(BEAVER_APPR.x, BEAVER_APPR.z); }
+    return;
+  }
   // тап по Древу Желаний
   const treeHits = rc.intersectObject(treeRoot, true);
   if (treeHits.length) {
@@ -2740,6 +3300,60 @@ function hideHint() {
   hintHidden = true;
   const el = document.getElementById('hint');
   if (el) el.style.opacity = '0';
+}
+
+// ============ ПУТЕШЕСТВИЕ МЕЖДУ ЛОКАЦИЯМИ ============
+// Тап по волшебной арке → мягкая «шторка» с названием места → герой уже там.
+const travelOv = document.getElementById('travelOv');
+const travelEmoji = document.getElementById('travelEmoji');
+const travelName = document.getElementById('travelName');
+const travelSub = document.getElementById('travelSub');
+let traveling = false;
+function jumpToLoc(dest) {
+  curLoc = dest;
+  navOX = LOCS[dest].x + NAV_MIN;
+  navOZ = LOCS[dest].z + NAV_MIN;
+  buildNavGrid();
+}
+function travelTo(dest) {
+  if (traveling || !hero) return;
+  traveling = true;
+  clearPendings();
+  stopVoice();
+  play('whoosh');
+  gameState = 'travel';
+  // волки-щекотуны остаются дома на Лесной полянке — эффектный «пуф!», в путь никого не берём
+  for (const w of wolves) { spawnPoof(w.g.position, 4); scene.remove(w.g); }
+  wolves.length = 0;
+  hideGuideArrow();
+  travelEmoji.textContent = dest === 1 ? '🌉' : '🏡';
+  travelName.textContent = LOCS[dest].name;
+  travelSub.textContent = LOCS[dest].sub;
+  travelOv.style.display = 'flex';
+  setTimeout(() => travelOv.classList.add('on'), 50); // кадр на применение display — потом плавно проявляем
+  setTimeout(() => {
+    jumpToLoc(dest);
+    const ex = LOC_EXIT[dest];
+    hero.position.set(ex.x, 0, ex.z);
+    hero.rotation.y = ex.ry;
+    camera.position.copy(hero.position).add(camOffset);
+    lookTarget.copy(hero.position);
+    spawnBurst(new THREE.Vector3(ex.x, 1.1, ex.z), 14);
+    play('drop');
+    gameState = 'explore';
+    if (dest === 1) {
+      const first = localStorage.getItem('wm_visit_l2') !== '1';
+      localStorage.setItem('wm_visit_l2', '1');
+      // первый визит: золотая стрелочка показывает, где живёт Бобр
+      if (first && localStorage.getItem('wm_met_beaver') !== '1') {
+        showGuideArrowAt(BEAVER_POS.x, 3.3, BEAVER_POS.z, 'beaver');
+      }
+    }
+  }, 950);
+  setTimeout(() => {
+    travelOv.classList.remove('on');
+    setTimeout(() => { travelOv.style.display = 'none'; traveling = false; }, 480);
+  }, 1550);
 }
 
 // ============ ДЕНЬ/НОЧЬ ============
@@ -2853,6 +3467,7 @@ function openParent() {
     statRow('🦔 Ёжик — побед', wins('hedge')) +
     statRow('🦉 Сова — побед', wins('owl')) +
     statRow('🐸 Лягушка — побед', wins('frog')) +
+    statRow('🦫 Бобр-строитель — побед', wins('beaver')) +
     statRow('🐾 Крот — побед', wins('mole')) +
     statRow('🐿️ Белка — побед', wins('sq')) +
     statRow('✨ Светлячок — побед', wins('fire')) +
@@ -2982,6 +3597,14 @@ function finishIntro(skipped) {
   if (skipped) { stopVoice(); speak('voice/intro_go.mp3'); }
   else speak('voice/intro_go.mp3', { after: true }); // дождётся конца рассказа
   showGuideArrow();
+  // «ветеранам» (звезда уже сияет): ведём к волшебной арке или рассказываем о ней
+  if (starLit) {
+    if (localStorage.getItem('wm_portal_seen') !== '1') {
+      setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 4500);
+    } else if (localStorage.getItem('wm_visit_l2') !== '1' && localStorage.getItem('wm_met_hedge') === '1') {
+      showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
+    }
+  }
 }
 document.getElementById('skipIntro').addEventListener('click', () => finishIntro(true));
 
@@ -3144,7 +3767,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingPortal || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -3185,6 +3808,16 @@ function animate() {
         const d = Math.hypot(HOUSE_DOOR.x - hero.position.x, HOUSE_DOOR.z - hero.position.z);
         if (d < 2.8) enterHouse();
       }
+      if (pendingBeaver) {
+        pendingBeaver = false;
+        const d = Math.hypot(BEAVER_POS.x - hero.position.x, BEAVER_POS.z - hero.position.z);
+        if (d < 3.6) startBeaverDialog();
+      }
+      if (pendingPortal) {
+        pendingPortal = false;
+        const ap = PORTAL_APPR[curLoc];
+        if (Math.hypot(ap.x - hero.position.x, ap.z - hero.position.z) < 2.2) travelTo(1 - curLoc);
+      }
     }
 
     if (squashT > 0) {
@@ -3202,7 +3835,7 @@ function animate() {
     charData.glints.forEach(g => g.visible = blink > 0.5);
 
     // --- ВОЛКИ ---
-    if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && Math.random() < dt * 0.15) spawnWolf();
+    if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && curLoc === 0 && Math.random() < dt * 0.15) spawnWolf();
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
       const w = wolves[wi];
@@ -3335,6 +3968,48 @@ function animate() {
     firefly.userData.bulbMat.color.setHex(nightness > 0.3 ? 0xffd95e : 0xfff3a0);
     svetBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     sqBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
+    // Бобр: мягко подпрыгивает, хвост-лопасть покачивается
+    const bHop = Math.abs(Math.sin(elapsed * 2.2));
+    beaver.userData.body.position.y = bHop * 0.07;
+    beaver.userData.body.scale.y = 0.94 + bHop * 0.06;
+    beaver.userData.tail.rotation.x = Math.sin(elapsed * 1.1) * 0.12;
+    beaverBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
+  }
+
+  // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
+  for (const p of [portalL1, portalL2]) {
+    if (!p.visible) continue;
+    const u = p.userData;
+    for (let i = 0; i < u.orbs.length; i++) {
+      const a = elapsed * 1.7 + (i / u.orbs.length) * Math.PI * 2;
+      const rr = 1.15 + Math.sin(a * 3) * 0.18;
+      const orb = u.orbs[i];
+      orb.position.set(Math.cos(a) * rr, 1.5 + Math.sin(a) * rr, 0.14 * Math.sin(a * 2));
+      orb.scale.setScalar(0.3 + (Math.sin(elapsed * 3 + i) * 0.5 + 0.5) * 0.22);
+    }
+    u.disc.material.opacity = 0.2 + Math.sin(elapsed * 2.4) * 0.07 + nightness * 0.12;
+  }
+
+  // --- РЕЧКА: блики-блёстки плывут по течению ---
+  for (const fl of riverFlows) {
+    const lz = ((elapsed * 1.05 + fl.userData.off) % 28.4) - 14.2;
+    fl.position.set(riverX(LOC2.z + lz) + Math.sin(elapsed * 1.3 + fl.userData.off) * 0.65, 0.075, LOC2.z + lz);
+    fl.material.opacity = 0.12 + (Math.sin(elapsed * 2 + fl.userData.off) * 0.5 + 0.5) * 0.2;
+  }
+
+  // --- СТРЕКОЗЫ: порхают над речкой днём ---
+  for (const g of dragonflies) {
+    g.userData.t += dt;
+    const t = g.userData.t;
+    g.visible = nightness < 0.7;
+    g.position.set(
+      riverX(g.userData.cz) + Math.sin(t * 0.9) * 1.3,
+      1.1 + Math.sin(t * 2.2) * 0.24,
+      g.userData.cz + Math.sin(t * 0.55) * 2.1
+    );
+    g.rotation.y = Math.cos(t * 0.55) * 0.9;
+    const flap = Math.sin(t * 24) * 0.3;
+    for (const { w, dir } of g.userData.wings) w.rotation.z = dir * flap;
   }
 
   // Длинная сказка: ручеёк-росток от Крота к Дереву (пульс + волна роста при открытии)
@@ -3354,9 +4029,9 @@ function animate() {
     });
   }
 
-  // золотая стрелка-проводник над Ёжиком: прыгает и машет, пока малыш не подошёл
+  // золотая стрелка-проводник: прыгает и машет, пока малыш не подошёл (Ёжик / арка / Бобр)
   if (guideOn) {
-    guideArrow.position.set(HEDGE_POS.x, 3.05 + Math.abs(Math.sin(elapsed * 2.6)) * 0.28, HEDGE_POS.z);
+    guideArrow.position.set(guidePos.x, guidePos.y + Math.abs(Math.sin(elapsed * 2.6)) * 0.28, guidePos.z);
     guideArrow.material.rotation = Math.sin(elapsed * 2.6) * 0.09;
     const gp = 0.85 + Math.sin(elapsed * 5) * 0.07;
     guideArrow.scale.set(gp, gp, 1);
@@ -3530,6 +4205,20 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «ДОЩЕЧКИ ДЛЯ МОСТИКА» (Бобр) ---
+  if (gameState === 'beavergame' && !bv.answered) {
+    const idle = elapsed - bv.lastAction;
+    const rightBtn = Array.from(bvAnswers.children).find(b => b.dataset.e === bv.target);
+    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 26 && !bv.fingerShown) {
+      bv.fingerShown = true;
+      const r = rightBtn.getBoundingClientRect();
+      bvFinger.style.left = (r.left + r.width * 0.18) + 'px';
+      bvFinger.style.top = (r.top - 74) + 'px';
+      bvFinger.style.display = 'block';
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ВОЛШЕБНЫЙ МОСТИК» ---
   if (gameState === 'bridgegame' && !bg.answered) {
     const idle = elapsed - bg.lastAction;
@@ -3683,6 +4372,49 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'mole') openMoleGame();
       else if (kind === 'sq') openSqGame();
       else if (kind === 'fire') openStoneGame();
+      else if (kind === 'beaver') openBeaverGame();
+      else if (kind === 'portal') {
+        // волшебная арка у восточного края полянки (+ золотая стрелочка)
+        starLit = true; applyStarLit(); revealPortal(false);
+        showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
+      }
+      else if (kind === 'travel') {
+        const tv = document.getElementById('travelOv');
+        tv.style.display = 'flex';
+        setTimeout(() => tv.classList.add('on'), 60);
+      }
+      else if (kind === 'l2' || kind === 'l2night') {
+        // Локация 2: герой стоит у мостика, вид на Бобра и речку
+        starLit = true; applyStarLit(); revealPortal(false);
+        if (kind === 'l2night') dayT = 0.6;
+        jumpToLoc(1);
+        hero.position.set(LOC2.x - 1.8, 0, LOC2.z + 3.2);
+        hero.rotation.y = Math.atan2(BEAVER_POS.x - hero.position.x, BEAVER_POS.z - hero.position.z);
+        camera.position.copy(hero.position).add(camOffset);
+        lookTarget.copy(hero.position);
+      }
+      else if (kind === 'walk' || kind === 'walk2' || kind === 'walk3') {
+        // настоящие маршруты: 'walk' — из дома к арке (потом travelTo), 'walk2' — с берега к арке,
+        // 'walk3' — через мостик с западного берега на восточный
+        starLit = true; applyStarLit(); revealPortal(false);
+        if (kind === 'walk2') {
+          jumpToLoc(1);
+          hero.position.set(LOC2.x - 6, 0, LOC2.z + 3);
+          camera.position.copy(hero.position).add(camOffset);
+          lookTarget.copy(hero.position);
+          pendingPortal = true;
+          givePath(PORTAL_APPR[1].x, PORTAL_APPR[1].z);
+        } else if (kind === 'walk3') {
+          jumpToLoc(1);
+          hero.position.set(LOC2.x - 6.5, 0, LOC2.z - 2.5);
+          camera.position.copy(hero.position).add(camOffset);
+          lookTarget.copy(hero.position);
+          givePath(LOC2.x + 6, LOC2.z + 2.2);
+        } else {
+          pendingPortal = true;
+          givePath(PORTAL_APPR[0].x, PORTAL_APPR[0].z);
+        }
+      }
       else if (kind === 'pause') { document.getElementById('pauseBtn').click(); }
       else if (kind === 'gate') { paused = true; openGate(); }
       else if (kind === 'parent') { paused = true; openParent(); }
@@ -3734,9 +4466,10 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'mole') { subj = mole; dist = 2.3; lookY = 0.5; }
       else if (name === 'sq') { subj = sq; dist = 2.3; lookY = 0.6; }
       else if (name === 'fire') { subj = firefly; dist = 1.55; lookY = 0.62; }
+      else if (name === 'beaver') { subj = beaver; dist = 2.6; lookY = 0.6; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест

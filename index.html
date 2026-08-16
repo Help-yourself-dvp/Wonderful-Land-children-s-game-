@@ -333,7 +333,7 @@
       .mg-card { padding: 10px 14px 12px; border-radius: 22px; max-height: 96vh; }
       .cg-title { font-size: clamp(17px, 4vh, 22px); margin: 0 0 5px; }
       .mg-field { height: min(56vh, 320px); }
-      .cg-field, .bg-field, .ml-field, .sq-field { height: min(60vh, 340px); }
+      .cg-field, .bg-field, .ml-field, .sq-field, .bv-field { height: min(60vh, 340px); }
       .st-field { height: min(52vh, 300px); padding-bottom: 6%; }
       .ml-counter, .sq-msg { font-size: 15px; margin-bottom: 4px; }
     }
@@ -547,6 +547,79 @@
     }
     .story-btn:active { transform: scale(.93); }
 
+    /* ================= МИНИ-ИГРА «ДОЩЕЧКИ ДЛЯ МОСТИКА» (Бобр, Локация 2) ================= */
+    #beavergame {
+      position: fixed; inset: 0; z-index: 25; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .bv-field {
+      position: relative; height: min(64vh, 480px); border-radius: 20px;
+      background: linear-gradient(180deg, #e8f6ff 52%, #cfe9d8 53%, #bfe0c8); overflow: hidden;
+    }
+    /* речка под мостиком — декор поля игры */
+    .bv-field::after {
+      content: ''; position: absolute; left: -10%; right: -10%; top: 47%; height: 22%;
+      background: linear-gradient(180deg, #9ed8f0, #7ecbe8); border-radius: 0;
+    }
+    .bv-bridge {
+      position: absolute; top: 40%; left: 0; right: 0; z-index: 2;
+      display: flex; justify-content: center; gap: clamp(8px, 1.8vh, 16px); padding: 0 12px;
+    }
+    .bv-slot {
+      width: clamp(56px, 11vh, 80px); height: clamp(56px, 11vh, 80px);
+      border-radius: 16px; background: linear-gradient(180deg, #b07b4f, #8a5a3b);
+      box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18), 0 5px 12px rgba(0,0,0,0.18);
+      display: flex; align-items: center; justify-content: center;
+      animation: cgItemIn .35s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .bv-slot.empty { opacity: 0.45; }
+    .bv-slot.wait {
+      background: rgba(255,255,255,0.8); border: 3px dashed #b07b4f;
+      box-shadow: none; animation: gapPulse .9s ease-in-out infinite alternate;
+    }
+    .bv-slot.done { animation: cgJump .5s ease; }
+    .bv-cap { /* маленькая «опора» мостика под дощечками */
+      position: absolute; top: calc(40% + clamp(56px, 11vh, 80px)); left: 31%; right: 31%; z-index: 1;
+      height: 13px; border-radius: 0 0 99px 99px; opacity: 0.9;
+      background: linear-gradient(180deg, #8a5a3b, #6f452c);
+    }
+    .cg-answers.bv-answers { position: absolute; bottom: 5%; left: 0; right: 0; z-index: 2; }
+    .bv-answer {
+      background: linear-gradient(180deg, #d29a63, #a76b3d) !important;
+      border-radius: 18px !important;
+      width: clamp(64px, 12vh, 90px) !important; height: clamp(64px, 12vh, 90px) !important;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bv-label { position: absolute; top: 10%; left: 0; right: 0; text-align: center; z-index: 2;
+      color: #5d7a63; font-weight: 800; font-size: clamp(15px, 3vh, 19px); }
+    /* геометрические формы (рассадники по слотам и ответам) */
+    .shp { display: block; }
+    .shp.circle   { width: 62%; height: 62%; border-radius: 50%; }
+    .shp.square   { width: 60%; height: 60%; border-radius: 16%; }
+    .shp.triangle { width: 68%; height: 60%; clip-path: polygon(50% 6%, 96% 94%, 4% 94%); }
+    .shp.rect     { width: 76%; height: 44%; border-radius: 14%; }
+    .shp.circle   { background: #ff8fa3; }
+    .shp.square   { background: #ffd166; }
+    .shp.triangle { background: #6fc7e8; }
+    .shp.rect     { background: #c3aed6; }
+    .shp.ghost    { background: rgba(122,74,42,0.38) !important; }
+    /* ================= ПУТЕШЕСТВИЕ МЕЖДУ ЛОКАЦИЯМИ (шторка) ================= */
+    #travelOv {
+      position: fixed; inset: 0; z-index: 30; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 4px;
+      background: linear-gradient(180deg, #8fd0f2 0%, #bfe6b1 60%, #8ed081 100%);
+      opacity: 0; transition: opacity .45s ease; pointer-events: none;
+    }
+    #travelOv.on { opacity: 1; pointer-events: auto; }
+    .travel-emoji { font-size: clamp(60px, 13vh, 92px); animation: pauseFloat 2.4s ease-in-out infinite; }
+    .travel-name {
+      font-size: clamp(30px, 7vh, 46px); font-weight: 900; color: #2f5b3a;
+      text-shadow: 0 2px 0 rgba(255,255,255,0.5); animation: fadeUp .7s ease both;
+    }
+    .travel-sub { font-size: clamp(16px, 3.4vh, 22px); font-weight: 700; color: #4a7a55; animation: fadeUp .7s ease .15s both; }
+    .travel-spark { margin-top: 12px; font-size: clamp(20px, 4vh, 28px); letter-spacing: 14px; animation: gapPulse .8s ease-in-out infinite alternate; }
+
     /* ================= ПОВЕРНИ УСТРОЙСТВО ================= */
     #rotate {
       position: fixed; inset: 0; z-index: 40; display: none;
@@ -651,12 +724,33 @@
     <div class="cg-finger" id="stFinger" style="display:none">👇</div>
   </div>
 
+  <div id="beavergame">
+    <div class="mg-card">
+      <button class="mg-hint" id="hintBvrBtn" aria-label="подсказка">💡</button>
+      <div class="cg-title">🦫 Дощечки для мостика</div>
+      <div class="bv-field">
+        <div class="bv-label" id="bvLabel">Какой дощечки не хватает?</div>
+        <div class="bv-bridge" id="bvBridge"></div>
+        <div class="bv-cap"></div>
+        <div class="cg-answers bv-answers" id="bvAnswers"></div>
+      </div>
+    </div>
+    <div class="cg-finger" id="bvFinger" style="display:none">👇</div>
+  </div>
+
   <div id="storyOv">
     <div class="mg-card story-card">
       <div class="story-emoji" id="storyEmoji">🌟</div>
       <div class="story-text" id="storyText"></div>
       <button class="story-btn" id="storyNext">Дальше ▶</button>
     </div>
+  </div>
+
+  <div id="travelOv">
+    <div class="travel-emoji" id="travelEmoji">🌉</div>
+    <div class="travel-name" id="travelName">Речной берег</div>
+    <div class="travel-sub" id="travelSub">здесь живёт Бобр-строитель</div>
+    <div class="travel-spark">✨ ✨ ✨</div>
   </div>
 
   <div id="pauseOv">
@@ -740,7 +834,7 @@
       <p class="sub">Добрые приключения с пользой</p>
     </div>
     <div class="bar"><i></i></div>
-    <div id="verTag">v0.14.0</div>
+    <div id="verTag">v0.15.0</div>
   </div>
 
   <div id="select">
