@@ -1667,6 +1667,25 @@ function spawnBurst(pos, n = 10) {
 // ============ СОСТОЯНИЕ ============
 let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | molegame | sqgame | stonegame | beavergame | celebrate | story | ceremony | travel
 let dialogToken = 0;
+
+// ============ УРОВЕНЬ СЛОЖНОСТИ ПО ВОЗРАСТУ (3–4 / 5–6) ============
+// 0 = 3–4 года (базовый, самый бережный), 1 = 5–6 лет (чуть сложнее).
+// Выбор — на первой заставке И в Родительском уголке; хранится в wm_age_group.
+// Задания меняются только ПАРАМЕТРАМИ (без новых голосов): инструкции у всех
+// мини-игр и так универсальные, поэтому правило «слова ≡ картинке» не нарушается.
+let ageGroup = parseInt(localStorage.getItem('wm_age_group') || '0', 10);
+function ageLevel() { return ageGroup; }
+function setAgeGroup(v) {
+  ageGroup = v;
+  localStorage.setItem('wm_age_group', String(v));
+  syncAgeUI();
+}
+function syncAgeUI() {
+  document.querySelectorAll('#startGate .age-btns button').forEach(b =>
+    b.classList.toggle('on', parseInt(b.dataset.age, 10) === ageGroup));
+  document.querySelectorAll('#ageRow button').forEach(b =>
+    b.classList.toggle('on', parseInt(b.dataset.age, 10) === ageGroup));
+}
 function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
   pendingBeaver = pendingPortal = pendingFrog2 = false;
@@ -1896,6 +1915,7 @@ function openMinigame() {
   gameState = 'minigame';
   mgDom.done = 0;
   mgDom.lastAction = elapsed;
+  mgDom.total = ageLevel() ? 8 : 6; // 5–6 лет: больше плодов — чуть больше работы
   if (!mgDom.pair) mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
   document.getElementById('mgEmojiA').textContent = mgDom.pair.a;
   document.getElementById('mgDotA').style.background = mgDom.pair.ca;
@@ -1912,7 +1932,8 @@ function openMinigame() {
     // убрать старые яблоки
     for (const a of mgDom.apples) a.el.remove();
     mgDom.apples = [];
-    const kinds = ['red', 'red', 'red', 'green', 'green', 'green'].sort(() => rand() - 0.5);
+    const half = mgDom.total / 2;
+    const kinds = Array(half).fill('red').concat(Array(half).fill('green')).sort(() => rand() - 0.5);
     kinds.forEach((color, i) => {
       const col = i % 3, row = Math.floor(i / 3);
       const el = document.createElement('div');
@@ -2131,7 +2152,10 @@ function buildCountRound() {
   cgAnswers.innerHTML = '';
   cgFinger.style.display = 'none';
 
-  const n = cg.round === 1 ? 2 + Math.floor(rand() * 3) : 3 + Math.floor(rand() * 3); // 2..4, 3..5
+  const lv = ageLevel();
+  const n = lv
+    ? (cg.round === 1 ? 3 + Math.floor(rand() * 4) : 5 + Math.floor(rand() * 5)) // 5–6: 3..6, 5..9
+    : (cg.round === 1 ? 2 + Math.floor(rand() * 3) : 3 + Math.floor(rand() * 3)); // 3–4: 2..4, 3..5
   cg.correct = n;
   const emoji = CG_SETS[Math.floor(rand() * CG_SETS.length)];
   // Сова называет именно те картинки, что на экране (договаривает после приветствия)
@@ -2158,8 +2182,9 @@ function buildCountRound() {
   // варианты ответов: правильный + два похожих
   const opts = new Set([n]);
   let guard = 0;
+  const cap = lv ? 10 : 7; // старшие считают до 9 — и варианты ответов шире
   while (opts.size < 3 && guard++ < 60) {
-    opts.add(Math.max(1, Math.min(7, n - 2 + Math.floor(rand() * 5))));
+    opts.add(Math.max(1, Math.min(cap, n - 2 + Math.floor(rand() * 5))));
   }
   [...opts].sort(() => rand() - 0.5).forEach(v => {
     const b = document.createElement('button');
@@ -2255,7 +2280,8 @@ function openBridgeGame(shore) {
   gameState = 'bridgegame';
   bg.round = 0;
   bg.shore = !!shore;
-  bg.total = shore ? 3 : 2;
+  // 5–6 лет: у речной Лягушки все 3 раунда (в т.ч. А-Б-В); 3–4 года: 2 раунда попроще
+  bg.total = shore ? (ageLevel() ? 3 : 2) : 2;
   bgEl.querySelector('.cg-title').textContent = bg.shore ? '🌺 Речные камушки' : '🐸 Волшебный мостик';
   bgEl.style.display = 'flex';
   speak('voice/frog_ask.mp3', { after: true });
@@ -2286,7 +2312,8 @@ function buildBridgeRound() {
   if (!bg.shore) {
     if (bg.round === 1) { shown = [A, B, A, B]; answer = A; } // А-Б-А-Б-?
     else {
-      const t = Math.floor(rand() * 3);
+      // 3–4 года: узор из двух фигур; 5–6 лет: три фигуры (А-Б-В) — посложнее
+      const t = ageLevel() ? 2 : Math.floor(rand() * 2);
       if (t === 0) { shown = [A, A, B, A, A]; answer = B; }      // А-А-Б-А-А-?
       else if (t === 1) { shown = [A, B, B, A, B]; answer = B; } // А-Б-Б-А-Б-?
       else { shown = [A, B, C, A, B]; answer = C; }              // А-Б-В-А-Б-?
@@ -2380,7 +2407,8 @@ const mlField = document.getElementById('mlField');
 const mlFinger = document.getElementById('mlFinger');
 const mlCounter = document.getElementById('mlCounter');
 const ML_ROW = 6;  // этап 1: ряд из 5 норок внизу (как раньше)
-const ML_ALL = 12; // этап 2: большое поле 3×3 с 6 норками по всему экрану (по просьбе теста)
+// 3–4 года: только ряд (6 морковок). 5–6 лет: ряд + большое поле 3×3 (12 морковок).
+function mlAll() { return ageLevel() ? 12 : 6; }
 const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: false, stage: 1 };
 
 const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
@@ -2449,7 +2477,7 @@ function openMoleGame() {
   gameState = 'molegame';
   ml.got = 0; ml.slow = 0; ml.fingerShown = false; ml.stage = 1;
   ml.lastAction = elapsed; ml.timer = 0.7;
-  mlCounter.textContent = '🥕 0 из ' + ML_ALL;
+  mlCounter.textContent = '🥕 0 из ' + mlAll();
   buildMoleField(false);
   mlEl.style.display = 'flex';
   mlFinger.style.display = 'none';
@@ -2465,14 +2493,14 @@ function moleDuck(h, fast) {
   ml.timer = Math.max(ml.timer, fast ? 0.7 : 0.95); // спокойные паузы между выглядываниями
 }
 function moleTap(h) {
-  if (gameState !== 'molegame' || !h.up || ml.got >= ML_ALL) return;
+  if (gameState !== 'molegame' || !h.up || ml.got >= mlAll()) return;
   ml.lastAction = elapsed;
   mlFinger.style.display = 'none';
   ml.fingerShown = false;
   ml.holes.forEach(x => x.hole.classList.remove('glow'));
   if (h.carrot) {
     ml.got++;
-    mlCounter.textContent = '🥕 ' + ml.got + ' из ' + ML_ALL;
+    mlCounter.textContent = '🥕 ' + ml.got + ' из ' + mlAll();
     play('good');
     h.b.classList.add('caught');
     setTimeout(() => h.b.classList.remove('caught'), 380);
@@ -2481,17 +2509,22 @@ function moleTap(h) {
     moleDuck(h, true);
     ml.timer = 0.8; // следующий чуть погодя — темп комфортный малышу
     if (ml.stage === 1 && ml.got >= ML_ROW) {
-      // маленькая победа — и ВТОРОЙ этап: Крот сам приглашает на большое поле!
-      ml.stage = 2;
-      ml.timer = 2.0;
-      setTimeout(() => {
-        if (gameState !== 'molegame') return;
-        speak('voice/mole_field.mp3');
-        buildMoleField(true);
-        ml.lastAction = elapsed;
-        ml.timer = 1.6;
-      }, 850);
-    } else if (ml.got >= ML_ALL) {
+      if (ageLevel()) {
+        // 5–6 лет: маленькая победа — и ВТОРОЙ этап: Крот сам приглашает на большое поле!
+        ml.stage = 2;
+        ml.timer = 2.0;
+        setTimeout(() => {
+          if (gameState !== 'molegame') return;
+          speak('voice/mole_field.mp3');
+          buildMoleField(true);
+          ml.lastAction = elapsed;
+          ml.timer = 1.6;
+        }, 850);
+      } else {
+        // 3–4 года: ряд пройден — сразу праздник (без большого поля)
+        setTimeout(() => { if (gameState === 'molegame') { closeMoleGame(); celebrateMole(); } }, 700);
+      }
+    } else if (ml.got >= mlAll()) {
       setTimeout(() => { if (gameState === 'molegame') { closeMoleGame(); celebrateMole(); } }, 700);
     }
   } else {
@@ -2538,11 +2571,12 @@ const sqField = document.getElementById('sqField');
 const sqNut = document.getElementById('sqNut');
 const sqFinger = document.getElementById('sqFinger');
 const sqMsg = document.getElementById('sqMsg');
-const SQ_ROUNDS = [
-  { n: 3, shuffle: false },
-  { n: 3, shuffle: false },
-  { n: 4, shuffle: true },
-];
+// 3–4 года: три раунда по 3 грибочка (без перестановок). 5–6 лет: финал — 4 грибочка + перестановки.
+function sqRounds() {
+  return ageLevel()
+    ? [{ n: 3, shuffle: false }, { n: 3, shuffle: false }, { n: 4, shuffle: true }]
+    : [{ n: 3, shuffle: false }, { n: 3, shuffle: false }, { n: 3, shuffle: false }];
+}
 const SQ_SLOTS = { 3: [18, 45, 72], 4: [12, 35, 58, 81] };
 const sg = { round: 0, mushs: [], answer: 0, canTap: false, answered: false, lastAction: 0, fingerShown: false };
 
@@ -2561,6 +2595,7 @@ function startSqDialog() {
 function openSqGame() {
   gameState = 'sqgame';
   sg.round = 0;
+  sg.rounds = sqRounds();
   sqEl.style.display = 'flex';
   sqFinger.style.display = 'none';
   buildSqRound();
@@ -2570,7 +2605,7 @@ function closeSqGame() {
   sqFinger.style.display = 'none';
 }
 function buildSqRound() {
-  const cfg = SQ_ROUNDS[sg.round];
+  const cfg = sg.rounds[sg.round];
   sg.mushs = [];
   sg.canTap = false; sg.answered = false; sg.fingerShown = false;
   sg.lastAction = elapsed;
@@ -2645,7 +2680,7 @@ function sqTap(i) {
     setTimeout(() => {
       if (gameState !== 'sqgame') return;
       sg.round++;
-      if (sg.round >= SQ_ROUNDS.length) { closeSqGame(); celebrateSq(); }
+      if (sg.round >= sg.rounds.length) { closeSqGame(); celebrateSq(); }
       else buildSqRound();
     }, 1200);
   } else {
@@ -2699,7 +2734,8 @@ function celebrateSq() {
 // Правила: Светлячок играет песенку на камушках-нотках, ребёнок повторяет.
 // Zero Fail: ошибся — мягкий «плинг», Светлячок играет песенку ещё раз, медленнее.
 const ST_NOTE_CSS = ['#f28ba8', '#f5b45e', '#f7e07a', '#8fd694', '#8fc3f0'];
-const ST_ROUNDS = [2, 3, 4]; // длина песенки по раундам (3–6 лет)
+// 3–4 года: песенки короче (2–3 ноты). 5–6 лет: до 4 нот.
+function stRounds() { return ageLevel() ? [2, 3, 4] : [2, 2, 3]; }
 const stEl = document.getElementById('stonegame');
 const stField = document.getElementById('stField');
 const stMsg = document.getElementById('stMsg');
@@ -2721,6 +2757,7 @@ function startSvetDialog() {
 function openStoneGame() {
   gameState = 'stonegame';
   st.round = 0;
+  st.rounds = stRounds();
   st.timers.forEach(clearTimeout); st.timers = [];
   stField.innerHTML = '';
   st.stones = [];
@@ -2748,7 +2785,7 @@ function closeStoneGame() {
 function buildStRound() {
   st.seq = [];
   let prev = -1;
-  for (let i = 0; i < ST_ROUNDS[st.round]; i++) {
+  for (let i = 0; i < st.rounds[st.round]; i++) {
     let n = Math.floor(Math.random() * ST_NOTES.length);
     if (n === prev) n = (n + 1 + Math.floor(Math.random() * 3)) % ST_NOTES.length; // без одинаковых подряд
     st.seq.push(n); prev = n;
@@ -2758,7 +2795,7 @@ function buildStRound() {
   st.lastAction = elapsed;
   stFinger.style.display = 'none';
   st.stones.forEach(s => { s.classList.remove('glow', 'lit', 'shake'); s.disabled = true; });
-  stProg.innerHTML = ST_ROUNDS.map((_, i) => `<i class="${i < st.round ? 'on' : ''}"></i>`).join('');
+  stProg.innerHTML = st.rounds.map((_, i) => `<i class="${i < st.round ? 'on' : ''}"></i>`).join('');
   stMsg.textContent = 'Слушай песенку…';
   st.timers.push(setTimeout(() => stPlaySeq(1, () => {
     if (gameState !== 'stonegame') return;
@@ -2806,11 +2843,11 @@ function stTap(i) {
       st.stones.forEach(s => { s.disabled = true; });
       play('good');
       stMsg.textContent = 'Ура! Песенка получилась! 🎉';
-      stProg.innerHTML = ST_ROUNDS.map((_, k) => `<i class="${k <= st.round ? 'on' : ''}"></i>`).join('');
+      stProg.innerHTML = st.rounds.map((_, k) => `<i class="${k <= st.round ? 'on' : ''}"></i>`).join('');
       st.timers.push(setTimeout(() => {
         if (gameState !== 'stonegame') return;
         st.round++;
-        if (st.round >= ST_ROUNDS.length) { closeStoneGame(); celebrateFirefly(); }
+        if (st.round >= st.rounds.length) { closeStoneGame(); celebrateFirefly(); }
         else buildStRound();
       }, 1250));
     }
@@ -2882,6 +2919,8 @@ const bvLabel = document.getElementById('bvLabel');
 const bvFinger = document.getElementById('bvFinger');
 const bv = { round: 0, total: 3, target: '', order: [], answered: false, lastAction: 0, fingerShown: false };
 const BV_SHAPES = ['circle', 'square', 'triangle', 'rect'];
+// 3–4 года: три формы (круг/квадрат/треугольник). 5–6 лет: все четыре (+ прямоугольник).
+function bvShapes() { return ageLevel() ? BV_SHAPES : BV_SHAPES.slice(0, 3); }
 const BV_ASK = {
   circle: 'voice/bobr_ask_circle.mp3', square: 'voice/bobr_ask_square.mp3',
   triangle: 'voice/bobr_ask_triangle.mp3', rect: 'voice/bobr_ask_rect.mp3',
@@ -2904,8 +2943,9 @@ function startBeaverDialog() {
 function openBeaverGame() {
   gameState = 'beavergame';
   bv.round = 0;
+  bv.total = ageLevel() ? 4 : 3;
   // порядок форм выбираем ДО озвучки: фраза Бобра всегда совпадает с картинкой
-  bv.order = [...BV_SHAPES].sort(() => rand() - 0.5).slice(0, bv.total);
+  bv.order = [...bvShapes()].sort(() => rand() - 0.5).slice(0, bv.total);
   bvrEl.style.display = 'flex';
   buildBeaverRound();
 }
@@ -2946,9 +2986,9 @@ function buildBeaverRound() {
     bvBridge.appendChild(slot);
   }
 
-  // варианты: нужная форма + соседи; к третьему раунду — все четыре
-  const nOpts = bv.round >= 3 ? 4 : 3;
-  const opts = [bv.target, ...BV_SHAPES.filter(s => s !== bv.target)].slice(0, nOpts);
+  // варианты: нужная форма + соседи; 5–6 лет к третьему раунду — все четыре
+  const nOpts = ageLevel() ? (bv.round >= 3 ? 4 : 3) : 3;
+  const opts = [bv.target, ...bvShapes().filter(s => s !== bv.target)].slice(0, nOpts);
   opts.sort(() => rand() - 0.5).forEach(v => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -3611,6 +3651,11 @@ document.getElementById('startBtn').addEventListener('click', () => {
     setTimeout(() => { if (selectEl.style.display === 'flex' && !hero) speak('voice/select_char.mp3'); }, 250);
   }
 });
+// выбор возраста на заставке — сразу применяется и запоминается
+document.querySelectorAll('#startGate .age-btns button').forEach(b => {
+  b.addEventListener('click', () => { initAudio(); setAgeGroup(parseInt(b.dataset.age, 10)); play('pop'); });
+});
+syncAgeUI();
 
 // Пауза: весь мир замирает (волки не щекочут), звук глушится
 const pauseOv = document.getElementById('pauseOv');
@@ -3714,8 +3759,23 @@ function openParent() {
     statRow('📗 Сказка: «Корешок-ручеёк»', s1) +
     statRow('📗 Сказка: «Звонкое созвучие»', s2) +
     statRow('⏱ Всего в игре', playMin + ' мин');
+  renderAgeRow();
   renderLimitRow();
   parentOv.style.display = 'flex';
+}
+function renderAgeRow() {
+  const row = document.getElementById('ageRow');
+  if (!row) return;
+  row.innerHTML = '';
+  [[0, '3–4 года'], [1, '5–6 лет']].forEach(([v, lbl]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = lbl;
+    b.dataset.age = String(v);
+    if (ageGroup === v) b.classList.add('on');
+    b.addEventListener('click', () => { setAgeGroup(v); play('pop'); });
+    row.appendChild(b);
+  });
 }
 function renderLimitRow() {
   const row = document.getElementById('limitRow');
@@ -4502,7 +4562,7 @@ function animate() {
       upH.t += dt;
       const limit = (upH.carrot ? 3.0 : 2.4) * (ml.slow > 0 ? 1.75 : 1);
       if (upH.t > limit) moleDuck(upH);
-    } else if (ml.got < ML_ALL) {
+    } else if (ml.got < mlAll()) {
       ml.timer -= dt;
       if (ml.timer <= 0) {
         const i = Math.floor(Math.random() * ml.holes.length);
