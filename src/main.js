@@ -576,11 +576,13 @@ const owlBubTex = {
 function setOwlBubble(t) { owlBubble.material.map = t; owlBubble.material.needsUpdate = true; }
 
 // ============ ЛЯГУШКА ============
-const frog = new THREE.Group();
-{
+// строим через функцию: одна и та же лягушка живёт у пруда (Л1) и на речном берегу (Л2).
+// (clone(true) у такой группы почему-то теряет «лицевую» сторону — не боремся, строим два раза)
+function buildFrogGroup() {
+  const g = new THREE.Group();
   const pad = new THREE.Mesh(new THREE.CircleGeometry(0.62, 20), L(0x4faf6a));
   pad.rotation.x = -Math.PI / 2; pad.position.y = 0.06;
-  frog.add(pad);
+  g.add(pad);
   const fBody = new THREE.Group();
   const fbodyM = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 18), L(0x69c34d));
   fbodyM.position.y = 0.42; fbodyM.scale.set(1, 0.85, 0.9); fbodyM.castShadow = true;
@@ -608,9 +610,11 @@ const frog = new THREE.Group();
   flegL.position.set(-0.32, 0.2, -0.05); flegL.scale.set(1.2, 0.6, 1.1);
   const flegR = flegL.clone(); flegR.position.x = 0.32;
   fBody.add(fbodyM, fbelly, fsockL, fsockR, feyeL, feyeR, fpupL, fpupR, fmouth, flegL, flegR);
-  frog.add(fBody);
-  frog.userData.body = fBody;
+  g.add(fBody);
+  g.userData.body = fBody;
+  return g;
 }
+const frog = buildFrogGroup();
 const FROG_POS = { x: 11.5, z: 5.2 };
 frog.position.set(FROG_POS.x, 0.02, FROG_POS.z);
 frog.rotation.y = Math.atan2(0 - FROG_POS.x, 0 - FROG_POS.z);
@@ -1314,6 +1318,60 @@ const beaverBubTex = {
 };
 function setBeaverBubble(t) { beaverBubble.material.map = t; beaverBubble.material.needsUpdate = true; }
 
+// ============ РЕЧНАЯ ЛЯГУШКА (Локация 2: узоры на цветных камушках) ============
+// Та же героиня в новом месте: прискакала с пруда на речку — сказка цельная,
+// а дети встречают знакомую подругу. Модель — клон, отличаем аксессуаром:
+// розовая кувшинка на макушке (читается и с высокой камеры).
+const FROG2_POS = { x: LOC2.x + 4.15, z: LOC2.z + 7.4 };  // восточный берег, рядом с кувшинками
+const FROG2_APPR = { x: LOC2.x + 3.5, z: LOC2.z + 5.7 };  // открытая линия подхода по берегу
+const frog2 = buildFrogGroup(); // своя постройка — не clone(): клон почему-то показывал спину
+frog2.scale.setScalar(1.16); // как у прудовой: крупнее — читается и на телефоне
+frog2.position.set(FROG2_POS.x, 0.02, FROG2_POS.z);
+frog2.rotation.y = Math.atan2(FROG2_APPR.x - FROG2_POS.x, FROG2_APPR.z - FROG2_POS.z); // лицом к гостям
+{
+  // кувшинка-заколка: 6 розовых лепестков + золотая сердцевинка (сбоку макушки — видно всегда)
+  const acc = new THREE.Group();
+  const petalM = L(0xf7a8c9);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), petalM);
+    p.position.set(Math.cos(a) * 0.1, 0, Math.sin(a) * 0.1);
+    p.scale.set(1.35, 0.4, 0.85);
+    p.rotation.y = -a; // лепестками наружу
+    acc.add(p);
+  }
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffe27a }));
+  core.position.y = 0.02;
+  acc.add(core);
+  acc.position.set(0.26, 0.85, 0.1); // сбоку на макушке, не задевая глаз
+  acc.rotation.z = -0.5; acc.rotation.x = 0.25;
+  frog2.userData.body.add(acc);
+  // большая кувшинка-полянка у самой воды — её любимое место
+  const pad2 = new THREE.Mesh(new THREE.CircleGeometry(1.0, 22), L(0x5fbf7a));
+  pad2.rotation.x = -Math.PI / 2;
+  pad2.position.set(FROG2_POS.x - 0.55, 0.055, FROG2_POS.z + 0.75);
+  scene.add(pad2);
+  // пара розовых цветков-кувшинок рядом — её «садик»
+  for (const [ox, oz] of [[-1.15, 1.5], [-0.05, 1.95]]) {
+    const bl = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), petalM);
+    bl.position.set(FROG2_POS.x + ox, 0.13, FROG2_POS.z + oz);
+    bl.scale.set(1.25, 0.55, 1.25);
+    scene.add(bl);
+  }
+}
+scene.add(frog2);
+obstacles.push({ x: FROG2_POS.x, z: FROG2_POS.z, r: 0.5 });
+
+const frog2Bubble = makeBubbleSprite('🌺', 1.05);
+frog2Bubble.position.set(FROG2_POS.x, 2.2, FROG2_POS.z);
+scene.add(frog2Bubble);
+const frog2BubTex = {
+  puzzle: frog2Bubble.material.map,
+  star: makeBubbleSprite('⭐', 1).material.map,
+};
+function setFrog2Bubble(t) { frog2Bubble.material.map = t; frog2Bubble.material.needsUpdate = true; }
+
+
 const treeBubble = makeBubbleSprite('💧', 0.95);
 treeBubble.position.set(TREE_POS.x, 2.6, TREE_POS.z);
 scene.add(treeBubble);
@@ -1611,7 +1669,7 @@ let gameState = 'loading'; // loading | intro | explore | dialog | minigame | co
 let dialogToken = 0;
 function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
-  pendingBeaver = pendingPortal = false;
+  pendingBeaver = pendingPortal = pendingFrog2 = false;
   path = null; pathTarget = null; finalTarget = null;
 }
 
@@ -2163,8 +2221,9 @@ const bgEl = document.getElementById('bridgegame');
 const bgRow = document.getElementById('bgRow');
 const bgAnswers = document.getElementById('bgAnswers');
 const bgFinger = document.getElementById('bgFinger');
-const bg = { round: 0, total: 2, answer: '', lastAction: 0, answered: false, fingerShown: false };
+const bg = { round: 0, total: 2, answer: '', lastAction: 0, answered: false, fingerShown: false, shore: false };
 const BG_POOL = ['🍄', '🌼', '⭐', '🐞', '🍀', '🍇'];
+const BG_POOL2 = ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠']; // цветные речные камушки (Локация 2)
 
 function startFrogDialog() {
   gameState = 'dialog';
@@ -2179,9 +2238,25 @@ function startFrogDialog() {
   setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(); }, 3200);
 }
 
-function openBridgeGame() {
+function startFrog2Dialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  setFrog2Bubble(frog2BubTex.puzzle);
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_frog2') === '1' ? 'voice/frog2_again.mp3' : 'voice/frog2_hello.mp3');
+  const dx = FROG2_POS.x - hero.position.x, dz = FROG2_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(true); }, 3200);
+}
+
+function openBridgeGame(shore) {
   gameState = 'bridgegame';
   bg.round = 0;
+  bg.shore = !!shore;
+  bg.total = shore ? 3 : 2;
+  bgEl.querySelector('.cg-title').textContent = bg.shore ? '🌺 Речные камушки' : '🐸 Волшебный мостик';
   bgEl.style.display = 'flex';
   speak('voice/frog_ask.mp3', { after: true });
   buildBridgeRound();
@@ -2200,20 +2275,27 @@ function buildBridgeRound() {
   bgAnswers.innerHTML = '';
   bgFinger.style.display = 'none';
 
-  // три разных картинки для узора
+  // три разных картинки для узора: на полянке — предметы, на берегу — ЦВЕТНЫЕ камушки
   const picks = [];
-  const pool = [...BG_POOL];
+  const pool = [...(bg.shore ? BG_POOL2 : BG_POOL)];
   while (picks.length < 3) picks.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
   const [A, B, C] = picks;
 
   // шаблоны узоров: [показанные..., правильный следующий]
   let shown, answer;
-  if (bg.round === 1) { shown = [A, B, A, B]; answer = A; } // А-Б-А-Б-?
-  else {
-    const t = Math.floor(rand() * 3);
-    if (t === 0) { shown = [A, A, B, A, A]; answer = B; }      // А-А-Б-А-А-?
-    else if (t === 1) { shown = [A, B, B, A, B]; answer = B; } // А-Б-Б-А-Б-?
-    else { shown = [A, B, C, A, B]; answer = C; }              // А-Б-В-А-Б-?
+  if (!bg.shore) {
+    if (bg.round === 1) { shown = [A, B, A, B]; answer = A; } // А-Б-А-Б-?
+    else {
+      const t = Math.floor(rand() * 3);
+      if (t === 0) { shown = [A, A, B, A, A]; answer = B; }      // А-А-Б-А-А-?
+      else if (t === 1) { shown = [A, B, B, A, B]; answer = B; } // А-Б-Б-А-Б-?
+      else { shown = [A, B, C, A, B]; answer = C; }              // А-Б-В-А-Б-?
+    }
+  } else {
+    // берег: длиннее и чуть хитрее (расширение «Волшебного мостика», темп тот же комфортный)
+    if (bg.round === 1) { shown = [A, A, B, A, A]; answer = B; }         // А-А-Б-А-А-?
+    else if (bg.round === 2) { shown = [A, B, B, A, B, B]; answer = A; } // А-Б-Б-А-Б-Б-?
+    else { shown = [A, B, C, A, B, C]; answer = A; }                     // А-Б-В-А-Б-В-?
   }
   bg.answer = answer;
 
@@ -2236,6 +2318,7 @@ function buildBridgeRound() {
     const b = document.createElement('button');
     b.className = 'cg-answer bg-answer';
     b.textContent = v;
+    b.dataset.e = v; // обязательно: 💡 и авто-подсказки находят правильную кнопку по нему
     b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
     b.addEventListener('click', () => answerBridge(v, b));
     bgAnswers.appendChild(b);
@@ -2255,7 +2338,7 @@ function answerBridge(v, btn) {
     const gap = bgRow.querySelector('.gap');
     if (gap) { gap.classList.remove('gap'); gap.textContent = v; gap.classList.add('jump'); }
     setTimeout(() => {
-      if (bg.round >= bg.total) { closeBridgeGame(); celebrateFrog(); }
+      if (bg.round >= bg.total) { closeBridgeGame(); celebrateFrog(bg.shore); }
       else { buildBridgeRound(); }
     }, 900);
   } else {
@@ -2265,23 +2348,24 @@ function answerBridge(v, btn) {
   }
 }
 
-function celebrateFrog() {
+function celebrateFrog(shore) {
   gameState = 'celebrate';
   dropsCount++;
   refreshDrops(true);
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_frog', '1'); bumpWin('frog');
+  const px = shore ? FROG2_POS : FROG_POS;
+  localStorage.setItem(shore ? 'wm_met_frog2' : 'wm_met_frog', '1'); bumpWin(shore ? 'frog2' : 'frog');
   setTimeout(() => play('drop'), 450);
-  setTimeout(() => speak('voice/frog_win.mp3'), 600);
-  spawnBurst(new THREE.Vector3(FROG_POS.x, 1.4, FROG_POS.z), 14);
+  setTimeout(() => speak(shore ? 'voice/frog2_win.mp3' : 'voice/frog_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(px.x, 1.4, px.z), 14);
   spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
-  setFrogBubble(frogBubTex.star);
-  frogBubble.visible = true;
+  if (shore) { setFrog2Bubble(frog2BubTex.star); frog2Bubble.visible = true; }
+  else { setFrogBubble(frogBubTex.star); frogBubble.visible = true; }
   setTimeout(() => {
     gameState = 'explore';
-    setFrogBubble(frogBubTex.puzzle);
+    if (shore) setFrog2Bubble(frog2BubTex.puzzle); else setFrogBubble(frogBubTex.puzzle);
     checkStory();
   }, 2600);
 }
@@ -3266,6 +3350,7 @@ let pendingMole = false;
 let pendingSq = false;
 let pendingFire = false;
 let pendingBeaver = false;
+let pendingFrog2 = false;
 let pendingPortal = false;
 let pendingHouse = false;
 let finalTarget = null;
@@ -3400,6 +3485,13 @@ window.addEventListener('pointerup', (e) => {
     const dx = BEAVER_POS.x - hero.position.x, dz = BEAVER_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.4) startBeaverDialog();
     else { pendingBeaver = true; givePath(BEAVER_APPR.x, BEAVER_APPR.z); }
+    return;
+  }
+  // тап по речной Лягушке (Локация 2)
+  if (curLoc === 1 && rc.intersectObject(frog2, true).length) {
+    const dx = FROG2_POS.x - hero.position.x, dz = FROG2_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startFrog2Dialog();
+    else { pendingFrog2 = true; givePath(FROG2_APPR.x, FROG2_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -3612,6 +3704,7 @@ function openParent() {
     statRow('🦉 Сова — побед', wins('owl')) +
     statRow('🐸 Лягушка — побед', wins('frog')) +
     statRow('🦫 Бобр-строитель — побед', wins('beaver')) +
+    statRow('🌺 Речная Лягушка — побед', wins('frog2')) +
     statRow('🐾 Крот — побед', wins('mole')) +
     statRow('🐿️ Белка — побед', wins('sq')) +
     statRow('✨ Светлячок — побед', wins('fire')) +
@@ -3682,7 +3775,7 @@ function chapterStates() {
   const ch1 = localStorage.getItem('wm_story_mole') === '1';
   const ch2 = starLit;
   const ch3 = localStorage.getItem('wm_portal_seen') === '1' || localStorage.getItem('wm_visit_l2') === '1';
-  const ch3done = localStorage.getItem('wm_met_beaver') === '1';
+  const ch3done = localStorage.getItem('wm_met_beaver') === '1' && localStorage.getItem('wm_met_frog2') === '1';
   return [
     { num: 'Глава 1', emoji: '🥕', name: 'Корешок-ручеёк', state: ch1 ? 'done' : 'open',
       voice: 'voice/story1.mp3', text: 'Тише… слышишь? Древо Желаний шепчет: каждая добрая помощь делает его сильнее! А Крот прокопал к нему корешок-ручеёк.' },
@@ -3999,7 +4092,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingPortal || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingPortal || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -4044,6 +4137,11 @@ function animate() {
         pendingBeaver = false;
         const d = Math.hypot(BEAVER_POS.x - hero.position.x, BEAVER_POS.z - hero.position.z);
         if (d < 3.6) startBeaverDialog();
+      }
+      if (pendingFrog2) {
+        pendingFrog2 = false;
+        const d = Math.hypot(FROG2_POS.x - hero.position.x, FROG2_POS.z - hero.position.z);
+        if (d < 3.6) startFrog2Dialog();
       }
       if (pendingPortal) {
         pendingPortal = false;
@@ -4182,6 +4280,11 @@ function animate() {
     frog.userData.body.position.y = fhop * 0.1;
     frog.userData.body.scale.y = 0.92 + fhop * 0.08;
     frogBubble.position.y = 2.2 + Math.sin(elapsed * 2.2) * 0.08;
+    // речная Лягушка (Л2) — та же пластика, со сдвигом фазы (не «в унисон»)
+    const fhop2 = Math.abs(Math.sin(elapsed * 2.6 + 1.3));
+    frog2.userData.body.position.y = fhop2 * 0.1;
+    frog2.userData.body.scale.y = 0.92 + fhop2 * 0.08;
+    frog2Bubble.position.y = 2.2 + Math.sin(elapsed * 2.2 + 0.9) * 0.08;
     // Крот: голова то выглядывает, то прячется, фонарик светится ночью
     const mp = (Math.sin(elapsed * 1.25) + 1) / 2;
     mole.userData.head.position.y = 0.08 + mp * 0.55;
@@ -4650,6 +4753,15 @@ if (location.hash.indexOf('#shot') === 0) {
           givePath(PORTAL_APPR[0].x, PORTAL_APPR[0].z);
         }
       }
+      else if (kind === 'frog2') {
+        // вид на речную Лягушку у кувшинок (Локация 2)
+        jumpToLoc(1);
+        hero.position.set(FROG2_APPR.x, 0, FROG2_APPR.z);
+        hero.rotation.y = Math.atan2(FROG2_POS.x - FROG2_APPR.x, FROG2_POS.z - FROG2_APPR.z);
+        camera.position.copy(hero.position).add(camOffset);
+        lookTarget.set(FROG2_POS.x, 0.7, FROG2_POS.z);
+      }
+      else if (kind === 'frog2g') { jumpToLoc(1); hero.position.set(FROG2_APPR.x, 0, FROG2_APPR.z); openBridgeGame(true); }
       else if (kind === 'whedge' || kind === 'wfrog') {
         // витринные виды нового декора: грядки Ёжика / мостик-дуга Лягушки
         const p = kind === 'whedge'
@@ -4709,13 +4821,14 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'hedge') subj = hedgehog;
       else if (name === 'owl') { subj = owl; dist = 3.4; lookY = 0.85; }
       else if (name === 'frog') { subj = frog; dist = 2.8; lookY = 0.55; }
+      else if (name === 'frog2') { subj = frog2; dist = 2.8; lookY = 0.55; }
       else if (name === 'mole') { subj = mole; dist = 2.3; lookY = 0.5; }
       else if (name === 'sq') { subj = sq; dist = 2.3; lookY = 0.6; }
       else if (name === 'fire') { subj = firefly; dist = 1.55; lookY = 0.62; }
       else if (name === 'beaver') { subj = beaver; dist = 2.6; lookY = 0.6; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
