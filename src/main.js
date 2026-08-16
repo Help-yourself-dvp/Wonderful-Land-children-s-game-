@@ -104,6 +104,70 @@ for (const [x, z, r] of [[7.8, 6.8, 0.5], [-4.5, -4, 0.42], [11, 6.5, 0.38]]) {
   scene.add(log);
   obstacles.push({ x: 8.9, z: 1.2, r: 1.0 });
 }
+// Кустик-«ширма» в узком проходе между Древом и огородиком: раньше герой там
+// поджимался и «подзастревал» с первого раза — теперь маршруты идут красивой дугой.
+for (const [bx, bz, br] of [[0.9, -4.3, 0.66], [1.75, -4.7, 0.5]]) {
+  const bush = new THREE.Mesh(new THREE.SphereGeometry(br, 16, 12), L(0x6fbf5f));
+  bush.position.set(bx, br * 0.72, bz); bush.scale.y = 0.85; bush.castShadow = true;
+  scene.add(bush);
+  obstacles.push({ x: bx, z: bz, r: br * 0.8 });
+}
+// Грядки Ёжика — он и правда «ждёт у грядок», как говорит рассказчица (север-запад)
+{
+  const beds = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.22, 0.42), L(0x8a5f42));
+    bed.position.set(-0.62 + i * 0.62, 0.12, 0);
+    bed.castShadow = true; bed.receiveShadow = true;
+    beds.add(bed);
+    for (const side of [-0.22, 0.22]) {
+      const sprout = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), L(0x7ed957));
+      sprout.scale.set(1, 0.6, 1);
+      sprout.position.set(-0.62 + i * 0.62 + side * (i % 2 ? 1 : -1) * 0.5, 0.27, 0.05);
+      beds.add(sprout);
+    }
+  }
+  beds.position.set(-4.35, 0, 8.95);
+  beds.rotation.y = 0.45;
+  scene.add(beds);
+  obstacles.push({ x: -4.35, z: 8.95, r: 1.15 });
+}
+// Мостик Лягушки — маленькая дуга над заводью рядом с её кочкой (она играет
+// в «Волшебный мостик» — теперь он есть и в мире)
+{
+  const pondletM = L(0x7ecbe8);
+  for (const [px, pz, pr] of [[10.55, 7.55, 0.85], [11.35, 7.75, 0.75]]) {
+    const pl = new THREE.Mesh(new THREE.CircleGeometry(pr, 24), pondletM);
+    pl.rotation.x = -Math.PI / 2; pl.position.set(px, 0.045, pz);
+    scene.add(pl);
+  }
+  const lily = new THREE.Mesh(new THREE.CircleGeometry(0.2, 12), L(0x5fbf7a));
+  lily.rotation.x = -Math.PI / 2; lily.position.set(10.4, 0.07, 7.4);
+  scene.add(lily);
+  const fbr = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const y = 0.1 + Math.sin((i / 2) * Math.PI) * 0.1;
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 1.15), L(i % 2 ? 0xbd8760 : 0xb07b4f));
+    plank.position.set(-0.4 + i * 0.4, y, 0);
+    plank.rotation.z = (i - 1) * -0.14;
+    plank.castShadow = true;
+    fbr.add(plank);
+  }
+  for (const sz of [-0.55, 0.55]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.06, 0.08), L(0x9a6b4f));
+    rail.position.set(0, 0.42, sz);
+    fbr.add(rail);
+    for (const px of [-0.42, 0.42]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.34, 6), L(0x8a5a3b));
+      post.position.set(px, 0.28, sz);
+      fbr.add(post);
+    }
+  }
+  fbr.position.set(10.95, 0.05, 7.65);
+  fbr.rotation.y = -0.45;
+  scene.add(fbr);
+  obstacles.push({ x: 10.95, z: 7.6, r: 1.25 });
+}
 for (const [x, z] of [[-9, 1.5], [8.4, -4.6], [-5.8, 8.6]]) {
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.42, 10), L(0xf7e7c3));
   stem.position.set(x, 0.21, z);
@@ -444,6 +508,7 @@ hedgehog.position.set(HEDGE_POS.x, 0, HEDGE_POS.z);
 hedgehog.rotation.y = 0.4;
 scene.add(hedgehog);
 obstacles.push({ x: HEDGE_POS.x, z: HEDGE_POS.z, r: 0.45 });
+hedgehog.scale.setScalar(1.16); // крупнее — читается и на телефоне
 
 const hedgeBubble = makeBubbleSprite('🍎', 1.05);
 hedgeBubble.position.set(HEDGE_POS.x, 2.1, HEDGE_POS.z);
@@ -499,6 +564,7 @@ owl.position.set(OWL_POS.x, 0, OWL_POS.z);
 owl.rotation.y = Math.atan2(0 - OWL_POS.x, 0 - OWL_POS.z);
 scene.add(owl);
 obstacles.push({ x: OWL_POS.x, z: OWL_POS.z, r: 0.55 });
+owl.scale.setScalar(1.14); // крупнее — читается и на телефоне
 
 const owlBubble = makeBubbleSprite('🔢', 1.05);
 owlBubble.position.set(OWL_POS.x, 2.5, OWL_POS.z);
@@ -550,6 +616,7 @@ frog.position.set(FROG_POS.x, 0.02, FROG_POS.z);
 frog.rotation.y = Math.atan2(0 - FROG_POS.x, 0 - FROG_POS.z);
 scene.add(frog);
 obstacles.push({ x: FROG_POS.x, z: FROG_POS.z, r: 0.5 });
+frog.scale.setScalar(1.16); // крупнее — читается и на телефоне
 
 const frogBubble = makeBubbleSprite('🧩', 1.05);
 frogBubble.position.set(FROG_POS.x, 2.2, FROG_POS.z);
@@ -604,6 +671,7 @@ mole.position.set(MOLE_POS.x, 0, MOLE_POS.z);
 mole.rotation.y = Math.atan2(-2 - MOLE_POS.x, -1 - MOLE_POS.z);
 scene.add(mole);
 obstacles.push({ x: MOLE_POS.x, z: MOLE_POS.z, r: 0.75 });
+mole.scale.setScalar(1.14); // крупнее — читается и на телефоне
 const moleBubble = makeBubbleSprite('🥕', 0.85);
 moleBubble.position.set(MOLE_POS.x, 2.05, MOLE_POS.z);
 scene.add(moleBubble);
@@ -656,6 +724,7 @@ sq.position.set(SQRL_POS.x, 0, SQRL_POS.z);
 sq.rotation.y = Math.atan2(0 - SQRL_POS.x, 0 - SQRL_POS.z);
 scene.add(sq);
 obstacles.push({ x: SQRL_POS.x, z: SQRL_POS.z, r: 0.55 });
+sq.scale.setScalar(1.16); // крупнее — читается и на телефоне
 const sqBubble = makeBubbleSprite('🌰', 0.95);
 sqBubble.position.set(SQRL_POS.x, 2.3, SQRL_POS.z);
 scene.add(sqBubble);
@@ -727,6 +796,7 @@ firefly.position.set(FIRE_POS.x, 0, FIRE_POS.z);
 firefly.rotation.y = Math.atan2(0 - FIRE_POS.x, -2 - FIRE_POS.z); // смотрит к центру поляны
 scene.add(firefly);
 obstacles.push({ x: FIRE_POS.x, z: FIRE_POS.z, r: 0.55 });
+firefly.scale.setScalar(1.18); // крупнее — читается и на телефоне
 const svetBubble = makeBubbleSprite('🎵', 0.95);
 svetBubble.position.set(FIRE_POS.x, 2.1, FIRE_POS.z);
 scene.add(svetBubble);
@@ -1233,6 +1303,7 @@ beaver.position.set(BEAVER_POS.x, 0.02, BEAVER_POS.z);
 beaver.rotation.y = Math.atan2(LOC2.x - BEAVER_POS.x, LOC2.z - BEAVER_POS.z); // лицом к мостику
 scene.add(beaver);
 obstacles.push({ x: BEAVER_POS.x, z: BEAVER_POS.z, r: 0.55 });
+beaver.scale.setScalar(1.14); // крупнее — читается и на телефоне
 const BEAVER_APPR = { x: BEAVER_POS.x - 1.3, z: BEAVER_POS.z - 1.5 };
 const beaverBubble = makeBubbleSprite('🔷', 1.0);
 beaverBubble.position.set(BEAVER_POS.x, 2.35, BEAVER_POS.z);
@@ -1541,7 +1612,7 @@ let dialogToken = 0;
 function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
   pendingBeaver = pendingPortal = false;
-  path = null; finalTarget = null;
+  path = null; pathTarget = null; finalTarget = null;
 }
 
 // Капельки
@@ -2224,8 +2295,9 @@ const mlEl = document.getElementById('molegame');
 const mlField = document.getElementById('mlField');
 const mlFinger = document.getElementById('mlFinger');
 const mlCounter = document.getElementById('mlCounter');
-const ML_TOTAL = 6;
-const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: false };
+const ML_ROW = 6;  // этап 1: ряд из 5 норок внизу (как раньше)
+const ML_ALL = 12; // этап 2: большое поле 3×3 с 6 норками по всему экрану (по просьбе теста)
+const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: false, stage: 1 };
 
 const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
   + '<ellipse cx="20" cy="76" rx="11" ry="6" fill="#5c4030"/>'
@@ -2252,31 +2324,49 @@ function startMoleDialog() {
   hero.rotation.y = Math.atan2(dx, dz);
   setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, 2600);
 }
-function openMoleGame() {
-  gameState = 'molegame';
-  ml.got = 0; ml.slow = 0; ml.fingerShown = false;
-  ml.lastAction = elapsed; ml.timer = 0.7;
-  mlCounter.textContent = '🥕 0 из ' + ML_TOTAL;
+function makeMoleHole() {
+  const hole = document.createElement('div');
+  hole.className = 'ml-hole';
+  const mound = document.createElement('div');
+  mound.className = 'ml-mound';
+  const b = document.createElement('button');
+  b.className = 'ml-mole';
+  b.type = 'button';
+  b.setAttribute('aria-label', 'Крот в норке');
+  b.innerHTML = MOLE_SVG + '<span class="ml-carrot">🥕</span>';
+  const h = { hole, b, carr: null, up: false, carrot: false, t: 0 };
+  h.carr = b.querySelector('.ml-carrot');
+  b.addEventListener('pointerdown', (e) => { e.stopPropagation(); moleTap(h); });
+  hole.appendChild(mound);
+  hole.appendChild(b);
+  return h;
+}
+function buildMoleField(big) {
+  // big=false — ряд из 5 норок внизу (знакомый простой режим);
+  // big=true  — поле «крестики-нолики» 3×3 с шестью норками по всему экрану
   mlField.innerHTML = '';
+  mlField.classList.toggle('big', big);
   ml.holes = [];
-  for (let i = 0; i < 5; i++) {
-    const hole = document.createElement('div');
-    hole.className = 'ml-hole';
-    const mound = document.createElement('div');
-    mound.className = 'ml-mound';
-    const b = document.createElement('button');
-    b.className = 'ml-mole';
-    b.type = 'button';
-    b.setAttribute('aria-label', 'Крот в норке');
-    b.innerHTML = MOLE_SVG + '<span class="ml-carrot">🥕</span>';
-    const h = { hole, b, carr: null, up: false, carrot: false, t: 0 };
-    h.carr = b.querySelector('.ml-carrot');
-    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); moleTap(h); });
-    hole.appendChild(mound);
-    hole.appendChild(b);
-    mlField.appendChild(hole);
+  const cells = big ? [0, 2, 3, 5, 6, 8] : [0, 1, 2, 3, 4];
+  const total = big ? 9 : 5;
+  for (let c = 0; c < total; c++) {
+    if (cells.indexOf(c) < 0) {
+      const sp = document.createElement('div');
+      sp.className = 'ml-spacer';
+      mlField.appendChild(sp);
+      continue;
+    }
+    const h = makeMoleHole();
+    mlField.appendChild(h.hole);
     ml.holes.push(h);
   }
+}
+function openMoleGame() {
+  gameState = 'molegame';
+  ml.got = 0; ml.slow = 0; ml.fingerShown = false; ml.stage = 1;
+  ml.lastAction = elapsed; ml.timer = 0.7;
+  mlCounter.textContent = '🥕 0 из ' + ML_ALL;
+  buildMoleField(false);
   mlEl.style.display = 'flex';
   mlFinger.style.display = 'none';
 }
@@ -2291,14 +2381,14 @@ function moleDuck(h, fast) {
   ml.timer = Math.max(ml.timer, fast ? 0.7 : 0.95); // спокойные паузы между выглядываниями
 }
 function moleTap(h) {
-  if (gameState !== 'molegame' || !h.up || ml.got >= ML_TOTAL) return;
+  if (gameState !== 'molegame' || !h.up || ml.got >= ML_ALL) return;
   ml.lastAction = elapsed;
   mlFinger.style.display = 'none';
   ml.fingerShown = false;
   ml.holes.forEach(x => x.hole.classList.remove('glow'));
   if (h.carrot) {
     ml.got++;
-    mlCounter.textContent = '🥕 ' + ml.got + ' из ' + ML_TOTAL;
+    mlCounter.textContent = '🥕 ' + ml.got + ' из ' + ML_ALL;
     play('good');
     h.b.classList.add('caught');
     setTimeout(() => h.b.classList.remove('caught'), 380);
@@ -2306,7 +2396,18 @@ function moleTap(h) {
     h.carr.style.display = 'none';
     moleDuck(h, true);
     ml.timer = 0.8; // следующий чуть погодя — темп комфортный малышу
-    if (ml.got >= ML_TOTAL) {
+    if (ml.stage === 1 && ml.got >= ML_ROW) {
+      // маленькая победа — и ВТОРОЙ этап: Крот сам приглашает на большое поле!
+      ml.stage = 2;
+      ml.timer = 2.0;
+      setTimeout(() => {
+        if (gameState !== 'molegame') return;
+        speak('voice/mole_field.mp3');
+        buildMoleField(true);
+        ml.lastAction = elapsed;
+        ml.timer = 1.6;
+      }, 850);
+    } else if (ml.got >= ML_ALL) {
       setTimeout(() => { if (gameState === 'molegame') { closeMoleGame(); celebrateMole(); } }, 700);
     }
   } else {
@@ -3123,6 +3224,26 @@ function smoothPath(pts) {
   }
   return out;
 }
+// Убираем «сеточную рябь»: точки, отклоняющиеся от прямой соседей меньше чем на
+// ~0.18 м — это не поворот, а дрожание квантования сетки 0.5 м. Без чистки герой
+// бежит лесенкой и подрагивает влево-вправо даже на «прямой» дороге.
+function dejigPath(pts) {
+  if (pts.length < 3) return pts;
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = out[out.length - 1], b = pts[i], c = pts[i + 1];
+    const vx = c.x - a.x, vz = c.z - a.z;
+    const ll = vx * vx + vz * vz;
+    let dev = Infinity;
+    if (ll > 1e-6) {
+      const t = Math.max(0, Math.min(1, ((b.x - a.x) * vx + (b.z - a.z) * vz) / ll));
+      dev = Math.hypot(b.x - (a.x + vx * t), b.z - (a.z + vz * t));
+    }
+    if (dev > 0.18) out.push(b); // только значимые повороты
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
 
 // ============ УПРАВЛЕНИЕ ============
 const marker = new THREE.Mesh(
@@ -3136,6 +3257,7 @@ let markerLife = 0;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let path = null;
+let pathTarget = null; // опорная точка движения: выбирается ОДИН раз, а не каждый кадр
 let pendingHedge = false;
 let pendingTree = false;
 let pendingOwl = false;
@@ -3165,7 +3287,8 @@ function castAt(clientX, clientY) {
 function givePath(x, z) {
   let p = findPath(hero.position.x, hero.position.z, x, z);
   if (!p) p = [{ x, z }];
-  path = p;
+  path = dejigPath(p);
+  pathTarget = null;
   finalTarget = { x, z };
   repathCount = 0;
   blockedT = 0;
@@ -3208,6 +3331,7 @@ window.addEventListener('pointerup', (e) => {
   if (moved >= 24 || dt >= 500 || tickling > 0) return;
   if (gameState !== 'explore') return;
   if (albumEl.style.display === 'block') return;
+  if (chapMapEl.style.display === 'flex') return;
   const rc = castAt(e.clientX, e.clientY);
   // спрятавшийся герой реагирует только на домик (там спит)
   if (hiding) {
@@ -3377,10 +3501,24 @@ if (muteBtn) {
     muteBtn.textContent = toggleMute() ? '🔇' : '🔊';
   });
 }
+// Большая кнопка «Начало»: понятна и тем, кто не умеет читать. Заодно это тот самый
+// «жест пользователя», после которого звук разрешён системой — голос подсказки
+// «выбери друга» теперь гарантированно звучит на экране выбора героя.
+const startGateEl = document.getElementById('startGate');
 setTimeout(() => {
   splashEl.classList.add('fade-out');
-  setTimeout(() => { splashEl.style.display = 'none'; selectEl.style.display = 'flex'; }, 900);
+  setTimeout(() => { splashEl.style.display = 'none'; startGateEl.style.display = 'flex'; }, 900);
 }, 2600);
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio();
+  play('pop');
+  startGateEl.style.display = 'none';
+  selectEl.style.display = 'flex';
+  if (!selectSpoken) {
+    selectSpoken = true;
+    setTimeout(() => { if (selectEl.style.display === 'flex' && !hero) speak('voice/select_char.mp3'); }, 250);
+  }
+});
 
 // Пауза: весь мир замирает (волки не щекочут), звук глушится
 const pauseOv = document.getElementById('pauseOv');
@@ -3400,6 +3538,12 @@ document.getElementById('pauseResume').addEventListener('click', () => {
   pauseOv.style.display = 'none';
   setGamePaused(false);
   play('pop');
+});
+// Свёрнутое приложение (кнопка «домой» / экран блокировки) — мир и ВСЕ звуки на паузе.
+// Вернулись — звук просыпается сам (если не была открыта ручная пауза).
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { setGamePaused(true); }
+  else { setGamePaused(paused); }
 });
 
 // ============ РОДИТЕЛЬСКИЙ УГОЛОК ============
@@ -3506,20 +3650,89 @@ document.getElementById('parentClose').addEventListener('click', () => {
 });
 // «Стереть прогресс»: удерживать 2.5 с — защита от случайных пальчиков
 const resetBtn = document.getElementById('parentReset');
+const resetOv = document.getElementById('resetOv');
 let resetT = null;
 resetBtn.addEventListener('pointerdown', () => {
   resetBtn.classList.add('arm');
   resetBtn.textContent = 'Держи ещё — и сказка начнётся сначала…';
   resetT = setTimeout(() => {
     Object.keys(localStorage).filter(k => k.indexOf('wm_') === 0).forEach(k => localStorage.removeItem(k));
-    location.reload();
+    // ЯВНОЕ подтверждение: тёплая заставка + голос «начинаем сначала», потом чистый перезапуск
+    parentOv.style.display = 'none';
+    paused = false;
+    setGamePaused(false);
+    resetOv.style.display = 'flex';
+    setTimeout(() => resetOv.classList.add('on'), 50);
+    play('fanfare');
+    speak('voice/reset_done.mp3');
+    setTimeout(() => location.reload(), 3000);
   }, 2500);
 });
 ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => resetBtn.addEventListener(ev, () => {
   clearTimeout(resetT);
-  resetBtn.classList.remove('arm');
-  resetBtn.textContent = 'Стереть прогресс и начать сказку сначала';
+  if (resetOv.style.display !== 'flex') { // уже сработало — не трогаем кнопку, идёт перезапуск
+    resetBtn.classList.remove('arm');
+    resetBtn.textContent = 'Стереть прогресс и начать сказку сначала';
+  }
 }));
+// ============ КАРТА СКАЗКИ (главы как в старых играх: клеточки-мостик по миру) ============
+const chapMapEl = document.getElementById('chapMap');
+const mapPath = document.getElementById('mapPath');
+function chapterStates() {
+  const ch1 = localStorage.getItem('wm_story_mole') === '1';
+  const ch2 = starLit;
+  const ch3 = localStorage.getItem('wm_portal_seen') === '1' || localStorage.getItem('wm_visit_l2') === '1';
+  const ch3done = localStorage.getItem('wm_met_beaver') === '1';
+  return [
+    { num: 'Глава 1', emoji: '🥕', name: 'Корешок-ручеёк', state: ch1 ? 'done' : 'open',
+      voice: 'voice/story1.mp3', text: 'Тише… слышишь? Древо Желаний шепчет: каждая добрая помощь делает его сильнее! А Крот прокопал к нему корешок-ручеёк.' },
+    { num: 'Глава 2', emoji: '🌟', name: 'Звонкое созвучие', state: ch2 ? 'done' : (ch1 ? 'open' : 'locked'),
+      voice: 'voice/story2_narr.mp3', text: 'Ты помог всем шестерым друзьям — и звезда засияла для всей полянки! Её свет — как маяк: по нему мы найдём новые земли.' },
+    { num: 'Глава 3', emoji: '🦫', name: 'Речной берег', state: ch3done ? 'done' : (ch3 ? 'open' : 'locked'),
+      voice: 'voice/portal_hint.mp3', text: 'За волшебной аркой — Речной берег! Там живёт Бобр-строитель. Помоги ему собрать мостик из дощечек!' },
+  ];
+}
+function openChapMap() {
+  mapPath.innerHTML = '';
+  const chs = chapterStates();
+  chs.forEach((c, i) => {
+    if (i > 0) {
+      const dash = document.createElement('div');
+      dash.className = 'map-dash' + (chs[i - 1].state === 'done' ? ' lit' : '');
+      mapPath.appendChild(dash);
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'map-cell ' + (c.state === 'locked' ? 'locked' : c.state === 'done' ? 'done' : '');
+    const st = c.state === 'done' ? '✅' : c.state === 'open' ? '✨' : '🔒';
+    b.innerHTML = '<div class="mc-num">' + c.num + '</div><div class="mc-emoji">' + c.emoji + '</div>' +
+      '<div class="mc-name">' + c.name + '</div><div class="mc-state">' + st + '</div>';
+    b.addEventListener('click', () => {
+      if (c.state === 'locked') { play('bad'); return; } // тихий «плинг» — главу откроем по сказке
+      play('pop');
+      chapMapEl.style.display = 'none';
+      // пересмотр главы: та же сюжетная карточка и знакомый голос
+      storyEmoji.textContent = c.emoji;
+      storyText.textContent = c.text;
+      storyOv.style.display = 'flex';
+      gameState = 'story';
+      stopVoice();
+      speak(c.voice);
+    });
+    mapPath.appendChild(b);
+  });
+  chapMapEl.style.display = 'flex';
+  play('pop');
+}
+document.getElementById('mapBtn').addEventListener('click', () => {
+  initAudio();
+  if (gameState !== 'explore') return;
+  openChapMap();
+});
+document.getElementById('mapClose').addEventListener('click', () => {
+  chapMapEl.style.display = 'none';
+  play('pop');
+});
 // Мягкая карточка «отдохни» по таймеру
 function showBreak() {
   breakShown = true;
@@ -3547,6 +3760,7 @@ document.querySelectorAll('.char').forEach(btn => {
 
 function spawnHero(type) {
   hero = makeChar(type);
+  hero.scale.setScalar(1.1); // и сам герой чуть крупнее — на телефоне читается лучше
   hero.position.set(1, 0, 2);
   hero.add(blob);
   scene.add(hero);
@@ -3640,17 +3854,29 @@ function animate() {
   const dt = 1 / 60;
   elapsed += dt;
 
-  // --- РОДИТЕЛЬСКИЙ УЧЁТ: общее время игры + мягкое напоминание об отдыхе ---
-  sessSec += dt;
-  playSecUnsaved += dt;
-  if (playSecUnsaved >= 30) {
-    playSecUnsaved -= 30;
-    localStorage.setItem('wm_playsec', String(parseInt(localStorage.getItem('wm_playsec') || '0', 10) + 30));
-  }
-  if (parentLimitMin > 0 && !breakShown && sessSec >= parentLimitMin * 60 && gameState === 'explore') showBreak();
+  // --- ИГРОВОЕ ВРЕМЯ идёт ТОЛЬКО на экране игры: альбом, карта сказки, родительский уголок,
+  // стартовая кнопка, карточка отдыха и свёрнутое приложение — всё это ставит мир на паузу
+  const uiFrozen = document.hidden
+    || (albumEl && albumEl.style.display === 'block')
+    || (chapMapEl && chapMapEl.style.display === 'flex')
+    || (startGateEl && startGateEl.style.display === 'flex')
+    || (parentOv && parentOv.style.display === 'flex')
+    || (gateOv && gateOv.style.display === 'flex')
+    || (breakOv && breakOv.style.display === 'flex');
 
-  // --- ДЕНЬ/НОЧЬ (во сне в домике ночь пролетает быстро) ---
-  dayT = (dayT + (dt * (hiding ? 22 : 1)) / DAY_LEN) % 1;
+  // --- РОДИТЕЛЬСКИЙ УЧЁТ: общее время игры + мягкое напоминание об отдыхе ---
+  if (!uiFrozen) {
+    sessSec += dt;
+    playSecUnsaved += dt;
+    if (playSecUnsaved >= 30) {
+      playSecUnsaved -= 30;
+      localStorage.setItem('wm_playsec', String(parseInt(localStorage.getItem('wm_playsec') || '0', 10) + 30));
+    }
+    if (parentLimitMin > 0 && !breakShown && sessSec >= parentLimitMin * 60 && gameState === 'explore') showBreak();
+  }
+
+  // --- ДЕНЬ/НОЧЬ (во сне в домике ночь пролетает быстро; под открытыми меню — не течёт) ---
+  if (!uiFrozen) dayT = (dayT + (dt * (hiding ? 22 : 1)) / DAY_LEN) % 1;
   nightness = smoothstep(0.36, 0.5, dayT) - smoothstep(0.86, 1.0, dayT);
   setNight(nightness);
   tmpColor.copy(skyDay).lerp(skyNight, nightness);
@@ -3684,24 +3910,29 @@ function animate() {
       laughBubble.position.set(hero.position.x, 2.1, hero.position.z);
       if (tickling <= 0) { hero.rotation.z = 0; tickleCooldown = 6; laughBubble.visible = false; }
     } else if (gameState !== 'intro' && path && path.length) {
-      // Идём к самой дальней ВИДИМОЙ точке маршрута — плавные дуги без рывков по углам.
-      // Прыжки — только от пройденного пути (стоим на месте — не подпрыгиваем),
-      // корпус поворачивается по фактическому смещению, маршрут не «хлопает» сторонами.
-      let ti = 0;
-      for (let i = path.length - 1; i >= 1; i--) {
-        if (lineFree({ x: hero.position.x, z: hero.position.z }, path[i])) { ti = i; break; }
+      // Идём к ОПОРНОЙ точке, выбранной один раз (самой дальней видимой), — а не пересчитываем
+      // её каждый кадр: пересчёт заставлял цель дрожать между двумя соседними точками,
+      // и герой «залипал» — крутился влево-вправо даже на ровном открытом месте (баг теста).
+      // Прыжки — только от пройденного пути, корпус поворачивается по фактическому смещению.
+      if (!pathTarget) {
+        pathTarget = path[0];
+        for (let i = path.length - 1; i >= 1; i--) {
+          if (lineFree({ x: hero.position.x, z: hero.position.z }, path[i])) { pathTarget = path[i]; break; }
+        }
       }
-      const target = path[ti];
+      const target = pathTarget;
       const dx = target.x - hero.position.x, dz = target.z - hero.position.z;
       const d = Math.hypot(dx, dz);
       const finalPt = path[path.length - 1];
       const finalDist = Math.hypot(finalPt.x - hero.position.x, finalPt.z - hero.position.z);
       if (lastFinalDist === Infinity || finalDist < lastFinalDist - 0.004) { lastFinalDist = finalDist; noProgT = 0; }
       else noProgT += dt;
-      if (d < 0.25 && ti < path.length - 1) {
-        path = path.slice(ti + 1); // точка пройдена
+      if (d < 0.28 && target !== finalPt) {
+        // точка пройдена: отрезаем пройденное, следующая опора — на следующем кадре
+        path = path.slice(path.indexOf(target) + 1);
+        pathTarget = null;
       } else if (finalDist < 0.4 || noProgT > 1.2) {
-        path = null; finalTarget = null; noProgT = 0; squashT = 1; // пришли / тихая остановка
+        path = null; pathTarget = null; finalTarget = null; noProgT = 0; squashT = 1; // пришли / тихая остановка
       } else if (d > 0.001) {
         const step = Math.min(SPEED * dt, d);
         const sl = slideCollide(hero.position.x + (dx / d) * step, hero.position.z + (dz / d) * step);
@@ -3716,7 +3947,7 @@ function animate() {
             repathCount++;
             blockedT = 0; noProgT = 0; lastFinalDist = Infinity;
             const np = findPath(hero.position.x, hero.position.z, finalTarget.x, finalTarget.z);
-            if (np && np.length) path = np;
+            if (np && np.length) { path = dejigPath(np); pathTarget = null; }
           }
         } else blockedT = 0;
         gone += moved;
@@ -3744,13 +3975,14 @@ function animate() {
           hero.rotation.z = Math.sin(gone * 1.55) * 0.115; // вразвалочку
           flop = 2.2;
         }
-        // поворачиваемся только при заметном смещении — никакой дрожи головой на месте
+        // поворачиваемся плавно и только при заметном смещении + мёртвая зона угла —
+        // никакой дрожи головой ни на месте, ни на прямой
         if (moved > Math.max(0.0025, step * 0.35)) {
           const wantYaw = Math.atan2(mdx, mdz);
           let dyy = wantYaw - hero.rotation.y;
           while (dyy > Math.PI) dyy -= Math.PI * 2;
           while (dyy < -Math.PI) dyy += Math.PI * 2;
-          hero.rotation.y += dyy * 0.3;
+          if (Math.abs(dyy) > 0.045) hero.rotation.y += dyy * 0.2;
         }
         charData.ears.forEach(e => e.rotation.x = -hero.position.y * flop);
         if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hero.position.y * flop);
@@ -4167,7 +4399,7 @@ function animate() {
       upH.t += dt;
       const limit = (upH.carrot ? 3.0 : 2.4) * (ml.slow > 0 ? 1.75 : 1);
       if (upH.t > limit) moleDuck(upH);
-    } else if (ml.got < ML_TOTAL) {
+    } else if (ml.got < ML_ALL) {
       ml.timer -= dt;
       if (ml.timer <= 0) {
         const i = Math.floor(Math.random() * ml.holes.length);
@@ -4361,6 +4593,7 @@ if (location.hash.indexOf('#shot') === 0) {
       const keepHidden = setInterval(() => {
         splashEl.style.display = 'none';
         selectEl.style.display = 'none';
+        startGateEl.style.display = 'none';
       }, 250);
       setTimeout(() => clearInterval(keepHidden), 8000);
       spawnHero('fox');
@@ -4394,6 +4627,8 @@ if (location.hash.indexOf('#shot') === 0) {
         lookTarget.copy(hero.position);
       }
       else if (kind === 'walk' || kind === 'walk2' || kind === 'walk3') {
+        // DBG-лог позиции героя — для E2E-проверки плавности движения в Playwright
+        setInterval(() => console.log('DBG hp=' + hero.position.x.toFixed(2) + ',' + hero.position.z.toFixed(2) + ' cl=' + curLoc + ' gs=' + gameState), 1000);
         // настоящие маршруты: 'walk' — из дома к арке (потом travelTo), 'walk2' — с берега к арке,
         // 'walk3' — через мостик с западного берега на восточный
         starLit = true; applyStarLit(); revealPortal(false);
@@ -4414,6 +4649,16 @@ if (location.hash.indexOf('#shot') === 0) {
           pendingPortal = true;
           givePath(PORTAL_APPR[0].x, PORTAL_APPR[0].z);
         }
+      }
+      else if (kind === 'whedge' || kind === 'wfrog') {
+        // витринные виды нового декора: грядки Ёжика / мостик-дуга Лягушки
+        const p = kind === 'whedge'
+          ? { hx: HEDGE_POS.x - 3.2, hz: HEDGE_POS.z + 2.6, tx: -4.35, tz: 8.9, ty: 0.7 }
+          : { hx: FROG_POS.x - 2.0, hz: FROG_POS.z + 3.4, tx: 10.95, tz: 7.65, ty: 0.5 };
+        hero.position.set(p.hx, 0, p.hz);
+        hero.rotation.y = Math.atan2(p.tx - p.hx, p.tz - p.hz);
+        camera.position.copy(hero.position).add(camOffset);
+        lookTarget.set(p.tx, p.ty, p.tz);
       }
       else if (kind === 'pause') { document.getElementById('pauseBtn').click(); }
       else if (kind === 'gate') { paused = true; openGate(); }
@@ -4445,10 +4690,11 @@ if (location.hash.indexOf('#solo') === 0) {
       const keepHiddenSolo = setInterval(() => {
         splashEl.style.display = 'none';
         selectEl.style.display = 'none';
+        startGateEl.style.display = 'none';
       }, 250);
       setTimeout(() => clearInterval(keepHiddenSolo), 8000);
       // прячем HUD — чистые портреты
-      ['muteBtn', 'pauseBtn', 'drops', 'albumBtn', 'hint', 'skipIntro'].forEach(id => {
+      ['muteBtn', 'pauseBtn', 'drops', 'albumBtn', 'mapBtn', 'hint', 'skipIntro'].forEach(id => {
         const el = document.getElementById(id); if (el) el.style.display = 'none';
       });
       spawnHero('fox');

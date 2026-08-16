@@ -138,7 +138,7 @@
     #albumBtn.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
     #skipIntro {
       position: fixed; z-index: 12; display: none;
-      bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px;
+      bottom: calc(88px + env(safe-area-inset-bottom)); right: 16px; /* выше кнопки альбома — не перекрываем её */
       width: 62px; height: 62px; border-radius: 50%; border: none;
       background: rgba(255,255,255,0.85); font-size: 28px;
       box-shadow: 0 6px 18px rgba(61,92,68,0.28); cursor: pointer;
@@ -155,12 +155,14 @@
     }
     #album .sheet {
       position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-      width: min(92vw, 560px); height: min(80vh, 480px); max-height: calc(100dvh - 20px);
+      width: min(96vw, 640px); height: min(90vh, 540px); max-height: calc(100dvh - 16px);
       background: #fdfaf1; border-radius: 26px; box-shadow: 0 18px 60px rgba(0,0,0,0.25);
-      padding: 18px; box-sizing: border-box;
-      animation: cardIn .45s cubic-bezier(.34,1.56,.64,1) both;
+      padding: 16px; box-sizing: border-box;
+      animation: albumIn .45s cubic-bezier(.34,1.56,.64,1) both;
       display: flex; flex-direction: column;
     }
+    /* ВАЖНО: своя анимация — cardIn «съедал» центрирующий transform, альбом уползал в угол */
+    @keyframes albumIn { from { transform: translate(-50%,-50%) scale(.9); opacity: 0; } to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
     #album h3 { margin: 4px 0 10px; text-align: center; color: #4a6b52; font-size: 22px; }
     #albumField { position: relative; flex: 1; border-radius: 18px; background: repeating-linear-gradient(0deg, #f7f1de 0 34px, #f0e8d0 34px 36px); overflow: hidden; }
     .sticker { position: absolute; font-size: 46px; line-height: 1; touch-action: none; cursor: pointer; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); transition: left .25s ease, top .25s ease, transform .25s ease; -webkit-tap-highlight-color: transparent; }
@@ -447,9 +449,20 @@
       transition: transform .22s cubic-bezier(.34,1.35,.64,1);
       background: none; border: none; padding: 0; -webkit-tap-highlight-color: transparent; cursor: pointer;
     }
-    .ml-mole.up { transform: translateX(-50%) translateY(0); }
+    .ml-mole.up { transform: translateX(-50%) translateY(0); animation: mlPop .34s cubic-bezier(.34,1.45,.64,1); }
+    @keyframes mlPop { 0% { transform: translateX(-50%) translateY(55%) scale(.72); } 70% { transform: translateX(-50%) translateY(-7%) scale(1.06); } 100% { transform: translateX(-50%) translateY(0) scale(1); } }
     .ml-mole svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); }
-    .ml-carrot { position: absolute; right: -2%; bottom: 2%; font-size: clamp(18px, 4.2vh, 30px); display: none; }
+    /* морковка крупная и заметная даже на телефоне */
+    .ml-carrot { position: absolute; right: -6%; bottom: -2%; z-index: 3; font-size: clamp(26px, 6vh, 42px); display: none;
+      filter: drop-shadow(0 0 6px #fff7d0) drop-shadow(0 2px 2px rgba(0,0,0,.25)); animation: mlCarrBob .8s ease-in-out infinite alternate; }
+    @keyframes mlCarrBob { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
+    /* большое поле «крестики-нолики» — второй этап игры Крота: норки по всему экрану */
+    .ml-field.big {
+      grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+      align-items: stretch; align-content: stretch; gap: 8px; padding: 12px 14px;
+    }
+    .ml-field.big .ml-hole { height: auto; }
+    .ml-field.big .ml-spacer { visibility: hidden; }
     .ml-mole.caught svg { animation: mlCatch .38s ease; filter: drop-shadow(0 0 10px #ffe27a); }
     .ml-mole.giggle svg { animation: mgShake .4s ease; }
     .ml-hole.glow::before {
@@ -620,6 +633,71 @@
     .travel-sub { font-size: clamp(16px, 3.4vh, 22px); font-weight: 700; color: #4a7a55; animation: fadeUp .7s ease .15s both; }
     .travel-spark { margin-top: 12px; font-size: clamp(20px, 4vh, 28px); letter-spacing: 14px; animation: gapPulse .8s ease-in-out infinite alternate; }
 
+    /* ================= КНОПКА СТАРТА (для тех, кто не читает) ================= */
+    #startGate {
+      position: fixed; inset: 0; z-index: 26; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+      background: linear-gradient(180deg, #ffe9c7 0%, #cfeefa 55%, #bfe6b1 100%);
+    }
+    #startGate .sg-logo { font-size: clamp(26px, 6vw, 40px); font-weight: 900; color: #3d5c44; text-shadow: 0 2px 0 rgba(255,255,255,.6); }
+    #startBtn {
+      border: none; border-radius: 999px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+      padding: clamp(22px, 5.8vh, 32px) clamp(46px, 12vw, 90px);
+      font-size: clamp(34px, 9vh, 46px); font-weight: 900; color: #fff;
+      background: linear-gradient(135deg, #8fd97f, #4fae62);
+      box-shadow: 0 12px 30px rgba(79,174,98,0.45), inset 0 3px 0 rgba(255,255,255,0.4);
+      animation: sgPulse 1.6s ease-in-out infinite;
+    }
+    #startBtn:active { transform: scale(.94); }
+    @keyframes sgPulse { 0%,100% { transform: scale(1); box-shadow: 0 12px 30px rgba(79,174,98,.45), inset 0 3px 0 rgba(255,255,255,.4); } 50% { transform: scale(1.07); box-shadow: 0 16px 38px rgba(79,174,98,.6), inset 0 3px 0 rgba(255,255,255,.4); } }
+    #startGate .sg-hint { font-size: clamp(16px, 3.6vh, 22px); font-weight: 700; color: #5d7a63; }
+
+    /* ================= КАРТА СКАЗКИ (главы) ================= */
+    #mapBtn {
+      position: fixed; z-index: 10;
+      bottom: calc(16px + env(safe-area-inset-bottom)); right: 82px; /* слева от альбома */
+      width: 56px; height: 56px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+      font-size: 26px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 18px rgba(61,92,68,0.22); cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    #mapBtn:active { transform: scale(.9); }
+    #chapMap {
+      position: fixed; inset: 0; z-index: 25; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .map-card { text-align: center; }
+    .map-path { display: flex; align-items: center; justify-content: center; gap: clamp(2px, 1vw, 8px); margin: 8px 0 4px; }
+    .map-cell {
+      position: relative; width: clamp(86px, 20vw, 128px); min-height: clamp(104px, 24vh, 148px);
+      border-radius: 22px; padding: 10px 8px; border: none; cursor: pointer;
+      background: linear-gradient(180deg, #fffdf4, #eef7e2);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15); -webkit-tap-highlight-color: transparent;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .map-cell:active { transform: scale(.95); }
+    .map-cell .mc-num { font-size: 12px; font-weight: 800; color: #a98a63; }
+    .map-cell .mc-emoji { font-size: clamp(34px, 8vh, 48px); }
+    .map-cell .mc-name { font-size: clamp(12px, 2.6vh, 15px); font-weight: 800; color: #4a6b52; line-height: 1.2; }
+    .map-cell .mc-state { font-size: clamp(15px, 3.2vh, 20px); }
+    .map-cell.locked { filter: grayscale(.8); opacity: .55; cursor: default; }
+    .map-cell.done { background: linear-gradient(180deg, #fff8dd, #ffeec2); box-shadow: 0 6px 18px rgba(255,209,102,.5); }
+    .map-dash { width: clamp(10px, 3vw, 26px); height: 4px; border-radius: 4px; background: #d9e6c8; }
+    .map-dash.lit { background: #ffd166; }
+    .map-cap { margin: 10px 0 0; color: #8fa08f; font-size: 14px; font-weight: 700; }
+    .map-close { margin-top: 12px; }
+
+    /* ================= ЗАНОВО (подтверждение сброса) ================= */
+    #resetOv {
+      position: fixed; inset: 0; z-index: 60; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+      background: linear-gradient(180deg, #ffe9c7, #bfe6b1); opacity: 0; transition: opacity .3s ease;
+    }
+    #resetOv.on { opacity: 1; }
+    #resetOv .ro-emoji { font-size: clamp(56px, 12vh, 84px); animation: pauseFloat 2s ease-in-out infinite; }
+    #resetOv .ro-text { font-size: clamp(22px, 5vh, 32px); font-weight: 900; color: #3d5c44; }
+
     /* ================= ПОВЕРНИ УСТРОЙСТВО ================= */
     #rotate {
       position: fixed; inset: 0; z-index: 40; display: none;
@@ -639,7 +717,28 @@
   <button id="muteBtn" aria-label="звук">🔊</button>
   <button id="pauseBtn" aria-label="пауза">⏸</button>
   <button id="albumBtn" aria-label="альбом">📖</button>
+  <button id="mapBtn" aria-label="карта сказки">🗺️</button>
   <button id="skipIntro" aria-label="пропустить">⏭</button>
+
+  <div id="startGate">
+    <div class="sg-logo">🌳 Волшебная полянка</div>
+    <button id="startBtn" type="button">▶</button>
+    <div class="sg-hint">нажми — и пойдём играть!</div>
+  </div>
+
+  <div id="chapMap">
+    <div class="mg-card map-card">
+      <div class="cg-title">🗺️ Карта сказки</div>
+      <div class="map-path" id="mapPath"></div>
+      <div class="map-cap">пройденные главы можно пересмотреть — нажми на них</div>
+      <button class="story-btn map-close" id="mapClose">Закрыть ✖</button>
+    </div>
+  </div>
+
+  <div id="resetOv">
+    <div class="ro-emoji">✨</div>
+    <div class="ro-text">Сказка начинается сначала…</div>
+  </div>
 
   <div id="album">
     <div class="sheet">
@@ -834,7 +933,7 @@
       <p class="sub">Добрые приключения с пользой</p>
     </div>
     <div class="bar"><i></i></div>
-    <div id="verTag">v0.15.0</div>
+    <div id="verTag">v0.15.1</div>
   </div>
 
   <div id="select">

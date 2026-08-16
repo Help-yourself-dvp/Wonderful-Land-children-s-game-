@@ -31,6 +31,9 @@ export function toggleMute() {
   muted = !muted;
   localStorage.setItem('wm_muted', muted ? '1' : '0');
   if (master) master.gain.value = muted ? 0 : 0.5;
+  // голосовые mp3 играют через HTMLAudio — им нужен СВОЙ выключатель (не master gain)!
+  Object.values(voiceCache).forEach(a => { a.muted = muted; });
+  if (muted) stopVoice(); // и текущую реплику тоже гасим сразу
   return muted;
 }
 export function setNight(n) { nightLevel = n; }
@@ -151,6 +154,7 @@ export function speak(file, opts = {}) {
   try {
     let a = voiceCache[file];
     if (!a) { a = new Audio(file); voiceCache[file] = a; }
+    a.muted = muted;
     a.volume = opts.vol != null ? opts.vol : 0.95;
     const gen = voiceGen;
     if (opts.after && lastVoice && !lastVoice.paused && !lastVoice.ended) {
