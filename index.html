@@ -127,7 +127,7 @@
 
     /* ================= АЛЬБОМ ================= */
     #albumBtn {
-      position: fixed; z-index: 10;
+      position: fixed; z-index: 10; overflow: visible;
       bottom: calc(16px + env(safe-area-inset-bottom)); right: 14px;
       width: 56px; height: 56px; border-radius: 50%; border: none;
       background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
@@ -136,6 +136,13 @@
     }
     #albumBtn:active { transform: scale(.9); }
     #albumBtn.pop { animation: dropPop .5s cubic-bezier(.34,1.56,.64,1); }
+    #albumBtn.rewardPulse { animation: albumRewardPulse .8s ease-out 2; }
+    #albumBadge {
+      position: absolute; right: -7px; top: -8px; min-width: 22px; height: 22px; padding: 0 4px;
+      border-radius: 12px; background: #ff7c54; color: #fff; border: 3px solid #fff;
+      display: none; align-items: center; justify-content: center; font-size: 13px; line-height: 1;
+      font-weight: 900; box-shadow: 0 3px 8px rgba(95,46,30,.32); box-sizing: content-box;
+    }
     #skipIntro {
       position: fixed; z-index: 12; display: none;
       bottom: calc(88px + env(safe-area-inset-bottom)); right: 16px; /* выше кнопки альбома — не перекрываем её */
@@ -149,37 +156,96 @@
       position: absolute; left: 14px; bottom: calc(10px + env(safe-area-inset-bottom));
       color: rgba(61,92,68,0.55); font-size: 13px; font-weight: 600;
     }
+    #stickerReward {
+      position: fixed; z-index: 64; left: 50%; top: 16%;
+      transform: translate(-50%,-18px) scale(.86); opacity: 0; pointer-events: none;
+      display: flex; align-items: center; gap: 12px; max-width: min(420px,82vw);
+      padding: 10px 18px 10px 12px; border: 4px solid #fff; border-radius: 24px;
+      background: linear-gradient(135deg,#fff9cd,#ffe4ad); color: #655035;
+      box-shadow: 0 8px 0 #d5ad68,0 16px 35px rgba(55,43,25,.28);
+      transition: opacity .22s, transform .22s;
+    }
+    #stickerReward.show { opacity: 1; transform: translate(-50%,0) scale(1); }
+    .reward-sticker {
+      flex: 0 0 auto; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: #fff; border: 3px solid #f4c96f; font-size: 36px;
+      filter: drop-shadow(0 2px 1px rgba(0,0,0,.12));
+    }
+    .reward-words { font-size: clamp(15px,2.4vw,20px); font-weight: 900; line-height: 1.16; white-space: nowrap; }
+    .reward-words small { display: block; color: #8a6b45; font-size: .72em; margin-top: 4px; }
     #album {
       position: fixed; inset: 0; z-index: 30; display: none;
       background: rgba(61,92,68,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     }
     #album .sheet {
       position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-      width: min(96vw, 640px); height: min(90vh, 540px); max-height: calc(100dvh - 16px);
-      background: #fdfaf1; border-radius: 26px; box-shadow: 0 18px 60px rgba(0,0,0,0.25);
-      padding: 16px; box-sizing: border-box;
+      width: min(96vw,900px); height: min(92vh,660px); max-height: calc(100dvh - 12px);
+      background: #fdfaf1; border: 4px solid #fff; border-radius: 26px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.25); padding: 10px 12px; box-sizing: border-box;
       animation: albumIn .45s cubic-bezier(.34,1.56,.64,1) both;
-      display: flex; flex-direction: column;
+      display: flex; flex-direction: column; overflow: hidden;
     }
-    /* ВАЖНО: своя анимация — cardIn «съедал» центрирующий transform, альбом уползал в угол */
     @keyframes albumIn { from { transform: translate(-50%,-50%) scale(.9); opacity: 0; } to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
-    #album h3 { margin: 4px 0 10px; text-align: center; color: #4a6b52; font-size: 22px; }
-    #albumField { position: relative; flex: 1; border-radius: 18px; background: repeating-linear-gradient(0deg, #f7f1de 0 34px, #f0e8d0 34px 36px); overflow: hidden; }
-    .sticker { position: absolute; font-size: 46px; line-height: 1; touch-action: none; cursor: pointer; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); transition: left .25s ease, top .25s ease, transform .25s ease; -webkit-tap-highlight-color: transparent; }
-    .sticker.picked { animation: stickerPicked .8s ease-in-out infinite; filter: drop-shadow(0 0 12px rgba(255,209,102,0.95)); }
-    @keyframes stickerPicked { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18) rotate(-6deg); } }
-    .sticker.locked { filter: grayscale(1); opacity: 0.25; cursor: default; }
-    .album-cap { text-align: center; color: #8fa08f; font-size: 15px; margin: -4px 0 8px; }
+    #album h3 { margin: 1px 52px 2px; text-align: center; color: #4a6b52; font-size: clamp(18px,3vw,25px); }
+    #albumTabs { display: flex; justify-content: center; gap: 7px; margin: 1px 42px 3px; }
+    .album-tab { border: 2px solid #d8c38d; border-radius: 999px; background: #fff9e8; color: #715c42; padding: 4px 13px; font-size: clamp(11px,1.7vw,14px); font-weight: 900; cursor: pointer; }
+    .album-tab.on { background: #6bb780; color: #fff; border-color: #6bb780; box-shadow: 0 3px 0 #43895d; }
+    .album-tab:disabled { opacity: .45; cursor: default; filter: grayscale(1); }
+    .album-cap { text-align: center; color: #7c715f; font-size: clamp(11px,1.8vw,15px); font-weight: 700; margin: 0 42px 4px; line-height: 1.2; }
+    #albumField {
+      position: relative; flex: 1; min-height: 148px; border-radius: 18px; overflow: hidden; isolation: isolate;
+      background: linear-gradient(#bdeaff 0 52%,#b5df92 53% 100%); border: 3px solid #b4cf92;
+    }
+    .album-hill { position: absolute; border-radius: 50%; background: #91ce77; bottom: -31%; width: 64%; height: 68%; opacity: .96; z-index: -1; }
+    .album-hill.h1 { left: -10%; } .album-hill.h2 { right: -14%; width: 70%; background: #9bd47e; }
+    .album-pond { position: absolute; right: 4%; bottom: 2%; width: 28%; height: 25%; border-radius: 50%; background: #80cce8; border: 3px solid rgba(255,255,255,.55); transform: rotate(-5deg); z-index: -1; }
+    .album-path { position: absolute; left: 43%; bottom: -18%; width: 15%; height: 63%; border-radius: 50%; background: #ead7ad; transform: rotate(8deg); z-index: -1; }
+    .album-slot {
+      position: absolute; left: var(--x); top: var(--y); width: clamp(36px,5.5vw,54px); height: clamp(36px,5.5vw,54px);
+      transform: translate(-50%,-50%); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      user-select: none; touch-action: manipulation; transition: transform .16s, box-shadow .16s, background .16s;
+      font-size: clamp(24px,4vw,40px); z-index: 2; line-height: 1;
+    }
+    .album-slot.locked { font-size: clamp(17px,2.7vw,26px); color: #789080; background: rgba(255,255,255,.36); border: 3px dotted rgba(89,108,88,.46); }
+    .album-slot.ready { cursor: pointer; color: transparent; text-shadow: 0 0 0 rgba(255,255,255,.82); filter: grayscale(1); opacity: .68; background: rgba(255,255,255,.44); border: 3px dashed rgba(255,255,255,.92); box-shadow: 0 2px 8px rgba(66,97,68,.18); }
+    .album-slot.placed { filter: none; opacity: 1; background: rgba(255,255,255,.74); border: 3px solid #fff; box-shadow: 0 3px 0 rgba(91,139,75,.35),0 4px 14px rgba(55,85,50,.24); animation: stickerPop .34s ease-out; }
+    .album-slot.match { animation: albumMatch 1s ease-in-out infinite; opacity: 1; }
+    .album-slot.gentle-no { animation: albumGentleNo .34s ease-out; }
+    #albumHelp { text-align: center; color: #766149; font-size: clamp(11px,1.7vw,15px); font-weight: 800; min-height: 18px; padding: 2px 10px 0; line-height: 1.1; }
+    #stickerTray { display: flex; gap: 7px; justify-content: center; flex-wrap: nowrap; padding: 5px 4px 4px; min-height: 48px; overflow-x: auto; scrollbar-width: thin; }
+    .album-sticker {
+      position: relative; flex: 0 0 auto; width: clamp(36px,5.4vw,50px); height: clamp(36px,5.4vw,50px);
+      border-radius: 50%; border: 3px solid #e4c985; background: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: clamp(22px,3.5vw,30px); cursor: pointer; box-shadow: 0 3px 0 #cab170; transition: .15s;
+      user-select: none; touch-action: manipulation; line-height: 1;
+    }
+    .album-sticker.selected { transform: translateY(-3px) scale(1.1); border-color: #59b6e8; box-shadow: 0 0 0 5px rgba(89,182,232,.25),0 4px 0 #3688b8; }
+    .album-sticker.locked { filter: grayscale(1); opacity: .32; cursor: default; font-size: 19px; }
+    .album-sticker.used { opacity: .5; transform: scale(.9); cursor: default; box-shadow: none; }
+    .album-sticker.used::after { content: '✓'; position: absolute; color: #338359; font-size: 18px; font-weight: 900; text-shadow: 0 1px #fff; }
     #albumClose {
-      position: absolute; top: 10px; right: 10px;
-      width: 44px; height: 44px; border-radius: 50%; border: none;
-      background: #ffd9d9; color: #b04a4a; font-size: 20px; font-weight: 700;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      position: absolute; top: 8px; right: 9px; width: 42px; height: 42px; border-radius: 50%; border: none;
+      background: #ffd9d9; color: #b04a4a; font-size: 19px; font-weight: 700; cursor: pointer; z-index: 4;
+      -webkit-tap-highlight-color: transparent;
     }
     #albumClose:active { transform: scale(.9); }
+    @keyframes stickerPop { 0% { transform: translate(-50%,-50%) scale(.2) rotate(-20deg); } 80% { transform: translate(-50%,-50%) scale(1.18) rotate(5deg); } 100% { transform: translate(-50%,-50%) scale(1); } }
+    @keyframes albumMatch { 0%,100% { box-shadow: 0 0 0 0 rgba(255,231,103,.2); background: rgba(255,255,255,.44); } 50% { box-shadow: 0 0 0 9px rgba(255,231,103,.4); background: rgba(255,248,184,.82); } }
+    @keyframes albumGentleNo { 0%,100% { transform: translate(-50%,-50%); } 35% { transform: translate(calc(-50% - 5px),-50%); } 70% { transform: translate(calc(-50% + 5px),-50%); } }
+    @keyframes albumRewardPulse { 0%,100% { transform: scale(1); } 45% { transform: scale(1.2) rotate(-7deg); } }
     @media (max-height: 430px) {
-      #album .sheet { padding: 10px; }
-      #album h3 { margin: 0 0 6px; font-size: 18px; }
+      #album .sheet { padding: 5px 8px; height: calc(100dvh - 8px); }
+      #album h3 { margin: 0 44px; font-size: 16px; }
+      #albumTabs { margin: 0 36px 2px; gap: 5px; }
+      .album-tab { padding: 2px 9px; font-size: 10px; border-width: 2px; }
+      .album-cap { margin: 0 36px 2px; font-size: 10px; }
+      #albumHelp { min-height: 15px; padding-top: 1px; font-size: 10px; }
+      #stickerTray { min-height: 39px; padding: 3px; gap: 5px; }
+      .album-sticker { width: 34px; height: 34px; font-size: 21px; border-width: 2px; }
+      .album-slot { width: 34px; height: 34px; font-size: 23px; }
+      #albumClose { width: 35px; height: 35px; top: 4px; right: 5px; }
+      #stickerReward { top: 8%; padding: 7px 13px 7px 8px; }
+      .reward-sticker { width: 45px; height: 45px; font-size: 29px; }
     }
 
     /* ================= МИНИ-ИГРА «ВОЛШЕБНЫЙ МОСТИК» ================= */
@@ -728,7 +794,11 @@
   <div id="drops">💧 <b id="dropsNum">0</b></div>
   <button id="muteBtn" aria-label="звук">🔊</button>
   <button id="pauseBtn" aria-label="пауза">⏸</button>
-  <button id="albumBtn" aria-label="альбом">📖</button>
+  <button id="albumBtn" aria-label="альбом наклеек">📖<span id="albumBadge" aria-hidden="true"></span></button>
+  <div id="stickerReward" role="status" aria-live="polite">
+    <span class="reward-sticker" id="rewardSticker">✨</span>
+    <span class="reward-words">Новая наклейка!<small>Она ждёт в альбоме 📖</small></span>
+  </div>
   <button id="mapBtn" aria-label="карта сказки">🗺️</button>
   <button id="skipIntro" aria-label="пропустить">⏭</button>
 
@@ -762,10 +832,17 @@
 
   <div id="album">
     <div class="sheet">
-      <button id="albumClose">✖</button>
-      <h3>Мой альбом наклеек</h3>
-      <div class="album-cap">Нужна наклейка? Нажми на неё — потом на место на странице!</div>
-      <div id="albumField"></div>
+      <button id="albumClose" aria-label="закрыть альбом">✖</button>
+      <h3>📖 Альбом приключений</h3>
+      <div id="albumTabs" aria-label="страницы альбома"></div>
+      <div class="album-cap" id="albumCap">Выбери наклейку внизу, а потом — её светлое место</div>
+      <div id="albumField">
+        <div class="album-hill h1"></div><div class="album-hill h2"></div>
+        <div class="album-path"></div><div class="album-pond"></div>
+        <div id="albumSlots"></div>
+      </div>
+      <div id="albumHelp">Поливай Древо — за каждый полив открывается наклейка</div>
+      <div id="stickerTray" aria-label="наклейки для страницы"></div>
     </div>
   </div>
 
