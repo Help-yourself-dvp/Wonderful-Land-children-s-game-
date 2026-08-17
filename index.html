@@ -438,7 +438,8 @@
       .mg-card { padding: 8px 12px 10px; border-radius: 20px; max-height: 97vh; }
       .cg-title { font-size: clamp(17px, 4vh, 22px); margin: 0 0 5px; }
       .mg-field { height: min(56vh, 320px); }
-      .cg-field, .bg-field, .ml-field, .sq-field, .bv-field { height: min(60vh, 340px); }
+      .cg-field, .bg-field { height: auto; }
+      .ml-field, .sq-field, .bv-field { height: min(60vh, 340px); }
       .st-field { height: min(52vh, 300px); padding-bottom: 6%; }
       .ml-counter, .sq-msg { font-size: 15px; margin-bottom: 4px; }
     }
@@ -493,8 +494,11 @@
     .mg-fruit--apple-red::before, .mg-fruit--apple-green::before {
       left: 8%; right: 8%; top: 20%; bottom: 3%; border: 2px solid rgba(255,255,255,.72);
       border-radius: 46% 46% 43% 43% / 40% 40% 58% 58%;
-      background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.82), transparent 22%), linear-gradient(145deg, var(--fruit-light), var(--fruit-color) 58%, var(--fruit-dark));
-      box-shadow: inset 0 -7px 0 rgba(86,38,20,.12), 0 3px 5px rgba(74,39,18,.20);
+      background:
+        radial-gradient(circle at 30% 22%, rgba(255,255,255,.95) 0 6%, transparent 18%),
+        radial-gradient(circle at 72% 78%, rgba(0,0,0,.22) 0 12%, transparent 30%),
+        linear-gradient(145deg, var(--fruit-light), var(--fruit-color) 56%, var(--fruit-dark));
+      box-shadow: inset 0 -9px 0 rgba(86,38,20,.18), inset 0 4px 0 rgba(255,255,255,.25), 0 6px 8px rgba(74,39,18,.28);
     }
     .mg-fruit--apple-red::after, .mg-fruit--apple-green::after {
       left: 41%; top: 0; width: 45%; height: 34%;
@@ -505,28 +509,44 @@
     .mg-fruit--apple-green { --fruit-light:#b9e77f; --fruit-color:#78bb56; --fruit-dark:#4c8e42; }
     .mg-fruit--orange::before {
       inset: 8%; border: 2px solid rgba(255,255,255,.68); border-radius: 50%;
-      background: radial-gradient(circle at 32% 25%, rgba(255,255,255,.78), transparent 20%), radial-gradient(circle at 70% 72%, #e48b22 0 4%, transparent 5%), linear-gradient(145deg,#ffc45a,#f29a27 60%,#d97719);
-      box-shadow: inset 0 -7px 0 rgba(125,58,16,.12), 0 3px 5px rgba(74,39,18,.20);
+      background:
+        radial-gradient(circle at 30% 22%, rgba(255,255,255,.92) 0 6%, transparent 18%),
+        radial-gradient(circle at 72% 80%, rgba(0,0,0,.22) 0 10%, transparent 28%),
+        radial-gradient(circle at 70% 72%, #e48b22 0 4%, transparent 6%),
+        linear-gradient(145deg,#ffc45a,#f29a27 58%,#d97719);
+      box-shadow: inset 0 -9px 0 rgba(125,58,16,.20), inset 0 4px 0 rgba(255,255,255,.30), 0 6px 8px rgba(74,39,18,.28);
     }
     .mg-fruit--orange::after { left: 48%; top: 1%; width: 35%; height: 24%; border-radius: 100% 0 100% 0; background: linear-gradient(145deg,#82ba59,#4d8e45); transform: rotate(-22deg); }
     .mg-fruit--blueberry::before {
       inset: 2%; border-radius: 45%;
-      background: radial-gradient(circle at 66% 66%, #759cec 0 27%, #456ec2 28% 39%, transparent 40%), radial-gradient(circle at 36% 65%, #6e94e4 0 29%, #3d65b4 30% 41%, transparent 42%), radial-gradient(circle at 51% 35%, #87a9ee 0 30%, #4b73c4 31% 43%, transparent 44%);
-      filter: drop-shadow(0 3px 2px rgba(43,56,106,.28));
+      background:
+        radial-gradient(circle at 32% 26%, rgba(255,255,255,.85) 0 8%, transparent 20%),
+        radial-gradient(circle at 66% 70%, #2f4ea0 0 22%, transparent 38%),
+        radial-gradient(circle at 50% 55%, #5b82d8 0 60%, #3659a8 100%);
+      filter: drop-shadow(0 5px 4px rgba(43,56,106,.32));
     }
     .mg-fruit--blueberry::after { left: 42%; top: 17%; width: 18%; height: 18%; background:#334c91; clip-path: polygon(50% 0,61% 35%,100% 28%,70% 55%,86% 100%,50% 72%,14% 100%,30% 55%,0 28%,39% 35%); }
     .mg-fruit--strawberry::before {
       left: 14%; right: 14%; top: 17%; bottom: 2%; border: 2px solid rgba(255,255,255,.65);
       border-radius: 48% 48% 52% 52% / 36% 36% 76% 76%;
-      background: radial-gradient(circle at 33% 42%,#ffe78c 0 3%,transparent 4%), radial-gradient(circle at 67% 47%,#ffe78c 0 3%,transparent 4%), radial-gradient(circle at 49% 67%,#ffe78c 0 3%,transparent 4%), radial-gradient(circle at 35% 23%,rgba(255,255,255,.72),transparent 17%), linear-gradient(145deg,#ff766a,#df3c4c 62%,#b9243d);
-      box-shadow: inset 0 -7px 0 rgba(93,24,38,.12), 0 3px 5px rgba(74,39,18,.20);
+      background:
+        radial-gradient(circle at 30% 22%, rgba(255,255,255,.78) 0 8%, transparent 18%),
+        radial-gradient(circle at 72% 80%, rgba(0,0,0,.20) 0 12%, transparent 28%),
+        radial-gradient(circle at 33% 42%,#ffe78c 0 3%,transparent 4.5%),
+        radial-gradient(circle at 67% 47%,#ffe78c 0 3%,transparent 4.5%),
+        radial-gradient(circle at 49% 67%,#ffe78c 0 3%,transparent 4.5%),
+        linear-gradient(145deg,#ff766a,#df3c4c 60%,#b9243d);
+      box-shadow: inset 0 -9px 0 rgba(93,24,38,.18), inset 0 4px 0 rgba(255,255,255,.22), 0 6px 8px rgba(74,39,18,.26);
     }
     .mg-fruit--strawberry::after { left: 22%; top: 5%; width: 57%; height: 27%; background:#5f9f49; clip-path: polygon(50% 55%,0 0,30% 72%,18% 100%,50% 76%,82% 100%,70% 72%,100% 0); }
     .mg-fruit--lemon::before {
       left: 6%; right: 6%; top: 16%; bottom: 16%; border: 2px solid rgba(255,255,255,.68);
       border-radius: 12% 88% 12% 88% / 50% 50% 50% 50%; transform: rotate(-14deg);
-      background: radial-gradient(circle at 32% 26%,rgba(255,255,255,.78),transparent 18%),linear-gradient(145deg,#fff176,#f4cf39 60%,#d6aa20);
-      box-shadow: inset 0 -6px 0 rgba(106,76,13,.11), 0 3px 5px rgba(74,39,18,.20);
+      background:
+        radial-gradient(circle at 30% 22%, rgba(255,255,255,.92) 0 7%, transparent 18%),
+        radial-gradient(circle at 72% 80%, rgba(0,0,0,.18) 0 10%, transparent 26%),
+        linear-gradient(145deg,#fff59d,#f4cf39 58%,#d6aa20);
+      box-shadow: inset 0 -8px 0 rgba(106,76,13,.16), inset 0 4px 0 rgba(255,255,255,.30), 0 6px 8px rgba(74,39,18,.26);
     }
     .mg-fruit--lemon::after { left: 54%; top: 4%; width: 30%; height: 22%; border-radius:100% 0; background:#70a64c; transform:rotate(10deg); }
     .mg-apple.dragging { transition: none; transform: scale(1.25); z-index: 9; cursor: grabbing; }
@@ -538,16 +558,29 @@
     }
     .mg-basket {
       position: relative; width: clamp(78px, 17vh, 132px); height: clamp(74px, 16vh, 124px);
-      border: 4px solid rgba(255,255,255,.72); border-radius: 30% 30% 36% 36%;
+      border: 4px solid rgba(255,235,200,.45); border-radius: 22% 22% 34% 34%;
       display: flex; align-items: center; justify-content: center; color: transparent; font-size: 0;
-      background: radial-gradient(circle at 34% 22%, rgba(255,255,255,.62), transparent 34%), var(--basket-color, #e26d5c);
-      box-shadow: inset 0 -10px 0 rgba(91,47,18,.18), inset 0 5px 10px rgba(255,255,255,.24), 0 8px 12px rgba(76,43,20,.28);
+      background:
+        radial-gradient(ellipse at 35% 14%, rgba(255,238,200,.60) 0 12%, transparent 30%),
+        radial-gradient(ellipse at 50% 106%, rgba(30,15,3,.55) 0 40%, transparent 68%),
+        repeating-linear-gradient(90deg, rgba(255,225,175,.10) 0 3px, rgba(60,32,10,.18) 4px 6px),
+        linear-gradient(165deg, #c98a4e 0%, #a6672f 55%, #74431a 100%);
+      box-shadow:
+        inset 0 -12px 0 rgba(35,18,4,.42),
+        inset 0 5px 0 rgba(255,235,200,.28),
+        0 10px 14px rgba(76,43,20,.34);
       transition: transform .2s;
     }
     .mg-basket::before {
-      content: ''; position: absolute; left: 14%; right: 14%; top: -28%; height: 57%;
-      border: clamp(6px, 1.4vh, 11px) solid #9c6338; border-bottom: 0; border-radius: 55% 55% 0 0;
-      box-shadow: inset 3px 0 0 rgba(255,255,255,.32), 0 -2px 0 rgba(255,255,255,.35); z-index: -1;
+      content: ''; position: absolute; left: 10%; right: 10%; top: -30%; height: 60%;
+      border: clamp(6px, 1.4vh, 11px) solid #a6703f; border-bottom: 0; border-radius: 55% 55% 0 0;
+      background: linear-gradient(180deg, rgba(255,230,180,.45), rgba(166,112,63,.0) 70%);
+      box-shadow:
+        inset 3px 2px 0 rgba(255,255,255,.45),
+        inset -3px 0 0 rgba(80,45,15,.30),
+        0 -3px 0 rgba(255,255,255,.30),
+        0 3px 4px rgba(60,30,10,.25);
+      z-index: -1;
     }
     .mg-basket::after {
       content: ''; position: absolute; inset: 20% 9% 13%; border-radius: 12% 12% 25% 25%; opacity: .56;
@@ -575,15 +608,30 @@
       background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     }
     .cg-title { text-align: center; font-size: clamp(22px, 4.6vh, 30px); font-weight: 800; color: #5b6e3f; margin: 2px 0 10px; }
-    .cg-field {
-      position: relative; height: min(64vh, 480px); border-radius: 20px;
-      background: linear-gradient(180deg, #eef3fb, #dfe9f7); overflow: hidden;
+    /* Карточка Совы в том же «книжном» стиле, что у Ёжика и Лягушки */
+    #countgame .mg-card {
+      width: min(98vw, 1100px); max-height: 96vh; overflow: hidden;
+      padding: 7px; border-color: #cfe3a8; border-radius: 30px;
+      background: linear-gradient(180deg, #eaf4d6, #b9d28f);
     }
-    .cg-items { position: absolute; left: 0; right: 0; top: 0; bottom: 118px; }
+    .cg-field {
+      position: relative; width: 100%; aspect-ratio: 16/9; height: auto;
+      border: 3px solid rgba(255,255,255,.82); border-radius: 22px;
+      background: #8fbf6e url('./art/owl-counting-scene.webp') center/cover no-repeat;
+      box-shadow: inset 0 0 30px rgba(40,70,30,.28); overflow: hidden;
+    }
+    /* мягкая нижняя вуаль, чтобы числа-ответы читались */
+    .cg-field::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28%;
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.5));
+      pointer-events: none;
+    }
+    .cg-items { position: absolute; left: 0; right: 0; top: 0; bottom: 22%; }
     .cg-item {
-      position: absolute; font-size: clamp(44px, 8.5vh, 58px); line-height: 1;
+      position: absolute; font-size: clamp(40px, 8vh, 54px); line-height: 1;
       animation: cgItemIn .4s cubic-bezier(.34,1.56,.64,1) both;
-      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.15)); pointer-events: none;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,0.22)); pointer-events: none;
+      z-index: 3;
     }
     @keyframes cgItemIn { from { transform: scale(0); } to { transform: scale(1); } }
     .cg-item.jump { animation: cgJump .5s ease; }
