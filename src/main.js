@@ -3967,9 +3967,33 @@ if (muteBtn) {
 // «жест пользователя», после которого звук разрешён системой — голос подсказки
 // «выбери друга» теперь гарантированно звучит на экране выбора героя.
 const startGateEl = document.getElementById('startGate');
+const savedChar = localStorage.getItem('wm_char');
+const introSeen = localStorage.getItem('wm_intro_seen') === '1';
 setTimeout(() => {
   splashEl.classList.add('fade-out');
-  setTimeout(() => { splashEl.style.display = 'none'; startGateEl.style.display = 'flex'; }, 900);
+  setTimeout(() => {
+    splashEl.style.display = 'none';
+    if (savedChar && ['bunny','fox','bear'].indexOf(savedChar) >= 0) {
+      startGateEl.style.display = 'none';
+      selectEl.style.display = 'none';
+      spawnHero(savedChar);
+      if (introSeen) {
+        gameState = 'explore';
+        document.getElementById('skipIntro').style.display = 'none';
+        const hint = document.getElementById('hint');
+        if (hint) hint.style.opacity = '1';
+        if (!localStorage.getItem('wm_met_hedge')) showGuideArrow();
+        setTimeout(() => { if (gameState === 'explore') checkStory(); }, 600);
+        if (starLit && localStorage.getItem('wm_portal_seen') !== '1') {
+          setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 1200);
+        }
+      } else {
+        startIntro();
+      }
+    } else {
+      startGateEl.style.display = 'flex';
+    }
+  }, 900);
 }, 2600);
 document.getElementById('startBtn').addEventListener('click', () => {
   initAudio();
@@ -4104,6 +4128,7 @@ function openParent() {
     statRow('⏱ Всего в игре', playMin + ' мин');
   renderAgeRow();
   renderLimitRow();
+  renderCharRow();
   parentOv.style.display = 'flex';
 }
 function renderAgeRow() {
@@ -4118,6 +4143,24 @@ function renderAgeRow() {
     if (ageGroup === v) b.classList.add('on');
     b.addEventListener('click', () => { setAgeGroup(v); play('pop'); });
     row.appendChild(b);
+  });
+}
+function renderCharRow() {
+  const row = document.getElementById('charRow');
+  if (!row) return;
+  const current = localStorage.getItem('wm_char') || '';
+  row.querySelectorAll('button').forEach(b => {
+    b.classList.toggle('on', b.dataset.char === current);
+    b.onclick = () => {
+      localStorage.setItem('wm_char', b.dataset.char);
+      // смена друга требует перезагрузки, чтобы спавн и анимации были консистентны
+      play('pop');
+      if (confirm('Сменить друга? Игра перезапустится, прогресс сохранится.')) {
+        location.reload();
+      } else {
+        renderCharRow();
+      }
+    };
   });
 }
 function renderLimitRow() {
@@ -4255,33 +4298,6 @@ document.querySelectorAll('.char').forEach(btn => {
   });
 });
 
-// Возвращающимся игрокам не показываем выбор героя и вступление заново.
-const savedChar = localStorage.getItem('wm_char');
-const introSeen = localStorage.getItem('wm_intro_seen') === '1';
-if (savedChar && ['bunny','fox','bear'].indexOf(savedChar) >= 0) {
-  setTimeout(() => {
-    splashEl.classList.add('fade-out');
-    setTimeout(() => {
-      splashEl.style.display = 'none';
-      startGateEl.style.display = 'none';
-      selectEl.style.display = 'none';
-      spawnHero(savedChar);
-      if (introSeen) {
-        gameState = 'explore';
-        document.getElementById('skipIntro').style.display = 'none';
-        const hint = document.getElementById('hint');
-        if (hint) hint.style.opacity = '1';
-        setTimeout(() => { if (gameState === 'explore') checkStory(); }, 600);
-        if (starLit && localStorage.getItem('wm_portal_seen') !== '1') {
-          setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 1200);
-        }
-      } else {
-        startIntro();
-      }
-    }, 900);
-  }, 2600);
-}
-
 function spawnHero(type) {
   hero = makeChar(type);
   hero.scale.setScalar(1.1); // и сам герой чуть крупнее — на телефоне читается лучше
@@ -4295,6 +4311,7 @@ function spawnHero(type) {
 // Вступительный облёт с рассказом
 let introIdx = 0, introT = 0;
 const introSteps = [];
+let introStartPos = null, introStartLook = null;
 function startIntro() {
   gameState = 'intro';
   introSteps.length = 0;
@@ -4309,20 +4326,27 @@ function startIntro() {
   hedgeBubble.visible = true;
   treeBubble.visible = true;
   play('pop');
-  speak('voice/intro.mp3');
-  // Облёт подгоняем под РЕАЛЬНУЮ длину рассказа, чтобы голос не обрывался на полуслове.
+  // Камеру сразу ставим на первую точку облёта, чтобы картинка не догоняла рассказ.
+  camera.position.copy(introSteps[0].pos);
+  lookTarget.copy(introSteps[0].look);
+  introStartPos = introSteps[0].pos.clone();
+  introStartLook = introSteps[0].look.clone();
+  // Подгоняем длительности шагов под реальную длину рассказа ДО старта речи.
   const baseDur = introSteps.reduce((s, x) => s + x.dur, 0);
   const base = introSteps.map(x => x.dur);
   try {
     const probe = new Audio('voice/intro.mp3');
+    probe.preload = 'auto';
     probe.addEventListener('loadedmetadata', () => {
       if (gameState !== 'intro') return;
       if (probe.duration && isFinite(probe.duration) && probe.duration > 3) {
-        const k = (probe.duration + 0.5) / baseDur;
-        introSteps.forEach((s, i) => { s.dur = base[i] * k; });
+        const k = (probe.duration + 0.6) / baseDur;
+        introSteps.forEach((st, i) => { st.dur = base[i] * k; });
       }
     });
   } catch (e) {}
+  // Запускаем голос с небольшой задержкой, чтобы метаданные успели подгрузиться.
+  setTimeout(() => { if (gameState === 'intro') speak('voice/intro.mp3'); }, 120);
   document.getElementById('skipIntro').style.display = 'block';
 }
 function finishIntro(skipped) {
@@ -4872,10 +4896,22 @@ function animate() {
   // --- ВСТУПЛЕНИЕ: ключевые кадры камеры ---
   if (gameState === 'intro' && introSteps.length) {
     introT += dt;
-    const st = introSteps[Math.min(introIdx, introSteps.length - 1)];
-    camera.position.lerp(st.pos, 0.028);
-    lookTarget.lerp(st.look, 0.035);
-    if (introT > st.dur) {
+    const i = Math.min(introIdx, introSteps.length - 1);
+    const st = introSteps[i];
+    const prev = introSteps[Math.max(0, i - 1)];
+    // Камера жёстко идёт от предыдущей точки к текущей по прогрессу озвучки.
+    if (!introStartPos || introStartPos !== prev.pos) {
+      introStartPos = prev.pos.clone();
+      introStartLook = prev.look.clone();
+    }
+    const t = Math.min(1, introT / Math.max(0.001, st.dur));
+    const e = t * t * (3 - 2 * t);
+    camera.position.lerpVectors(introStartPos, st.pos, e);
+    lookTarget.lerpVectors(introStartLook, st.look, e);
+    if (introT >= st.dur) {
+      // фиксируем точку как старт для следующего шага
+      introStartPos = st.pos.clone();
+      introStartLook = st.look.clone();
       introIdx++;
       introT = 0;
       if (introIdx >= introSteps.length) finishIntro();

@@ -924,6 +924,12 @@
       -webkit-tap-highlight-color: transparent; touch-action: manipulation;
     }
     .age-btns button.on { background: #4fae62; color: #fff; border-color: #4fae62; box-shadow: 0 4px 12px rgba(79,174,98,0.35); }
+    #charRow button {
+      padding: 8px 14px; border-radius: 999px; border: 3px solid #b9c4ee;
+      background: #fff; font-size: clamp(13px,2.6vh,16px); font-weight: 800; color: #4a5aa8;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    #charRow button.on { background: #4a5aa8; color: #fff; border-color: #4a5aa8; box-shadow: 0 4px 12px rgba(74,90,168,.35); }
     .age-pick .age-note { font-size: 12.5px; font-weight: 700; color: #8fa08f; }
 
     /* ================= КАРТА СКАЗКИ (главы) ================= */
@@ -1172,6 +1178,13 @@
       <h2>👪 Родительский уголок</h2>
       <h3>📊 Как малыш растёт</h3>
       <table class="parent-stats" id="parentStats"></table>
+      <h3>🐰 Друг в игре</h3>
+      <div class="limit-row" id="charRow">
+        <button type="button" data-char="bunny">🐰 Зайка</button>
+        <button type="button" data-char="fox">🦊 Лисёнок</button>
+        <button type="button" data-char="bear">🐻 Мишка</button>
+      </div>
+      <div class="parent-note" style="margin-top:6px">Смена друга вступит в силу со следующего захода в игру; прогресс и капельки сохраняются.</div>
       <h3>🎯 Уровень заданий</h3>
       <div class="limit-row" id="ageRow"></div>
       <div class="parent-note" style="margin-top:8px">3–4 года — базовые задания; 5–6 лет — счёт до 9, длиннее узоры и песенки, больше дощечек и норок.</div>
