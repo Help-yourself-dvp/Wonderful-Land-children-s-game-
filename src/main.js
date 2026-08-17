@@ -2135,6 +2135,7 @@ function openMinigame() {
   basketEls.red.style.setProperty('--basket-color', mgDom.pair.ca);
   basketEls.green.style.setProperty('--basket-color', mgDom.pair.cb);
   mgEl.style.display = 'flex';
+  if (!mgEl.querySelector('.mg-exit')) makeExitButton(mgEl);
   mgFinger.style.display = 'none';
   Object.values(basketEls).forEach(b => b.classList.remove('glow'));
   // ждём кадр для раскладки
@@ -2293,6 +2294,32 @@ document.getElementById('hintBridgeBtn').addEventListener('click', (e) => {
   }
 });
 
+
+// Универсальная кнопка «выйти» из мини-игры: ставит мир на паузу так же,
+// как ручная пауза, и открывает меню паузы.
+function exitMinigame() {
+  stopVoice();
+  const closers = [closeMinigame, closeCountGame, closeBridgeGame,
+                  closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame];
+  closers.forEach(fn => { try { fn(); } catch (e) {} });
+  paused = true;
+  pauseOv.style.display = 'flex';
+  setGamePaused(true);
+  document.getElementById('pauseMute').firstChild.textContent = isMuted() ? '🔇' : '🔊';
+  play('pop');
+}
+
+
+// Создаём кнопку «выйти» в карточке мини-игры
+function makeExitButton(cardEl) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'mg-exit'; b.textContent = '✕';
+  b.setAttribute('aria-label', 'Выйти из игры');
+  b.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+  b.addEventListener('click', (e) => { e.stopPropagation(); exitMinigame(); });
+  cardEl.appendChild(b);
+}
+
 function startDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -2336,7 +2363,7 @@ const cgEl = document.getElementById('countgame');
 const cgItems = document.getElementById('cgItems');
 const cgAnswers = document.getElementById('cgAnswers');
 const cgFinger = document.getElementById('cgFinger');
-const cg = { round: 0, total: 2, correct: 0, lastAction: 0, answered: false, fingerShown: false };
+const cg = { round: 0, total: ageLevel() ? 4 : 3, correct: 0, lastAction: 0, answered: false, fingerShown: false };
 const CG_SETS = ['🍓', '🌼', '🍄', '⭐', '🐞', '🍒'];
 const CG_ASKS = {
   '🍓': 'voice/ask_berry.mp3', '🌼': 'voice/ask_flower.mp3', '🍄': 'voice/ask_mushroom.mp3',
@@ -2359,7 +2386,9 @@ function startOwlDialog() {
 function openCountGame() {
   gameState = 'countgame';
   cg.round = 0;
+  cg.total = ageLevel() ? 4 : 3;
   cgEl.style.display = 'flex';
+  if (!cgEl.querySelector('.mg-exit')) makeExitButton(cgEl);
   buildCountRound();
 }
 
@@ -2535,9 +2564,10 @@ function openBridgeGame(shore) {
   bg.round = 0;
   bg.shore = !!shore;
   // 5–6 лет: у речной Лягушки все 3 раунда (в т.ч. А-Б-В); 3–4 года: 2 раунда попроще
-  bg.total = shore ? (ageLevel() ? 3 : 2) : 2;
+  bg.total = ageLevel() ? (shore ? 4 : 3) : (shore ? 3 : 2);
   bgEl.querySelector('.cg-title').textContent = bg.shore ? '🌺 Речные камушки' : '🐸 Волшебный мостик';
   bgEl.style.display = 'flex';
+  if (!bgEl.querySelector('.mg-exit')) makeExitButton(bgEl);
   speak('voice/frog_ask.mp3', { after: true });
   buildBridgeRound();
 }
@@ -2744,6 +2774,7 @@ function openMoleGame() {
   mlCounter.textContent = '🥕 0 из ' + mlAll();
   buildMoleField(false);
   mlEl.style.display = 'flex';
+  if (!mlEl.querySelector('.mg-exit')) makeExitButton(mlEl);
   mlFinger.style.display = 'none';
 }
 function closeMoleGame() {
@@ -2842,7 +2873,7 @@ const sqMsg = document.getElementById('sqMsg');
 // 3–4 года: три раунда по 3 грибочка (без перестановок). 5–6 лет: финал — 4 грибочка + перестановки.
 function sqRounds() {
   return ageLevel()
-    ? [{ n: 3, shuffle: false }, { n: 3, shuffle: false }, { n: 4, shuffle: true }]
+    ? [{ n: 3, shuffle: false }, { n: 4, shuffle: false }, { n: 4, shuffle: true }, { n: 4, shuffle: true }]
     : [{ n: 3, shuffle: false }, { n: 3, shuffle: false }, { n: 3, shuffle: false }];
 }
 const SQ_SLOTS = { 3: [18, 45, 72], 4: [12, 35, 58, 81] };
@@ -2865,6 +2896,7 @@ function openSqGame() {
   sg.round = 0;
   sg.rounds = sqRounds();
   sqEl.style.display = 'flex';
+  if (!sqEl.querySelector('.mg-exit')) makeExitButton(sqEl);
   sqFinger.style.display = 'none';
   buildSqRound();
 }
@@ -3009,7 +3041,7 @@ function celebrateSq() {
 // Zero Fail: ошибся — мягкий «плинг», Светлячок играет песенку ещё раз, медленнее.
 const ST_NOTE_CSS = ['#f28ba8', '#f5b45e', '#f7e07a', '#8fd694', '#8fc3f0'];
 // 3–4 года: песенки короче (2–3 ноты). 5–6 лет: до 4 нот.
-function stRounds() { return ageLevel() ? [2, 3, 4] : [2, 2, 3]; }
+function stRounds() { return ageLevel() ? [2, 3, 4, 4] : [2, 3, 3]; }
 const stEl = document.getElementById('stonegame');
 const stField = document.getElementById('stField');
 const stMsg = document.getElementById('stMsg');
@@ -3047,6 +3079,7 @@ function openStoneGame() {
     st.stones.push(b);
   }
   stEl.style.display = 'flex';
+  if (!stEl.querySelector('.mg-exit')) makeExitButton(stEl);
   stFinger.style.display = 'none';
   buildStRound();
 }
@@ -3221,6 +3254,7 @@ function openBeaverGame() {
   // порядок форм выбираем ДО озвучки: фраза Бобра всегда совпадает с картинкой
   bv.order = [...bvShapes()].sort(() => rand() - 0.5).slice(0, bv.total);
   bvrEl.style.display = 'flex';
+  if (!bvrEl.querySelector('.mg-exit')) makeExitButton(bvrEl);
   buildBeaverRound();
 }
 function closeBeaverGame() {
@@ -4213,12 +4247,40 @@ document.getElementById('breakOk').addEventListener('click', () => {
 });
 document.querySelectorAll('.char').forEach(btn => {
   btn.addEventListener('click', () => {
+    localStorage.setItem('wm_char', btn.dataset.char);
     selectEl.classList.add('fade-out');
     setTimeout(() => selectEl.style.display = 'none', 500);
     spawnHero(btn.dataset.char);
     startIntro();
   });
 });
+
+// Возвращающимся игрокам не показываем выбор героя и вступление заново.
+const savedChar = localStorage.getItem('wm_char');
+const introSeen = localStorage.getItem('wm_intro_seen') === '1';
+if (savedChar && ['bunny','fox','bear'].indexOf(savedChar) >= 0) {
+  setTimeout(() => {
+    splashEl.classList.add('fade-out');
+    setTimeout(() => {
+      splashEl.style.display = 'none';
+      startGateEl.style.display = 'none';
+      selectEl.style.display = 'none';
+      spawnHero(savedChar);
+      if (introSeen) {
+        gameState = 'explore';
+        document.getElementById('skipIntro').style.display = 'none';
+        const hint = document.getElementById('hint');
+        if (hint) hint.style.opacity = '1';
+        setTimeout(() => { if (gameState === 'explore') checkStory(); }, 600);
+        if (starLit && localStorage.getItem('wm_portal_seen') !== '1') {
+          setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 1200);
+        }
+      } else {
+        startIntro();
+      }
+    }, 900);
+  }, 2600);
+}
 
 function spawnHero(type) {
   hero = makeChar(type);
@@ -4265,6 +4327,7 @@ function startIntro() {
 }
 function finishIntro(skipped) {
   if (gameState !== 'intro') return;
+  localStorage.setItem('wm_intro_seen', '1');
   gameState = 'explore';
   document.getElementById('skipIntro').style.display = 'none';
   const hint = document.getElementById('hint');
@@ -4539,7 +4602,8 @@ function animate() {
     charData.glints.forEach(g => g.visible = blink > 0.5);
 
     // --- ВОЛКИ ---
-    if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && curLoc === 0 && Math.random() < dt * 0.15) spawnWolf();
+    const inMinigame = gameState !== 'explore' && gameState !== 'intro' && gameState !== 'travel' && gameState !== 'loading';
+  if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && !inMinigame && curLoc === 0 && Math.random() < dt * 0.15) spawnWolf();
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
       const w = wolves[wi];
@@ -4556,7 +4620,7 @@ function animate() {
         }
         continue;
       }
-      if (w.mode === 'hunt' && tickling <= 0 && gameState === 'explore' && !hiding) {
+      if (w.mode === 'hunt' && tickling <= 0 && gameState === 'explore' && !hiding && !inMinigame) {
         const dx = hero.position.x - w.g.position.x, dz = hero.position.z - w.g.position.z;
         const d = Math.hypot(dx, dz);
         if (d < 0.95 && tickleCooldown <= 0) {
@@ -4824,8 +4888,8 @@ function animate() {
     const remain = mgDom.apples.filter(a => !a.done && a !== appleDrag);
     if (remain.length) {
       const need = basketEls[remain[0].color];
-      if (idle > 18) need.classList.add('glow');
-      if (idle > 26 && !appleDrag) {
+      if (idle > 20) need.classList.add('glow');
+      if (idle > 28 && !appleDrag) {
         mgFinger.style.display = 'block';
         mgDom.fingerFlip = Math.sin(elapsed * 1.4) > 0 ? 0 : 1;
         const from = remain[0].el.getBoundingClientRect();
@@ -4842,8 +4906,8 @@ function animate() {
   if (gameState === 'countgame' && !cg.answered) {
     const idle = elapsed - cg.lastAction;
     const rightBtn = Array.from(cgAnswers.children).find(b => parseInt(b.textContent, 10) === cg.correct);
-    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
-    if (rightBtn && idle > 26 && !cg.fingerShown) {
+    if (rightBtn && idle > 20) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 28 && !cg.fingerShown) {
       cg.fingerShown = true;
       const r = rightBtn.getBoundingClientRect();
       cgFinger.style.left = (r.left + r.width * 0.18) + 'px';
@@ -4856,8 +4920,8 @@ function animate() {
   if (gameState === 'stonegame' && st.canTap) {
     const idle = elapsed - st.lastAction;
     const next = st.stones[st.seq[st.input]];
-    if (next && idle > 18) next.classList.add('glow');
-    if (next && idle > 26 && !st.fingerShown) {
+    if (next && idle > 20) next.classList.add('glow');
+    if (next && idle > 28 && !st.fingerShown) {
       st.fingerShown = true;
       const r = next.getBoundingClientRect();
       stFinger.style.left = (r.left + r.width * 0.18) + 'px';
@@ -4887,11 +4951,11 @@ function animate() {
         h.carrot = location.hash.indexOf('#shot-mole') === 0 || Math.random() < 0.72;
         // авто-подсказки по правилам интерфейса: 18 с — свечение, 26 с — пальчик НАД норкой
         const idle = elapsed - ml.lastAction;
-        if (idle > 18) { h.carrot = true; h.hole.classList.add('glow'); }
+        if (idle > 20) { h.carrot = true; h.hole.classList.add('glow'); }
         h.b.classList.add('up');
         h.carr.style.display = h.carrot ? 'block' : 'none';
         play('pop');
-        if (idle > 26 && !ml.fingerShown) {
+        if (idle > 28 && !ml.fingerShown) {
           ml.fingerShown = true;
           const r = h.b.getBoundingClientRect();
           mlFinger.style.left = (r.left + r.width * 0.22) + 'px';
@@ -4906,7 +4970,7 @@ function animate() {
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
     const rightBtn = sg.mushs[sg.answer];
-    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 20) rightBtn.classList.add('glow');
     if (rightBtn && idle > 26 && !sg.fingerShown) {
       sg.fingerShown = true;
       const r = rightBtn.getBoundingClientRect();
@@ -4920,7 +4984,7 @@ function animate() {
   if (gameState === 'beavergame' && !bv.answered) {
     const idle = elapsed - bv.lastAction;
     const rightBtn = Array.from(bvAnswers.children).find(b => b.dataset.e === bv.target);
-    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 20) rightBtn.classList.add('glow');
     if (rightBtn && idle > 26 && !bv.fingerShown) {
       bv.fingerShown = true;
       const r = rightBtn.getBoundingClientRect();
@@ -4934,7 +4998,7 @@ function animate() {
   if (gameState === 'bridgegame' && !bg.answered) {
     const idle = elapsed - bg.lastAction;
     const rightBtn = Array.from(bgAnswers.children).find(b => b.dataset.e === bg.answer);
-    if (rightBtn && idle > 18) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 20) rightBtn.classList.add('glow');
     if (rightBtn && idle > 26 && !bg.fingerShown) {
       bg.fingerShown = true;
       const r = rightBtn.getBoundingClientRect();

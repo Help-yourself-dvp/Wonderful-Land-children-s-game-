@@ -276,8 +276,8 @@
     }
     /* Ряд узора выше, чтобы ответы не подрезались скруглением низа поля;
        ответам даём запас от нижней кромки. */
-    #bridgegame .bg-row { top: 13%; }
-    #bridgegame .cg-answers { bottom: 4.5%; }
+    #bridgegame .bg-row { top: 15%; }
+    #bridgegame .cg-answers { bottom: 6.5%; }
     @media (max-height: 480px) {
       #bridgegame .mg-card { padding: 4px; border-width: 3px; border-radius: 20px; }
       #bridgegame .bg-field { height: auto; border-radius: 15px; }
@@ -412,8 +412,8 @@
     .mg-card {
       position: relative;
       pointer-events: auto;
-      width: min(96vw, 900px);
-      max-height: 94vh;          /* защита: карточка НИКОГДА не выходит за экран */
+      width: min(98vw, 1100px);
+      max-height: 96vh;          /* защита: карточка НИКОГДА не выходит за экран */
       overflow-y: auto;          /* если вдруг не влезла — прокрутится, а не обрежется */
       background: linear-gradient(180deg, #fff9e9, #f4e4bd);
       border: 4px solid rgba(255,246,215,.92);
@@ -421,9 +421,21 @@
       box-shadow: 0 18px 60px rgba(73,45,23,.32), inset 0 3px 0 rgba(255,255,255,.9), inset 0 -5px 0 rgba(140,91,44,.10);
       animation: cardIn .5s cubic-bezier(.34,1.56,.64,1) both;
     }
+    /* Кнопка «выйти» из мини-игры в правом верхнем углу карточки */
+    .mg-exit {
+      position: absolute; top: 8px; left: 10px; z-index: 40;
+      width: 40px; height: 40px; border-radius: 50%;
+      border: none; cursor: pointer;
+      background: rgba(255,255,255,.88); color: #6b4f2a;
+      font-size: 22px; line-height: 40px; text-align: center; padding: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,.22);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mg-exit:active { transform: scale(.9); }
+    .mg-card { position: relative; }
     /* низкие экраны (альбомный телефон): поля мини-игр компактнее, чтобы всё помещалось */
     @media (max-height: 480px) {
-      .mg-card { padding: 10px 14px 12px; border-radius: 22px; max-height: 96vh; }
+      .mg-card { padding: 8px 12px 10px; border-radius: 20px; max-height: 97vh; }
       .cg-title { font-size: clamp(17px, 4vh, 22px); margin: 0 0 5px; }
       .mg-field { height: min(56vh, 320px); }
       .cg-field, .bg-field, .ml-field, .sq-field, .bv-field { height: min(60vh, 340px); }
@@ -636,7 +648,7 @@
     @keyframes mlPop { 0% { transform: translateX(-50%) translateY(55%) scale(.72); } 70% { transform: translateX(-50%) translateY(-7%) scale(1.06); } 100% { transform: translateX(-50%) translateY(0) scale(1); } }
     .ml-mole svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.18)); }
     /* морковка крупная и заметная даже на телефоне */
-    .ml-carrot { position: absolute; right: -6%; bottom: -2%; z-index: 3; font-size: clamp(26px, 6vh, 42px); display: none;
+    .ml-carrot { position: absolute; right: -10%; bottom: -6%; z-index: 3; font-size: clamp(34px, 8vh, 56px); display: none;
       filter: drop-shadow(0 0 6px #fff7d0) drop-shadow(0 2px 2px rgba(0,0,0,.25)); animation: mlCarrBob .8s ease-in-out infinite alternate; }
     @keyframes mlCarrBob { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
     /* большое поле «крестики-нолики» — второй этап игры Крота: норки по всему экрану */
@@ -644,8 +656,13 @@
       grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
       align-items: stretch; align-content: stretch; gap: 8px; padding: 12px 14px;
     }
-    .ml-field.big .ml-hole { height: auto; }
-    .ml-field.big .ml-spacer { visibility: hidden; }
+    .ml-field.big .ml-hole { height: auto; min-height: 0; }
+    .ml-field.big .ml-spacer { display: none; }
+    /* вид «сверху»: крот вылезает из центра ячейки, а не снизу */
+    .ml-field.big .ml-mound { height: 48%; bottom: 8%; left: 12%; right: 12%; }
+    .ml-field.big .ml-mole { bottom: 24%; width: 84%; }
+    .ml-field.big .ml-mole.up { transform: translateX(-50%) translateY(-8%); }
+    .ml-field.big .ml-carrot { right: -6%; bottom: -4%; font-size: clamp(30px, 6vh, 48px); }
     .ml-mole.caught svg { animation: mlCatch .38s ease; filter: drop-shadow(0 0 10px #ffe27a); }
     .ml-mole.giggle svg { animation: mgShake .4s ease; }
     .ml-hole.glow::before {
