@@ -2368,6 +2368,10 @@ function closeCountGame() {
   cgFinger.style.display = 'none';
 }
 
+// Память между раундами, чтобы одно и то же не выпадало несколько раз подряд
+// (фидбек: «три ягодки подряд» / «одно и то же число»).
+let cgLastEmoji = null;
+let cgLastN = null;
 function buildCountRound() {
   cg.round++;
   cg.answered = false;
@@ -2378,28 +2382,53 @@ function buildCountRound() {
   cgFinger.style.display = 'none';
 
   const lv = ageLevel();
-  const n = lv
-    ? (cg.round === 1 ? 3 + Math.floor(rand() * 4) : 5 + Math.floor(rand() * 5)) // 5–6: 3..6, 5..9
-    : (cg.round === 1 ? 2 + Math.floor(rand() * 3) : 3 + Math.floor(rand() * 3)); // 3–4: 2..4, 3..5
+  // Берём пул возможных количеств и перетусовываем, избегая прошлого значения.
+  const nPool = lv
+    ? (cg.round === 1 ? [3, 4, 5, 6] : [5, 6, 7, 8, 9])
+    : (cg.round === 1 ? [2, 3, 4] : [3, 4, 5]);
+  let n;
+  if (cgLastN != null && nPool.length > 1) {
+    const rest = nPool.filter(x => x !== cgLastN);
+    n = rest[Math.floor(rand() * rest.length)];
+  } else {
+    n = nPool[Math.floor(rand() * nPool.length)];
+  }
+  cgLastN = n;
   cg.correct = n;
-  const emoji = CG_SETS[Math.floor(rand() * CG_SETS.length)];
+  // Эмодзи тоже не повторяем подряд (если в пуле есть альтернатива).
+  let emoji = CG_SETS[Math.floor(rand() * CG_SETS.length)];
+  if (cgLastEmoji && CG_SETS.length > 1) {
+    const restE = CG_SETS.filter(x => x !== cgLastEmoji);
+    emoji = restE[Math.floor(rand() * restE.length)];
+  }
+  cgLastEmoji = emoji;
   // Сова называет именно те картинки, что на экране (договаривает после приветствия)
   speak((CG_ASKS[emoji] || 'voice/sova_ask.mp3'), { after: true });
 
   const W = cgItems.clientWidth, H = cgItems.clientHeight;
-  const size = Math.max(44, Math.min(64, W * 0.14));
-  const cols = Math.max(3, Math.floor(W / (size * 1.6)));
+  // Крупный читаемый размер; на компактных телефонах чуть мельче, чтобы 5–6
+  // предметов гарантированно влезали в два ряда и не вылезали за верх поля.
+  const size = Math.max(40, Math.min(60, Math.min(W * 0.13, H * 0.42)));
+  const cols = Math.max(3, Math.min(6, Math.floor(W / (size * 1.5))));
   const rows = 2;
   const slots = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) slots.push({ c, r });
   slots.sort(() => rand() - 0.5);
+  // Джиттер меньше половины шага — предметы остаются в своей ячейке и не
+  // пересекают верхнюю/боковые границы поля.
+  const jitterX = size * 0.28, jitterY = size * 0.2;
   for (let i = 0; i < n; i++) {
     const s = slots[i % slots.length];
     const el = document.createElement('div');
     el.className = 'cg-item';
     el.textContent = emoji;
-    el.style.left = ((s.c + 0.5) / cols * W + (rand() - 0.5) * size * 0.5 - size / 2) + 'px';
-    el.style.top = ((s.r + 0.5) / rows * H + (rand() - 0.5) * size * 0.4 - size / 2) + 'px';
+    let left = (s.c + 0.5) / cols * W + (rand() - 0.5) * jitterX - size / 2;
+    let top = (s.r + 0.5) / rows * H + (rand() - 0.5) * jitterY - size / 2;
+    left = Math.max(2, Math.min(W - size - 2, left));
+    top = Math.max(2, Math.min(H - size - 2, top));
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    el.style.fontSize = size + 'px';
     el.style.animationDelay = (i * 0.09) + 's';
     cgItems.appendChild(el);
   }
@@ -2817,7 +2846,7 @@ function sqRounds() {
     : [{ n: 3, shuffle: false }, { n: 3, shuffle: false }, { n: 3, shuffle: false }];
 }
 const SQ_SLOTS = { 3: [18, 45, 72], 4: [12, 35, 58, 81] };
-const sg = { round: 0, mushs: [], answer: 0, canTap: false, answered: false, lastAction: 0, fingerShown: false };
+const sg = { round: 0, mushs: [], answer: 0, canTap: false, answered: false, lastAction: 0, fingerShown: false, lastAnswer: -1 };
 
 function startSqDialog() {
   gameState = 'dialog';
@@ -2863,7 +2892,13 @@ function buildSqRound() {
     sqField.appendChild(b);
     sg.mushs.push(b);
   }
-  sg.answer = Math.floor(rand() * cfg.n);
+  // Орех не прячется в той же лунке два раза подряд (фидбек теста).
+  let answer = Math.floor(rand() * cfg.n);
+  if (sg.lastAnswer >= 0 && cfg.n > 1) {
+    while (answer === sg.lastAnswer) answer = Math.floor(rand() * cfg.n);
+  }
+  sg.lastAnswer = answer;
+  sg.answer = answer;
   // Белка «выкладывает» орех на выбранный грибочек
   sqNut.style.top = '34%';
   sqNut.style.opacity = '1';
@@ -3941,8 +3976,21 @@ document.getElementById('pauseResume').addEventListener('click', () => {
 // Вернулись — звук просыпается сам (если не была открыта ручная пауза).
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { setGamePaused(true); }
-  else { setGamePaused(paused); }
+  else { setGamePaused(paused); requestWakeLock(); }
 });
+
+// Экран не гаснет, пока игра открыта (важно для вступления и сказки, где нет
+// касаний). На Android это дополнительно дублируется флагом FLAG_KEEP_SCREEN_ON
+// в MainActivity (шаг CI), чтобы работать и в старом WebView без Wake Lock API.
+let wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; }
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+requestWakeLock();
 
 // ============ РОДИТЕЛЬСКИЙ УГОЛОК ============
 // Доступ только из паузы и только через «взрослую» задачку —

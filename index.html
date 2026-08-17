@@ -252,11 +252,35 @@
     #bridgegame {
       position: fixed; inset: 0; z-index: 25; display: none;
       align-items: center; justify-content: center;
-      background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      background: rgba(28,60,80,0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    /* Карточка Лягушки в том же тёплом «книжном» стиле, что и у Ёжика:
+       оригинальная горизонтальная сцена-фон, а узор и ответы — настоящие DOM-элементы. */
+    #bridgegame .mg-card {
+      width: min(98vw, calc(90vh * 16 / 9), 1180px);
+      max-height: 96vh; overflow: hidden; padding: 7px;
+      border-color: #9fd8c9; border-radius: 30px;
+      background: linear-gradient(180deg, #bde9df, #2f7d8c);
     }
     .bg-field {
-      position: relative; height: min(64vh, 480px); border-radius: 20px;
-      background: linear-gradient(180deg, #e6f3ff, #dff3e8); overflow: hidden;
+      position: relative; width: 100%; aspect-ratio: 16 / 9; height: auto;
+      border: 3px solid rgba(255,255,255,.82); border-radius: 22px;
+      background: #5ab4cf url('./art/frog-magic-bridge.webp') center / cover no-repeat;
+      box-shadow: inset 0 0 30px rgba(20,50,70,.28); overflow: hidden;
+    }
+    /* мягкая нижняя вуаль, чтобы кнопки ответов читались поверх арта */
+    .bg-field::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.55));
+      pointer-events: none;
+    }
+    /* Ряд узора выше, чтобы ответы не подрезались скруглением низа поля;
+       ответам даём запас от нижней кромки. */
+    #bridgegame .bg-row { top: 13%; }
+    #bridgegame .cg-answers { bottom: 4.5%; }
+    @media (max-height: 480px) {
+      #bridgegame .mg-card { padding: 4px; border-width: 3px; border-radius: 20px; }
+      #bridgegame .bg-field { height: auto; border-radius: 15px; }
     }
     .bg-row {
       position: absolute; top: 16%; left: 0; right: 0;

@@ -1,0 +1,25 @@
+import chromium from '@sparticuz/chromium';
+import { chromium as pw } from 'playwright-core';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(__dirname,'..','..');
+chromium.setGraphicsMode=false;
+const exe=await chromium.executablePath();
+const bad=['--disable-webgl','--single-process','--disable-gpu'];
+const args=chromium.args.filter(a=>!bad.some(b=>a===b));
+args.push('--no-sandbox','--enable-webgl','--use-angle=swiftshader','--ignore-gpu-blocklist','--enable-unsafe-swiftshader','--disable-dev-shm-usage');
+const browser=await pw.launch({executablePath:exe,args,headless:true,ignoreDefaultArgs:['--disable-webgl','--disable-gpu']});
+const ctx=await browser.newContext({viewport:{width:812,height:375},deviceScaleFactor:1});
+const page=await ctx.newPage();
+await page.goto('file://'+REPO+'/wonder-meadow-preview.html#shot-frog',{waitUntil:'load',timeout:60000});
+await page.waitForTimeout(7000);
+const data=await page.evaluate(()=>{
+  const field=document.querySelector('#bridgegame .bg-field').getBoundingClientRect();
+  const ans=[...document.getElementById('bgAnswers').children].map(b=>{const r=b.getBoundingClientRect();return {top:Math.round(r.top-field.top),bottom:Math.round(field.bottom-r.bottom),w:Math.round(r.width)};});
+  const row=[...document.getElementById('bgRow').children].map(c=>{const r=c.getBoundingClientRect();return {top:Math.round(r.top-field.top)};});
+  return {fieldH:Math.round(field.height),answers:ans,row,answersFit: ans.every(a=>a.bottom>=-2)};
+});
+console.log(JSON.stringify(data,null,2));
+await page.screenshot({path:path.join(__dirname,'frog-fixed.png')});
+await browser.close();
