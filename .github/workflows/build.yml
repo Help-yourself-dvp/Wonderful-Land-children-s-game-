@@ -44,13 +44,46 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Verify npm metadata version
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.APP_VERSION }}
+        run: node -e "const p=require('./package.json'); if(p.version!==process.env.APP_VERSION) throw new Error('package.json version '+p.version+' != '+process.env.APP_VERSION)"
 
       - name: Build web app (Vite)
         run: npm run build
 
+      - name: Verify visible game version
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.APP_VERSION }}
+        run: |
+          grep -Fq ">v${APP_VERSION}<" dist/index.html
+          grep -Fq ">${APP_VERSION}</span>" dist/index.html
+          ! grep -Fq "__APP_VERSION__" dist/index.html
+
       - name: Add Capacitor Android platform
         run: npx cap add android
+
+      - name: Sync Android version from version.txt
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.APP_VERSION }}
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          p = 'android/app/build.gradle'
+          s = open(p, encoding='utf-8').read()
+          s, n_code = re.subn(r'versionCode\s+\d+', 'versionCode ' + os.environ['APP_VERSION_CODE'], s, count=1)
+          s, n_name = re.subn(r'versionName\s+"[^"]*"', 'versionName "' + os.environ['APP_VERSION'] + '"', s, count=1)
+          if n_code != 1 or n_name != 1:
+              raise SystemExit('Android version fields were not found exactly once')
+          open(p, 'w', encoding='utf-8').write(s)
+          print('Android versionName:', os.environ['APP_VERSION'])
+          print('Android versionCode:', os.environ['APP_VERSION_CODE'])
+          PY
+          grep -F "versionCode ${APP_VERSION_CODE}" android/app/build.gradle
+          grep -F "versionName \"${APP_VERSION}\"" android/app/build.gradle
 
       - name: Generate app icons & splash (из assets/)
         run: npx --yes @capacitor/assets generate --android

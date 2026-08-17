@@ -1831,9 +1831,18 @@ function bumpWin(k) {
 }
 
 // ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-РУЧЕЁК» ============
-// После первой победы у Крота от его норки к Древу прорастает светящийся
-// ручеёк-росток (волна из тёплых точек + росток у подножия). Виден навсегда,
-// ночью светится чуть ярче. Продолжение глав — в следующих версиях.
+// Сначала ребёнок хотя бы раз помогает каждому из шести жителей. После приглашения
+// Рассказчицы особое повторное задание Крота открывает ручеёк-росток. При этом
+// повторные игры у всех жителей всегда остаются доступны.
+const MEADOW_FRIEND_KEYS = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met_mole', 'wm_met_sq', 'wm_met_fire'];
+function haveMetAllMeadowFriends() {
+  return MEADOW_FRIEND_KEYS.every(k => localStorage.getItem(k) === '1');
+}
+function isMoleSpecialReady() {
+  return haveMetAllMeadowFriends()
+    && localStorage.getItem('wm_mole_return_hint') === '1'
+    && localStorage.getItem('wm_story_mole') !== '1';
+}
 let sproutGroup = null;
 const sproutDots = [];
 let sproutGrowT = -1; // -1 = уже выросла (или ещё не начата), >=0 = идёт волна роста
@@ -1883,7 +1892,8 @@ if (localStorage.getItem('wm_story_mole') === '1') {
   sproutGroup.visible = true;
 }
 function checkMoleStory() {
-  if (localStorage.getItem('wm_story_mole') === '1') return false;
+  // Защита от случайного раннего вызова: финал Крота возможен только после всех друзей.
+  if (!isMoleSpecialReady()) return false;
   localStorage.setItem('wm_story_mole', '1');
   revealSprout();
   showStory({
@@ -2410,6 +2420,9 @@ const ML_ROW = 6;  // этап 1: ряд из 5 норок внизу (как р
 // 3–4 года: только ряд (6 морковок). 5–6 лет: ряд + большое поле 3×3 (12 морковок).
 function mlAll() { return ageLevel() ? 12 : 6; }
 const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: false, stage: 1 };
+// true только для повторного задания после помощи всем шести жителям.
+// На обычные повторные игры это не влияет.
+let moleSpecialRun = false;
 
 const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
   + '<ellipse cx="20" cy="76" rx="11" ry="6" fill="#5c4030"/>'
@@ -2428,13 +2441,20 @@ function startMoleDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
   clearPendings();
+  hideGuideArrow('mole-special');
   play('pop');
   stopVoice();
-  speak(localStorage.getItem('wm_met_mole') === '1' ? 'voice/mole_again.mp3' : 'voice/mole_hello.mp3');
-  speak('voice/mole_ask.mp3', { after: true });
+  moleSpecialRun = isMoleSpecialReady();
+  if (moleSpecialRun) {
+    speak('voice/mole_special.mp3');
+  } else {
+    speak(localStorage.getItem('wm_met_mole') === '1' ? 'voice/mole_again.mp3' : 'voice/mole_hello.mp3');
+    speak('voice/mole_ask.mp3', { after: true });
+  }
   const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, 2600);
+  const wait = moleSpecialRun ? 7600 : 2600;
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, wait);
 }
 function makeMoleHole() {
   const hole = document.createElement('div');
@@ -2545,6 +2565,8 @@ document.getElementById('hintMoleBtn').addEventListener('click', (e) => {
 });
 function celebrateMole() {
   gameState = 'celebrate';
+  const completedSpecialRun = moleSpecialRun;
+  moleSpecialRun = false;
   dropsCount++;
   refreshDrops(true);
   onTaskDone();
@@ -2557,8 +2579,10 @@ function celebrateMole() {
   spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
   setTimeout(() => {
     gameState = 'explore';
-    // первая победа у Крота открывает главу «Корешок-ручеёк» (вместо обычной сюжетной карточки)
-    if (!checkMoleStory()) checkStory();
+    // Ручеёк появляется только после особого повторного задания.
+    // Первое и любые обычные прохождения Крота остаются свободными.
+    if (completedSpecialRun) checkMoleStory();
+    else checkStory();
   }, 2600);
 }
 
@@ -3094,6 +3118,8 @@ function showStory(s) {
 }
 // После главы 2 (да и у «ветеранов» на старте): рассказчица зовёт к волшебной арке.
 let pendingPortalArrow = false;
+// После приглашения Рассказчицы стрелка мягко указывает на Крота.
+let pendingMoleArrow = false;
 function maybeAnnouncePortal() {
   if (!starLit || localStorage.getItem('wm_portal_seen') === '1') return;
   localStorage.setItem('wm_portal_seen', '1');
@@ -3114,12 +3140,17 @@ document.getElementById('storyNext').addEventListener('click', () => {
     setTimeout(() => startChoirCeremony(), 350);
   } else {
     gameState = 'explore';
-    if (pendingPortalArrow) {
+    if (pendingMoleArrow) {
+      pendingMoleArrow = false;
+      showGuideArrowAt(MOLE_POS.x, 2.8, MOLE_POS.z, 'mole-special');
+    } else if (pendingPortalArrow) {
       pendingPortalArrow = false;
       showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
     }
-    // возможно, пора рассказать про арку (например, звезда только что засияла)
-    setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 700);
+    // После карточки проверяем следующий сюжетный шаг. Например, после ручейка
+    // можно показать подсказку о поливе или начать главу 2.
+    setTimeout(() => { if (gameState === 'explore') checkStory(); }, 450);
+    setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 900);
   }
 });
 function checkStory() {
@@ -3130,16 +3161,31 @@ function checkStory() {
       break;
     }
   }
-  // ДЛИННАЯ СКАЗКА, ГЛАВА 2 «Звонкое созвучие»: помог ВСЕМ шестерым жителям
-  const ALL6 = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met_mole', 'wm_met_sq', 'wm_met_fire'];
-  const allMet = ALL6.every(k => localStorage.getItem(k) === '1');
-  if (allMet && localStorage.getItem('wm_story_all6') !== '1' && gameState === 'explore') {
+  const allMet = haveMetAllMeadowFriends();
+
+  // Сначала — приглашение к особому ПОВТОРНОМУ заданию Крота. Оно появляется
+  // только после первой помощи каждому из шести жителей. Другие игры не блокируются.
+  if (allMet && localStorage.getItem('wm_story_mole') !== '1') {
+    if (localStorage.getItem('wm_mole_return_hint') !== '1' && gameState === 'explore') {
+      localStorage.setItem('wm_mole_return_hint', '1');
+      pendingMoleArrow = true;
+      showStory({
+        emoji: '🐾', voice: 'voice/mole_return_hint.mp3',
+        text: 'Ты помог всем друзьям на полянке! Когда решишь двигаться дальше, зайди ещё раз к Кроту — кажется, у него есть особое задание для тебя.',
+      });
+    } else if (gameState === 'explore') {
+      showGuideArrowAt(MOLE_POS.x, 2.8, MOLE_POS.z, 'mole-special');
+    }
+    return;
+  }
+
+  // ГЛАВА 2 «Звонкое созвучие» ждёт завершения особого задания и появления ручейка.
+  if (allMet && localStorage.getItem('wm_story_mole') === '1'
+      && localStorage.getItem('wm_story_all6') !== '1' && gameState === 'explore') {
     if (treeStage === 3) {
-      // Дерево доросло до звезды — большой праздник: друзья поют хором
       localStorage.setItem('wm_story_all6', '1');
       setTimeout(() => { if (gameState === 'explore') startChapter2(); }, 900);
     } else if (localStorage.getItem('wm_story6hint') !== '1') {
-      // Дерево ещё растёт — мягкая подсказка поливать капельками
       localStorage.setItem('wm_story6hint', '1');
       setTimeout(() => showStory({ emoji: '🌳', voice: 'voice/story2_hint.mp3',
         text: 'Ты помог всем шестерым друзьям! Осталось одно: поливай Древо капельками, чтобы оно доросло до звезды. Тогда друзья споют самую дружную песню!' }), 700);
@@ -3964,6 +4010,9 @@ function finishIntro(skipped) {
   if (skipped) { stopVoice(); speak('voice/intro_go.mp3'); }
   else speak('voice/intro_go.mp3', { after: true }); // дождётся конца рассказа
   showGuideArrow();
+  // Проверяем незавершённый сюжетный шаг и у старых сохранений: если все друзья
+  // уже встречены, Рассказчица напомнит про особое задание Крота.
+  setTimeout(() => { if (gameState === 'explore') checkStory(); }, 4200);
   // «ветеранам» (звезда уже сияет): ведём к волшебной арке или рассказываем о ней
   if (starLit) {
     if (localStorage.getItem('wm_portal_seen') !== '1') {
@@ -4004,7 +4053,9 @@ checkRotate();
 function animate() {
   requestAnimationFrame(animate);
   if (paused) { renderer.render(scene, camera); return; }
-  const dt = 1 / 60;
+  // Скрытые целевые сценарии Крота ускорены: программный SwiftShader рисует
+  // заметно реже 60 кадров/с, поэтому без этого E2E-проверка ждала бы минуты.
+  const dt = location.hash.indexOf('#shot-mole') === 0 ? 1 / 10 : 1 / 60;
   elapsed += dt;
 
   // --- ИГРОВОЕ ВРЕМЯ идёт ТОЛЬКО на экране игры: альбом, карта сказки, родительский уголок,
@@ -4568,7 +4619,9 @@ function animate() {
         const i = Math.floor(Math.random() * ml.holes.length);
         const h = ml.holes[i];
         h.up = true; h.t = 0;
-        h.carrot = Math.random() < 0.72;
+        // В обычной игре сохраняем дружелюбное чередование. В скрытом E2E-сценарии
+        // морковка гарантирована, чтобы случайность не делала проверку нестабильной.
+        h.carrot = location.hash.indexOf('#shot-mole') === 0 || Math.random() < 0.72;
         // авто-подсказки по правилам интерфейса: 18 с — свечение, 26 с — пальчик НАД норкой
         const idle = elapsed - ml.lastAction;
         if (idle > 18) { h.carrot = true; h.hole.classList.add('glow'); }
@@ -4766,6 +4819,26 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'owl') openCountGame();
       else if (kind === 'frog') openBridgeGame();
       else if (kind === 'mole') openMoleGame();
+      else if (kind === 'molegate') {
+        // Точечный тест нового сюжета: все друзья пройдены, ручеёк ещё закрыт.
+        MEADOW_FRIEND_KEYS.forEach(k => localStorage.setItem(k, '1'));
+        localStorage.removeItem('wm_story_mole');
+        localStorage.removeItem('wm_mole_return_hint');
+        checkStory();
+      }
+      else if (kind === 'molespecial') {
+        // Точечный тест особого повторного задания (не сбрасывает уже открытый финал).
+        MEADOW_FRIEND_KEYS.forEach(k => localStorage.setItem(k, '1'));
+        localStorage.setItem('wm_mole_return_hint', '1');
+        startMoleDialog();
+      }
+      else if (kind === 'moleearly') {
+        // Защитный тест: один Крот не должен открыть ручеёк раньше остальных.
+        MEADOW_FRIEND_KEYS.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem('wm_met_mole', '1');
+        localStorage.removeItem('wm_story_mole');
+        document.body.dataset.moleEarlyOpened = checkMoleStory() ? 'yes' : 'no';
+      }
       else if (kind === 'sq') openSqGame();
       else if (kind === 'fire') openStoneGame();
       else if (kind === 'beaver') openBeaverGame();
