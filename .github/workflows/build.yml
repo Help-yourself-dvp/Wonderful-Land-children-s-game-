@@ -4,6 +4,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Опубликовать APK в GitHub Release"
+        required: true
+        type: boolean
+        default: false
+      release_target:
+        description: "Ветка или полный SHA, на который поставить тег"
+        required: true
+        type: string
+        default: "main"
+
+# Нужен только ручному шагу публикации Release. Игра по-прежнему не получает
+# никаких разрешений Android и не обращается к сети.
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -28,13 +44,46 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Verify npm metadata version
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.APP_VERSION }}
+        run: node -e "const p=require('./package.json'); if(p.version!==process.env.APP_VERSION) throw new Error('package.json version '+p.version+' != '+process.env.APP_VERSION)"
 
       - name: Build web app (Vite)
         run: npm run build
 
+      - name: Verify visible game version
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.APP_VERSION }}
+        run: |
+          grep -Fq ">v${APP_VERSION}<" dist/index.html
+          grep -Fq ">${APP_VERSION}</span>" dist/index.html
+          ! grep -Fq "__APP_VERSION__" dist/index.html
+
       - name: Add Capacitor Android platform
         run: npx cap add android
+
+      - name: Sync Android version from version.txt
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.APP_VERSION }}
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          p = 'android/app/build.gradle'
+          s = open(p, encoding='utf-8').read()
+          s, n_code = re.subn(r'versionCode\s+\d+', 'versionCode ' + os.environ['APP_VERSION_CODE'], s, count=1)
+          s, n_name = re.subn(r'versionName\s+"[^"]*"', 'versionName "' + os.environ['APP_VERSION'] + '"', s, count=1)
+          if n_code != 1 or n_name != 1:
+              raise SystemExit('Android version fields were not found exactly once')
+          open(p, 'w', encoding='utf-8').write(s)
+          print('Android versionName:', os.environ['APP_VERSION'])
+          print('Android versionCode:', os.environ['APP_VERSION_CODE'])
+          PY
+          grep -F "versionCode ${APP_VERSION_CODE}" android/app/build.gradle
+          grep -F "versionName \"${APP_VERSION}\"" android/app/build.gradle
 
       - name: Generate app icons & splash (из assets/)
         run: npx --yes @capacitor/assets generate --android
@@ -132,15 +181,19 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Log APK signature fingerprint (контроль постоянства подписи)
+      - name: Verify APK signature fingerprint (контроль постоянства подписи)
         run: |
-          # отпечаток СЕРТИФИКАТА — стабилен между сборками с одним ключом
-          # (хэш сырого CERT.RSA меняется каждый раз из-за метки времени подписи!)
+          # Отпечаток СЕРТИФИКАТА стабилен между сборками с одним ключом.
+          # Хэш сырого CERT.RSA не подходит: в PKCS#7 меняется метка времени подписи.
           cd android/app/build/outputs/apk/debug
           unzip -p app-debug.apk META-INF/CERT.RSA > /tmp/cert.rsa
-          echo "STABLE CERT FINGERPRINT:"
-          openssl pkcs7 -inform DER -in /tmp/cert.rsa -print_certs | openssl x509 -noout -fingerprint -sha256
-          echo "(ожидаем: 50:7E:7D:84:69:A2:8B:7B:8A:91:B7:85:B9:BA:6B:AA:93:4D:91:97:87:79:A7:FF:02:F8:F7:ED:A3:DA:85:5B)"
+          EXPECTED_CERT="50:7E:7D:84:69:A2:8B:7B:8A:91:B7:85:B9:BA:6B:AA:93:4D:91:97:87:79:A7:FF:02:F8:F7:ED:A3:DA:85:5B"
+          ACTUAL_CERT="$(openssl pkcs7 -inform DER -in /tmp/cert.rsa -print_certs \
+            | openssl x509 -noout -fingerprint -sha256 \
+            | sed 's/^sha256 Fingerprint=//')"
+          echo "STABLE CERT FINGERPRINT: $ACTUAL_CERT"
+          test "$ACTUAL_CERT" = "$EXPECTED_CERT"
+          echo "CERT_SHA256=$ACTUAL_CERT" >> "$GITHUB_ENV"
 
       - name: Prepare APK artifact
         run: cp android/app/build/outputs/apk/debug/app-debug.apk "wonder-meadow-${{ steps.ver.outputs.APP_VERSION }}-b${{ github.run_number }}.apk"
@@ -151,3 +204,40 @@ jobs:
           name: wonder-meadow-apk
           path: wonder-meadow-*.apk
           retention-days: 30
+
+      # Резервный путь публикации: APK сразу уходит из runner в GitHub Release.
+      # Это не зависит от скачивания Actions artifact в песочницу агента, которое
+      # иногда обрывается на blob-хранилище GitHub с EOF.
+      - name: Publish GitHub Release (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TARGET: ${{ inputs.release_target }}
+        run: |
+          VERSION="${{ steps.ver.outputs.APP_VERSION }}"
+          TAG="v${VERSION}"
+          RELEASE_APK="wonder-meadow-${VERSION}.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$RELEASE_APK"
+          APK_SHA256="$(sha256sum "$RELEASE_APK" | cut -d' ' -f1)"
+          {
+            cat RELEASE_NOTES.md
+            printf '\n## Проверка APK\n\n'
+            printf -- '- SHA-256 файла: `%s`\n' "$APK_SHA256"
+            printf -- '- SHA-256 сертификата подписи: `%s`\n' "$CERT_SHA256"
+            printf -- '- GitHub Actions: `%s`\n' "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > /tmp/release-notes.md
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$RELEASE_APK" --clobber
+            gh release edit "$TAG" --title "Волшебная полянка ${TAG}" --notes-file /tmp/release-notes.md
+          else
+            gh release create "$TAG" "$RELEASE_APK" \
+              --target "$RELEASE_TARGET" \
+              --title "Волшебная полянка ${TAG}" \
+              --notes-file /tmp/release-notes.md
+          fi
+
+          # Не считать публикацию успешной, пока asset не виден через GitHub API.
+          gh release view "$TAG" --json tagName,isDraft,isPrerelease,assets \
+            --jq '{tagName,isDraft,isPrerelease,assets:[.assets[].name]}'
+          gh release view "$TAG" --json assets --jq '.assets[].name' | grep -Fx "$RELEASE_APK"
