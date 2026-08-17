@@ -4,6 +4,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Опубликовать APK в GitHub Release"
+        required: true
+        type: boolean
+        default: false
+      release_target:
+        description: "Ветка или полный SHA, на который поставить тег"
+        required: true
+        type: string
+        default: "main"
+
+# Нужен только ручному шагу публикации Release. Игра по-прежнему не получает
+# никаких разрешений Android и не обращается к сети.
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -151,3 +167,32 @@ jobs:
           name: wonder-meadow-apk
           path: wonder-meadow-*.apk
           retention-days: 30
+
+      # Резервный путь публикации: APK сразу уходит из runner в GitHub Release.
+      # Это не зависит от скачивания Actions artifact в песочницу агента, которое
+      # иногда обрывается на blob-хранилище GitHub с EOF.
+      - name: Publish GitHub Release (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TARGET: ${{ inputs.release_target }}
+        run: |
+          VERSION="${{ steps.ver.outputs.APP_VERSION }}"
+          TAG="v${VERSION}"
+          RELEASE_APK="wonder-meadow-${VERSION}.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$RELEASE_APK"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$RELEASE_APK" --clobber
+            gh release edit "$TAG" --title "Волшебная полянка ${TAG}" --notes-file RELEASE_NOTES.md
+          else
+            gh release create "$TAG" "$RELEASE_APK" \
+              --target "$RELEASE_TARGET" \
+              --title "Волшебная полянка ${TAG}" \
+              --notes-file RELEASE_NOTES.md
+          fi
+
+          # Не считать публикацию успешной, пока asset не виден через GitHub API.
+          gh release view "$TAG" --json tagName,isDraft,isPrerelease,assets \
+            --jq '{tagName,isDraft,isPrerelease,assets:[.assets[].name]}'
+          gh release view "$TAG" --json assets --jq '.assets[].name' | grep -Fx "$RELEASE_APK"
