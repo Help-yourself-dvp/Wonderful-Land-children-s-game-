@@ -4,3 +4,13 @@ android/
 *.keystore
 device_flow.json
 gh_access.json
+
+# Автономное превью и скриншоты — генерируются, не хранить в Git
+wonder-meadow-preview.html
+tools/shot/al2023/
+tools/shot/fonts/
+tools/shot/*.png
+tools/shot/package-lock.json
+
+# Секреты и временные файлы
+*.log

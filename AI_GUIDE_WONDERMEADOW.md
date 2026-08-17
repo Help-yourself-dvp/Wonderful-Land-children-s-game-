@@ -699,3 +699,60 @@ ComfyUI/Blender, искать видеокарту, регистрировать
 - **Ограничение headless-кадра:** отсутствие необязательных emoji-глифов в PNG не равно
   поломке DOM. Однако если глиф несёт смысл задания, это уже продуктовый дефект и его надо
   заменить собственной графикой, как сделано с плодами и корзинами Ёжика.
+
+## УРОК СЕССИЙ (почему диалоги рвутся после 2-го сообщения) — v0.19.0
+
+**Диагноз.** Каждый новый диалог Arena — это новый ИИ-агент в свежей песочнице.
+Песочница (контейнер `/home/user`) **пересоздаётся между ходами/таймаутами** и
+стирает ВСЁ вне рабочей папки репозитория. Типичные симптомы разрыва:
+
+- пропадают `node_modules`, `dist/`, `/home/user/build_preview.py`, `/home/user/shot/`;
+- агент заново ставит зависимости (2–4 мин), накачивает контекст инструментами и
+  исчерпывает окно контекста → «The AI service is busy»;
+- следующий агент не находит ни инструментов, ни логов прошлого хода.
+
+**Жёсткие правила (соблюдать всегда):**
+
+1. **ВСЁ нужное для работы — ВНУТРb репозитория**, а не в `/home/user/`.
+   - `tools/build_preview.py` — сборка однофайлового превью;
+   - `tools/shot/` — Playwright-скрипты и `package.json`;
+   - голоса персонажей — `public/voice/`; арты — `public/art/`;
+   - `wonder-meadow-preview.html` и `tools/shot/al2023|fonts|*.png` —
+     генерируются, в .gitignore, их восстановление — командой ниже.
+2. **Одна команда восстановления песочницы** (выполнять ПЕРВЫМ делом в новом
+   диалоге после чтения документов):
+   ```bash
+   cd /home/user/Wonderful-Land-children-s-game-
+   npm install
+   (cd tools/shot && npm install && node unpack-libs.mjs)
+   npm run build && python3 tools/build_preview.py
+   ```
+3. **Скриншоты в этой песочнице:** системного Chromium нет, `playwright install`
+   и `playwright install-deps` НЕ работают (нет root, бинарник не качается).
+   Рабочий путь — `@sparticuz/chromium` + `playwright-core`. Запуск:
+   ```bash
+   cd tools/shot
+   export LD_LIBRARY_PATH="$PWD/al2023/lib:$LD_LIBRARY_PATH"
+   export FONTCONFIG_PATH="$PWD/fonts"
+   node shoot.mjs hedge world   # имена #shot-хуков без префикса
+   ```
+   Без `LD_LIBRARY_PATH` на `tools/shot/al2023/lib` chromium падает с
+   `libnspr4.so: cannot open shared object`. WebGL включается ТОЛЬКО после
+   удаления флагов `--disable-webgl/--single-process/--disable-gpu` и добавления
+   `--use-angle=swiftshader --enable-unsafe-swiftshader`.
+4. **Превью-скрипт инлайнит JS как `<script type="module">`.** Убирать
+   `type="module"` НЕЛЬЗЯ: у инлайн-модуля отложенное выполнение (после DOM);
+   без него `document.body === null` и Three.js падает на `appendChild`.
+   Замена тега в скрипте — СТРОКОВАЯ, не `re.sub`: минифицированный JS содержит
+   `\w`/`\d`, которые re.sub трактует как escape в подстановке и падает.
+5. **Не копить контекст.** Один спринт — один диалог. В конце обязательно коммит
+   в свою ветку `arena/...` (НЕ в main без явного решения владельца) и пуш,
+   чтобы следующая пересозданная песочница подхватила всё из Git.
+6. **Безопасность main:** слияние в `main` может закрыть диалог/сбросить сессию.
+   Публикацию релиза делать через `workflow_dispatch` с `release_target=<полный
+   SHA рабочей ветки>` — так APK собирается и публикуется БЕЗ merge в main.
+   build.yml это умеет (см. шаг «Publish GitHub Release»).
+
+**Признак того, что песочница пересоздалась:** время каталога `/home/user`
+свежее времени твоей работы, а `node_modules`/`dist`/превью отсутствуют.
+Лечение — команда из п.2, код при этом не теряется (он в Git).

@@ -1,0 +1,11 @@
+{
+  "name": "wonder-meadow-shot",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Автономные скриншот-проверки превью «Волшебной полянки»",
+  "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
+    "playwright-core": "^1.55.0"
+  }
+}
