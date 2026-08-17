@@ -1715,6 +1715,7 @@ function waterTree() {
   refreshDrops(true);
   treeWaters++;
   localStorage.setItem('wm_tree_waters', String(treeWaters));
+  grantStickerForWater();
   watering = 1.4;
   pourRain();
   play('drop');
@@ -1743,86 +1744,282 @@ function waterTree() {
   }, 1100);
 }
 
-// ============ АЛЬБОМ ============
+// ============ АЛЬБОМ НАКЛЕЕК ============
+// v2: у каждой наклейки есть своё место-силуэт. Награда открывается за каждый полив,
+// а не за каждые три задания. Старые свободные позиции остаются в wm_album как резервная
+// копия; при первом запуске их ключи бережно превращаются в уже приклеенные наклейки.
 let tasksDone = parseInt(localStorage.getItem('wm_tasks') || '0', 10);
-const STICKERS = ['🍎', '🦔', '⭐', '🌸', '🦋', '🍏', '🌈', '🍄', '🌰', '🐞', '🌻', '🐝'];
-function unlockedCount() { return Math.min(STICKERS.length, Math.floor(tasksDone / 3)); }
-
+const STICKERS = [
+  { emoji: '💧', name: 'капелька', x: 17, y: 23 },
+  { emoji: '🌱', name: 'росток', x: 34, y: 77 },
+  { emoji: '🍎', name: 'яблоко', x: 36, y: 48 },
+  { emoji: '🦔', name: 'ёжик', x: 16, y: 73 },
+  { emoji: '🌳', name: 'Древо', x: 50, y: 60 },
+  { emoji: '🦉', name: 'сова', x: 48, y: 27 },
+  { emoji: '🐸', name: 'лягушка', x: 70, y: 75 },
+  { emoji: '🥕', name: 'морковка', x: 88, y: 73 },
+  { emoji: '🐿️', name: 'белочка', x: 63, y: 49 },
+  { emoji: '✨', name: 'светлячок', x: 74, y: 30 },
+  { emoji: '⭐', name: 'звезда', x: 87, y: 16 },
+  { emoji: '🌈', name: 'радуга', x: 48, y: 10 },
+  // Глава 2: после обязательной истории остаётся целая необязательная страница.
+  { emoji: '🎵', name: 'нотка', x: 17, y: 23 },
+  { emoji: '🌟', name: 'сияющая звезда', x: 48, y: 10 },
+  { emoji: '🌙', name: 'луна', x: 87, y: 16 },
+  { emoji: '🎶', name: 'песенка', x: 74, y: 30 },
+  { emoji: '🎼', name: 'мелодия', x: 48, y: 27 },
+  { emoji: '💫', name: 'огонёк', x: 63, y: 49 },
+  { emoji: '🌉', name: 'волшебная арка', x: 50, y: 60 },
+  { emoji: '🌿', name: 'веточка', x: 34, y: 77 },
+  { emoji: '🪷', name: 'кувшинка', x: 70, y: 75 },
+  { emoji: '🦫', name: 'бобр', x: 88, y: 73 },
+  { emoji: '🪵', name: 'брёвнышко', x: 36, y: 48 },
+  { emoji: '💎', name: 'речной камушек', x: 16, y: 73 },
+];
+const ALBUM_PAGES = [
+  { title: '🌿 Глава 1', name: 'Друзья Полянки', from: 0, to: 12 },
+  { title: '⭐ Глава 2', name: 'Песня Древа', from: 12, to: 24 },
+];
+const ALBUM_SCHEMA = '2';
 const albumEl = document.getElementById('album');
-const albumField = document.getElementById('albumField');
+const albumTabs = document.getElementById('albumTabs');
+const albumSlots = document.getElementById('albumSlots');
+const stickerTray = document.getElementById('stickerTray');
+const albumHelp = document.getElementById('albumHelp');
+const albumCap = document.getElementById('albumCap');
 const albumBtn = document.getElementById('albumBtn');
-let albumPos = {};
-try { albumPos = JSON.parse(localStorage.getItem('wm_album') || '{}'); } catch (e) {}
+const albumBadge = document.getElementById('albumBadge');
+const stickerReward = document.getElementById('stickerReward');
+const rewardSticker = document.getElementById('rewardSticker');
+let albumUnlocked = 0;
+let albumPlaced = new Set();
+let selectedSticker = null;
+let activeAlbumPage = 0;
+let rewardTimer = 0;
 
-// Альбом: наклеивание ДВУМЯ тапами — сначала выбрать наклейку (она подпрыгнет
-// и засветится), потом тапнуть место на странице — наклейка «пришлёпнется»
-// туда с лёгким случайным наклоном, как настоящая.
-let stickerEls = [];
-let pickedSticker = null;
-function buildAlbum() {
-  albumField.innerHTML = '';
-  stickerEls = [];
-  pickedSticker = null;
-  const unlocked = unlockedCount();
-  STICKERS.forEach((s, i) => {
-    const el = document.createElement('div');
-    el.className = 'sticker' + (i < unlocked ? '' : ' locked');
-    el.textContent = s;
-    const col = i % 4, row = Math.floor(i / 4);
-    const p = albumPos[i] || { x: 6 + col * 24, y: 6 + row * 30, r: 0 };
-    el.style.left = p.x + '%';
-    el.style.top = p.y + '%';
-    el.style.transform = 'rotate(' + (p.r || 0) + 'deg)';
-    if (i < unlocked) {
-      el.addEventListener('pointerdown', (e) => e.stopPropagation());
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        pickedSticker = (pickedSticker === i) ? null : i;
-        stickerEls.forEach(x => x && x.classList.remove('picked'));
-        if (pickedSticker !== null) { el.classList.add('picked'); play('pickup'); }
-      });
-      stickerEls[i] = el;
+function safeAlbumArray(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch (e) { return []; }
+}
+function loadAlbumProgress() {
+  const schema = localStorage.getItem('wm_album_schema');
+  if (schema === ALBUM_SCHEMA) {
+    albumUnlocked = parseInt(localStorage.getItem('wm_album_unlocked') || '0', 10);
+    albumPlaced = new Set(safeAlbumArray('wm_album_placed'));
+  } else {
+    // v0.17.1 и раньше: открывалась одна наклейка за три задания, а wm_album хранил
+    // координаты только тех наклеек, которые ребёнок уже двигал по странице.
+    let legacyPlaced = [];
+    try {
+      const legacy = JSON.parse(localStorage.getItem('wm_album') || '{}');
+      if (legacy && typeof legacy === 'object') legacyPlaced = Object.keys(legacy).map(Number);
+    } catch (e) {}
+    albumPlaced = new Set(legacyPlaced);
+    const lastPlaced = legacyPlaced.length ? Math.max(...legacyPlaced) + 1 : 0;
+    albumUnlocked = Math.max(Math.floor(tasksDone / 3), treeWaters, lastPlaced);
+    localStorage.setItem('wm_album_schema', ALBUM_SCHEMA);
+  }
+  albumUnlocked = Math.max(0, Math.min(STICKERS.length, Number.isFinite(albumUnlocked) ? albumUnlocked : 0));
+  albumPlaced = new Set([...albumPlaced]
+    .map(Number)
+    .filter(i => Number.isInteger(i) && i >= 0 && i < albumUnlocked && i < STICKERS.length));
+  saveAlbumProgress();
+}
+function saveAlbumProgress() {
+  localStorage.setItem('wm_album_schema', ALBUM_SCHEMA);
+  localStorage.setItem('wm_album_unlocked', String(albumUnlocked));
+  localStorage.setItem('wm_album_placed', JSON.stringify([...albumPlaced].sort((a, b) => a - b)));
+  updateAlbumBadge();
+}
+function pendingStickerCount() {
+  let count = 0;
+  for (let i = 0; i < albumUnlocked; i++) if (!albumPlaced.has(i)) count++;
+  return count;
+}
+function updateAlbumBadge() {
+  const count = pendingStickerCount();
+  if (albumBadge) {
+    albumBadge.textContent = count > 9 ? '9+' : String(count);
+    albumBadge.style.display = count ? 'flex' : 'none';
+  }
+  document.body.dataset.albumUnlocked = String(albumUnlocked);
+  document.body.dataset.albumPlaced = String(albumPlaced.size);
+}
+function albumPageAvailable(pageIndex) {
+  if (pageIndex === 0) return true;
+  const page = ALBUM_PAGES[pageIndex];
+  return albumUnlocked > page.from || localStorage.getItem('wm_story_all6') === '1';
+}
+function pagePlacedCount(pageIndex) {
+  const page = ALBUM_PAGES[pageIndex];
+  let count = 0;
+  for (let i = page.from; i < page.to; i++) if (albumPlaced.has(i)) count++;
+  return count;
+}
+function pagePendingCount(pageIndex) {
+  const page = ALBUM_PAGES[pageIndex];
+  let count = 0;
+  for (let i = page.from; i < Math.min(page.to, albumUnlocked); i++) if (!albumPlaced.has(i)) count++;
+  return count;
+}
+function albumStatusText() {
+  const page = ALBUM_PAGES[activeAlbumPage];
+  if (pagePlacedCount(activeAlbumPage) === page.to - page.from) return 'Страница собрана — получилась целая история!';
+  if (pagePendingCount(activeAlbumPage) > 0) return 'Выбери наклейку внизу, а потом — её светлое место';
+  return 'Поливай Древо — следующая наклейка появится после полива';
+}
+function renderAlbum(message = '') {
+  if (!albumPageAvailable(activeAlbumPage)) activeAlbumPage = 0;
+  const page = ALBUM_PAGES[activeAlbumPage];
+  selectedSticker = selectedSticker !== null
+    && selectedSticker >= page.from && selectedSticker < page.to
+    && selectedSticker < albumUnlocked && !albumPlaced.has(selectedSticker)
+    ? selectedSticker : null;
+  albumSlots.innerHTML = '';
+  stickerTray.innerHTML = '';
+  albumTabs.innerHTML = '';
+
+  ALBUM_PAGES.forEach((item, pageIndex) => {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'album-tab' + (pageIndex === activeAlbumPage ? ' on' : '');
+    tab.textContent = item.title;
+    tab.disabled = !albumPageAvailable(pageIndex);
+    tab.setAttribute('aria-label', item.name);
+    if (!tab.disabled) tab.addEventListener('click', () => {
+      activeAlbumPage = pageIndex;
+      selectedSticker = null;
+      play('pop');
+      renderAlbum();
+    });
+    albumTabs.appendChild(tab);
+  });
+
+  albumCap.textContent = `${page.name} • Собрано ${pagePlacedCount(activeAlbumPage)} из ${page.to - page.from}`;
+  albumHelp.textContent = message || albumStatusText();
+
+  STICKERS.slice(page.from, page.to).forEach((sticker, pageOffset) => {
+    const i = page.from + pageOffset;
+    const slot = document.createElement('button');
+    slot.type = 'button';
+    slot.className = 'album-slot';
+    slot.dataset.sticker = String(i);
+    slot.style.setProperty('--x', sticker.x + '%');
+    slot.style.setProperty('--y', sticker.y + '%');
+    if (i >= albumUnlocked) {
+      slot.classList.add('locked');
+      slot.textContent = '✦';
+      slot.disabled = true;
+      slot.setAttribute('aria-label', 'закрытое место');
+    } else {
+      slot.textContent = sticker.emoji;
+      slot.setAttribute('aria-label', albumPlaced.has(i) ? sticker.name + ' приклеена' : 'место: ' + sticker.name);
+      if (albumPlaced.has(i)) {
+        slot.classList.add('placed');
+        slot.disabled = true;
+      } else {
+        slot.classList.add('ready');
+        if (selectedSticker === i) slot.classList.add('match');
+        slot.addEventListener('click', () => tryPlaceSticker(i, slot));
+      }
     }
-    albumField.appendChild(el);
+    albumSlots.appendChild(slot);
+
+    const token = document.createElement('button');
+    token.type = 'button';
+    token.className = 'album-sticker';
+    token.dataset.sticker = String(i);
+    if (i >= albumUnlocked) {
+      token.classList.add('locked');
+      token.textContent = '✦';
+      token.disabled = true;
+      token.setAttribute('aria-label', 'наклейка ещё закрыта');
+    } else {
+      token.textContent = sticker.emoji;
+      token.setAttribute('aria-label', 'наклейка ' + sticker.name);
+      if (albumPlaced.has(i)) {
+        token.classList.add('used');
+        token.disabled = true;
+      } else {
+        if (selectedSticker === i) token.classList.add('selected');
+        token.addEventListener('click', () => selectAlbumSticker(i));
+      }
+    }
+    stickerTray.appendChild(token);
   });
 }
-albumField.addEventListener('click', (e) => {
-  if (pickedSticker === null || !stickerEls[pickedSticker]) return;
-  const el = stickerEls[pickedSticker];
-  const rect = albumField.getBoundingClientRect();
-  const halfW = (el.offsetWidth / rect.width) * 50;
-  const halfH = (el.offsetHeight / rect.height) * 50;
-  let l = ((e.clientX - rect.left) / rect.width) * 100 - halfW;
-  let t = ((e.clientY - rect.top) / rect.height) * 100 - halfH;
-  l = Math.max(0, Math.min(100 - halfW * 2, l));
-  t = Math.max(0, Math.min(100 - halfH * 2, t));
-  const rot = Math.round(rand() * 24 - 12);
-  el.style.left = l + '%';
-  el.style.top = t + '%';
-  el.style.transform = 'rotate(' + rot + 'deg)';
-  albumPos[pickedSticker] = { x: l, y: t, r: rot };
-  localStorage.setItem('wm_album', JSON.stringify(albumPos));
-  play('drop');
-  el.classList.remove('picked');
-  pickedSticker = null;
-});
-if (albumBtn) {
-  albumBtn.addEventListener('click', () => {
-    buildAlbum();
-    albumEl.style.display = 'block';
-    play('pop');
-  });
+function selectAlbumSticker(i) {
+  selectedSticker = selectedSticker === i ? null : i;
+  play('pickup');
+  renderAlbum(selectedSticker === null
+    ? albumStatusText()
+    : `${STICKERS[i].emoji} Теперь найди такое же светлое место`);
 }
-document.getElementById('albumClose').addEventListener('click', () => {
+function tryPlaceSticker(i, slot) {
+  if (selectedSticker === null) {
+    // Мягкая помощь для маленького ребёнка: тап по силуэту выбирает нужную наклейку,
+    // но второй тап всё равно нужен, чтобы «приклеить» её осознанно.
+    selectedSticker = i;
+    play('pickup');
+    renderAlbum(`${STICKERS[i].emoji} Наклейка выбрана — нажми на это место ещё раз`);
+    return;
+  }
+  if (selectedSticker !== i) {
+    slot.classList.remove('gentle-no'); void slot.offsetWidth; slot.classList.add('gentle-no');
+    const correct = albumSlots.querySelector(`[data-sticker="${selectedSticker}"]`);
+    if (correct) correct.classList.add('match');
+    albumHelp.textContent = 'Попробуй ещё — нужное место мерцает ✨';
+    play('bad');
+    return;
+  }
+  const sticker = STICKERS[i];
+  albumPlaced.add(i);
+  selectedSticker = null;
+  saveAlbumProgress();
+  play('good');
+  renderAlbum(`${sticker.emoji} Наклейка на своём месте!`);
+}
+function openAlbum() {
+  selectedSticker = null;
+  const firstWaiting = STICKERS.findIndex((_, i) => i < albumUnlocked && !albumPlaced.has(i));
+  if (firstWaiting >= 0) activeAlbumPage = ALBUM_PAGES.findIndex(p => firstWaiting >= p.from && firstWaiting < p.to);
+  renderAlbum();
+  albumEl.style.display = 'block';
+  play('pop');
+}
+function closeAlbum() {
+  selectedSticker = null;
   albumEl.style.display = 'none';
-});
+}
+function showStickerReward(i) {
+  if (!stickerReward || !rewardSticker) return;
+  rewardSticker.textContent = STICKERS[i].emoji;
+  stickerReward.classList.remove('show'); void stickerReward.offsetWidth; stickerReward.classList.add('show');
+  albumBtn.classList.remove('rewardPulse'); void albumBtn.offsetWidth; albumBtn.classList.add('rewardPulse');
+  clearTimeout(rewardTimer);
+  rewardTimer = setTimeout(() => stickerReward.classList.remove('show'), 3200);
+}
+function grantStickerForWater() {
+  if (albumUnlocked >= STICKERS.length) return null;
+  const i = albumUnlocked++;
+  saveAlbumProgress();
+  showStickerReward(i);
+  return i;
+}
+function setAlbumTestState(unlocked, placed = []) {
+  albumUnlocked = Math.max(0, Math.min(STICKERS.length, unlocked));
+  albumPlaced = new Set(placed.filter(i => i >= 0 && i < albumUnlocked));
+  saveAlbumProgress();
+}
+
+loadAlbumProgress();
+if (albumBtn) albumBtn.addEventListener('click', openAlbum);
+document.getElementById('albumClose').addEventListener('click', closeAlbum);
 function onTaskDone() {
   tasksDone++;
   localStorage.setItem('wm_tasks', String(tasksDone));
-  const before = Math.floor((tasksDone - 1) / 3), after = Math.floor(tasksDone / 3);
-  if (after > before) {
-    albumBtn.classList.remove('pop'); void albumBtn.offsetWidth; albumBtn.classList.add('pop');
-  }
 }
 // счётчики побед у каждого жителя — для «Как малыш растёт» в Родительском уголке
 function bumpWin(k) {
@@ -1831,9 +2028,18 @@ function bumpWin(k) {
 }
 
 // ============ ДЛИННАЯ СКАЗКА: ГЛАВА «КОРЕШОК-РУЧЕЁК» ============
-// После первой победы у Крота от его норки к Древу прорастает светящийся
-// ручеёк-росток (волна из тёплых точек + росток у подножия). Виден навсегда,
-// ночью светится чуть ярче. Продолжение глав — в следующих версиях.
+// Сначала ребёнок хотя бы раз помогает каждому из шести жителей. После приглашения
+// Рассказчицы особое повторное задание Крота открывает ручеёк-росток. При этом
+// повторные игры у всех жителей всегда остаются доступны.
+const MEADOW_FRIEND_KEYS = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met_mole', 'wm_met_sq', 'wm_met_fire'];
+function haveMetAllMeadowFriends() {
+  return MEADOW_FRIEND_KEYS.every(k => localStorage.getItem(k) === '1');
+}
+function isMoleSpecialReady() {
+  return haveMetAllMeadowFriends()
+    && localStorage.getItem('wm_mole_return_hint') === '1'
+    && localStorage.getItem('wm_story_mole') !== '1';
+}
 let sproutGroup = null;
 const sproutDots = [];
 let sproutGrowT = -1; // -1 = уже выросла (или ещё не начата), >=0 = идёт волна роста
@@ -1883,7 +2089,8 @@ if (localStorage.getItem('wm_story_mole') === '1') {
   sproutGroup.visible = true;
 }
 function checkMoleStory() {
-  if (localStorage.getItem('wm_story_mole') === '1') return false;
+  // Защита от случайного раннего вызова: финал Крота возможен только после всех друзей.
+  if (!isMoleSpecialReady()) return false;
   localStorage.setItem('wm_story_mole', '1');
   revealSprout();
   showStory({
@@ -1901,9 +2108,9 @@ const basketEls = { red: document.getElementById('basketRed'), green: document.g
 const mgDom = { apples: [], done: 0, total: 6, lastAction: 0, fingerFlip: 0 };
 
 const MG_PAIRS = [
-  { id: 'apples', a: '🍎', b: '🍏', ca: '#e26d5c', cb: '#7fb069' },
-  { id: 'orange', a: '🍊', b: '🫐', ca: '#f2994c', cb: '#5b8fd9' },
-  { id: 'berry', a: '🍓', b: '🍋', ca: '#e05263', cb: '#f2d24c' },
+  { id: 'apples', a: '🍎', b: '🍏', sa: 'apple-red', sb: 'apple-green', la: 'красное яблоко', lb: 'зелёное яблоко', ca: '#e26d5c', cb: '#7fb069' },
+  { id: 'orange', a: '🍊', b: '🫐', sa: 'orange', sb: 'blueberry', la: 'апельсин', lb: 'черника', ca: '#f2994c', cb: '#5b8fd9' },
+  { id: 'berry', a: '🍓', b: '🍋', sa: 'strawberry', sb: 'lemon', la: 'клубника', lb: 'лимон', ca: '#e05263', cb: '#f2d24c' },
 ];
 // у каждой пары фруктов — СВОЯ озвучка Ёжика, слова всегда совпадают с картинкой
 const HEDGE_ASKS = {
@@ -1917,12 +2124,16 @@ function openMinigame() {
   mgDom.lastAction = elapsed;
   mgDom.total = ageLevel() ? 8 : 6; // 5–6 лет: больше плодов — чуть больше работы
   if (!mgDom.pair) mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
-  document.getElementById('mgEmojiA').textContent = mgDom.pair.a;
+  const ruleFruitA = document.getElementById('mgEmojiA');
+  const ruleFruitB = document.getElementById('mgEmojiB');
+  ruleFruitA.className = `mg-fruit-icon mg-fruit-shape mg-fruit--${mgDom.pair.sa}`;
+  ruleFruitB.className = `mg-fruit-icon mg-fruit-shape mg-fruit--${mgDom.pair.sb}`;
+  ruleFruitA.setAttribute('aria-label', mgDom.pair.la);
+  ruleFruitB.setAttribute('aria-label', mgDom.pair.lb);
   document.getElementById('mgDotA').style.background = mgDom.pair.ca;
-  document.getElementById('mgEmojiB').textContent = mgDom.pair.b;
   document.getElementById('mgDotB').style.background = mgDom.pair.cb;
-  basketEls.red.style.background = mgDom.pair.ca;
-  basketEls.green.style.background = mgDom.pair.cb;
+  basketEls.red.style.setProperty('--basket-color', mgDom.pair.ca);
+  basketEls.green.style.setProperty('--basket-color', mgDom.pair.cb);
   mgEl.style.display = 'flex';
   mgFinger.style.display = 'none';
   Object.values(basketEls).forEach(b => b.classList.remove('glow'));
@@ -1935,16 +2146,18 @@ function openMinigame() {
     const half = mgDom.total / 2;
     const kinds = Array(half).fill('red').concat(Array(half).fill('green')).sort(() => rand() - 0.5);
     kinds.forEach((color, i) => {
-      const col = i % 3, row = Math.floor(i / 3);
+      // В новой горизонтальной сцене Ёжик занимает левую треть, поэтому плоды
+      // всегда раскладываются в свободной игровой зоне справа: 4 × 2 без наложений.
+      const col = i % 4, row = Math.floor(i / 4);
       const el = document.createElement('div');
-      el.className = 'mg-apple';
-      el.textContent = color === 'red' ? mgDom.pair.a : mgDom.pair.b;
+      const fruitShape = color === 'red' ? mgDom.pair.sa : mgDom.pair.sb;
+      const fruitLabel = color === 'red' ? mgDom.pair.la : mgDom.pair.lb;
+      el.className = `mg-apple mg-fruit-shape mg-fruit--${fruitShape}`;
+      el.setAttribute('role', 'img');
+      el.setAttribute('aria-label', fruitLabel);
       el.dataset.color = color;
-      const x = Math.min(rect.width * (0.12 + col * 0.26) + rand() * 8, rect.width - 78);
-      // полоса появления плодов — над корзинами, ровно в два ряда и на ЛЮБОЙ высоте экрана
-      // (фикс v0.11.1: на низком поле старый зажим «-200» скидывал все плоды в одну кучу наверху)
-      const zoneH = Math.max(rect.height - 150, 90);
-      const y = Math.max(6, Math.min(rect.height * (0.04 + row * 0.42) + rand() * 6, zoneH));
+      const x = Math.min(rect.width * (0.47 + col * 0.115) + rand() * 6, rect.width - 66);
+      const y = Math.min(rect.height * (0.26 + row * 0.23) + rand() * 5, rect.height * 0.57);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
       const a = { el, color, done: false, home: { x, y } };
@@ -1978,8 +2191,8 @@ function appleDown(e, a) {
   a.move = (ev) => {
     let l = a.startL + (ev.clientX - a.sx);
     let t = a.startT + (ev.clientY - a.sy);
-    l = Math.max(-10, Math.min(a.fieldRect.width - 40, l));
-    t = Math.max(-10, Math.min(a.fieldRect.height - 40, t));
+    l = Math.max(-10, Math.min(a.fieldRect.width - a.el.offsetWidth + 10, l));
+    t = Math.max(-10, Math.min(a.fieldRect.height - a.el.offsetHeight + 10, t));
     a.el.style.left = l + 'px';
     a.el.style.top = t + 'px';
   };
@@ -1995,7 +2208,8 @@ function appleDown(e, a) {
 }
 function appleDrop(a) {
   const fieldR = mgField.getBoundingClientRect();
-  const ax = parseFloat(a.el.style.left) + 28, ay = parseFloat(a.el.style.top) + 28;
+  const ax = parseFloat(a.el.style.left) + a.el.offsetWidth / 2;
+  const ay = parseFloat(a.el.style.top) + a.el.offsetHeight / 2;
   let best = null, bestD = Infinity;
   for (const color of ['red', 'green']) {
     const b = basketEls[color];
@@ -2015,8 +2229,8 @@ function appleDrop(a) {
     // ВЕРНО!
     play('good');
     a.done = true;
-    a.el.style.left = (best.cx - 28) + 'px';
-    a.el.style.top = (best.cy - 28) + 'px';
+    a.el.style.left = (best.cx - a.el.offsetWidth / 2) + 'px';
+    a.el.style.top = (best.cy - a.el.offsetHeight / 2) + 'px';
     a.el.style.transform = 'scale(0.25)';
     a.el.style.opacity = '0.5';
     setTimeout(() => a.el.remove(), 400);
@@ -2039,7 +2253,18 @@ function bestNear() { return Math.min(window.innerWidth, window.innerHeight) * 0
 document.getElementById('hintHedgeBtn').addEventListener('click', (e) => {
   e.stopPropagation();
   play('hintGlow');
-  mgDom.lastAction = elapsed - 100; // мгновенно включает свечение корзины и пальчик
+  // Показываем помощь прямо в обработчике: ребёнок видит ответ даже если следующий
+  // WebGL-кадр на слабом устройстве задержался. Цикл ниже продолжит движение пальчика.
+  const first = mgDom.apples.find(a => !a.done && a !== appleDrag);
+  if (first) {
+    const need = basketEls[first.color];
+    need.classList.add('glow');
+    const from = first.el.getBoundingClientRect();
+    mgFinger.style.left = (from.left + from.width * 0.5) + 'px';
+    mgFinger.style.top = (from.top - 14) + 'px';
+    mgFinger.style.display = 'block';
+  }
+  mgDom.lastAction = elapsed - 100;
 });
 document.getElementById('hintCountBtn').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2410,6 +2635,9 @@ const ML_ROW = 6;  // этап 1: ряд из 5 норок внизу (как р
 // 3–4 года: только ряд (6 морковок). 5–6 лет: ряд + большое поле 3×3 (12 морковок).
 function mlAll() { return ageLevel() ? 12 : 6; }
 const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: false, stage: 1 };
+// true только для повторного задания после помощи всем шести жителям.
+// На обычные повторные игры это не влияет.
+let moleSpecialRun = false;
 
 const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
   + '<ellipse cx="20" cy="76" rx="11" ry="6" fill="#5c4030"/>'
@@ -2428,13 +2656,20 @@ function startMoleDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
   clearPendings();
+  hideGuideArrow('mole-special');
   play('pop');
   stopVoice();
-  speak(localStorage.getItem('wm_met_mole') === '1' ? 'voice/mole_again.mp3' : 'voice/mole_hello.mp3');
-  speak('voice/mole_ask.mp3', { after: true });
+  moleSpecialRun = isMoleSpecialReady();
+  if (moleSpecialRun) {
+    speak('voice/mole_special.mp3');
+  } else {
+    speak(localStorage.getItem('wm_met_mole') === '1' ? 'voice/mole_again.mp3' : 'voice/mole_hello.mp3');
+    speak('voice/mole_ask.mp3', { after: true });
+  }
   const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, 2600);
+  const wait = moleSpecialRun ? 7600 : 2600;
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, wait);
 }
 function makeMoleHole() {
   const hole = document.createElement('div');
@@ -2545,6 +2780,8 @@ document.getElementById('hintMoleBtn').addEventListener('click', (e) => {
 });
 function celebrateMole() {
   gameState = 'celebrate';
+  const completedSpecialRun = moleSpecialRun;
+  moleSpecialRun = false;
   dropsCount++;
   refreshDrops(true);
   onTaskDone();
@@ -2557,8 +2794,10 @@ function celebrateMole() {
   spawnBurst(hero.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 12);
   setTimeout(() => {
     gameState = 'explore';
-    // первая победа у Крота открывает главу «Корешок-ручеёк» (вместо обычной сюжетной карточки)
-    if (!checkMoleStory()) checkStory();
+    // Ручеёк появляется только после особого повторного задания.
+    // Первое и любые обычные прохождения Крота остаются свободными.
+    if (completedSpecialRun) checkMoleStory();
+    else checkStory();
   }, 2600);
 }
 
@@ -3094,6 +3333,8 @@ function showStory(s) {
 }
 // После главы 2 (да и у «ветеранов» на старте): рассказчица зовёт к волшебной арке.
 let pendingPortalArrow = false;
+// После приглашения Рассказчицы стрелка мягко указывает на Крота.
+let pendingMoleArrow = false;
 function maybeAnnouncePortal() {
   if (!starLit || localStorage.getItem('wm_portal_seen') === '1') return;
   localStorage.setItem('wm_portal_seen', '1');
@@ -3114,12 +3355,17 @@ document.getElementById('storyNext').addEventListener('click', () => {
     setTimeout(() => startChoirCeremony(), 350);
   } else {
     gameState = 'explore';
-    if (pendingPortalArrow) {
+    if (pendingMoleArrow) {
+      pendingMoleArrow = false;
+      showGuideArrowAt(MOLE_POS.x, 2.8, MOLE_POS.z, 'mole-special');
+    } else if (pendingPortalArrow) {
       pendingPortalArrow = false;
       showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
     }
-    // возможно, пора рассказать про арку (например, звезда только что засияла)
-    setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 700);
+    // После карточки проверяем следующий сюжетный шаг. Например, после ручейка
+    // можно показать подсказку о поливе или начать главу 2.
+    setTimeout(() => { if (gameState === 'explore') checkStory(); }, 450);
+    setTimeout(() => { if (gameState === 'explore') maybeAnnouncePortal(); }, 900);
   }
 });
 function checkStory() {
@@ -3130,16 +3376,31 @@ function checkStory() {
       break;
     }
   }
-  // ДЛИННАЯ СКАЗКА, ГЛАВА 2 «Звонкое созвучие»: помог ВСЕМ шестерым жителям
-  const ALL6 = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met_mole', 'wm_met_sq', 'wm_met_fire'];
-  const allMet = ALL6.every(k => localStorage.getItem(k) === '1');
-  if (allMet && localStorage.getItem('wm_story_all6') !== '1' && gameState === 'explore') {
+  const allMet = haveMetAllMeadowFriends();
+
+  // Сначала — приглашение к особому ПОВТОРНОМУ заданию Крота. Оно появляется
+  // только после первой помощи каждому из шести жителей. Другие игры не блокируются.
+  if (allMet && localStorage.getItem('wm_story_mole') !== '1') {
+    if (localStorage.getItem('wm_mole_return_hint') !== '1' && gameState === 'explore') {
+      localStorage.setItem('wm_mole_return_hint', '1');
+      pendingMoleArrow = true;
+      showStory({
+        emoji: '🐾', voice: 'voice/mole_return_hint.mp3',
+        text: 'Ты помог всем друзьям на полянке! Когда решишь двигаться дальше, зайди ещё раз к Кроту — кажется, у него есть особое задание для тебя.',
+      });
+    } else if (gameState === 'explore') {
+      showGuideArrowAt(MOLE_POS.x, 2.8, MOLE_POS.z, 'mole-special');
+    }
+    return;
+  }
+
+  // ГЛАВА 2 «Звонкое созвучие» ждёт завершения особого задания и появления ручейка.
+  if (allMet && localStorage.getItem('wm_story_mole') === '1'
+      && localStorage.getItem('wm_story_all6') !== '1' && gameState === 'explore') {
     if (treeStage === 3) {
-      // Дерево доросло до звезды — большой праздник: друзья поют хором
       localStorage.setItem('wm_story_all6', '1');
       setTimeout(() => { if (gameState === 'explore') startChapter2(); }, 900);
     } else if (localStorage.getItem('wm_story6hint') !== '1') {
-      // Дерево ещё растёт — мягкая подсказка поливать капельками
       localStorage.setItem('wm_story6hint', '1');
       setTimeout(() => showStory({ emoji: '🌳', voice: 'voice/story2_hint.mp3',
         text: 'Ты помог всем шестерым друзьям! Осталось одно: поливай Древо капельками, чтобы оно доросло до звезды. Тогда друзья споют самую дружную песню!' }), 700);
@@ -3753,7 +4014,7 @@ function openParent() {
     statRow('🐾 Крот — побед', wins('mole')) +
     statRow('🐿️ Белка — побед', wins('sq')) +
     statRow('✨ Светлячок — побед', wins('fire')) +
-    statRow('📖 Наклейки в альбоме', unlockedCount() + ' из ' + STICKERS.length) +
+    statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
     statRow('📗 Сказка: «Корешок-ручеёк»', s1) +
@@ -3964,6 +4225,9 @@ function finishIntro(skipped) {
   if (skipped) { stopVoice(); speak('voice/intro_go.mp3'); }
   else speak('voice/intro_go.mp3', { after: true }); // дождётся конца рассказа
   showGuideArrow();
+  // Проверяем незавершённый сюжетный шаг и у старых сохранений: если все друзья
+  // уже встречены, Рассказчица напомнит про особое задание Крота.
+  setTimeout(() => { if (gameState === 'explore') checkStory(); }, 4200);
   // «ветеранам» (звезда уже сияет): ведём к волшебной арке или рассказываем о ней
   if (starLit) {
     if (localStorage.getItem('wm_portal_seen') !== '1') {
@@ -4004,7 +4268,9 @@ checkRotate();
 function animate() {
   requestAnimationFrame(animate);
   if (paused) { renderer.render(scene, camera); return; }
-  const dt = 1 / 60;
+  // Скрытые целевые сценарии Крота ускорены: программный SwiftShader рисует
+  // заметно реже 60 кадров/с, поэтому без этого E2E-проверка ждала бы минуты.
+  const dt = location.hash.indexOf('#shot-mole') === 0 ? 1 / 10 : 1 / 60;
   elapsed += dt;
 
   // --- ИГРОВОЕ ВРЕМЯ идёт ТОЛЬКО на экране игры: альбом, карта сказки, родительский уголок,
@@ -4568,7 +4834,9 @@ function animate() {
         const i = Math.floor(Math.random() * ml.holes.length);
         const h = ml.holes[i];
         h.up = true; h.t = 0;
-        h.carrot = Math.random() < 0.72;
+        // В обычной игре сохраняем дружелюбное чередование. В скрытом E2E-сценарии
+        // морковка гарантирована, чтобы случайность не делала проверку нестабильной.
+        h.carrot = location.hash.indexOf('#shot-mole') === 0 || Math.random() < 0.72;
         // авто-подсказки по правилам интерфейса: 18 с — свечение, 26 с — пальчик НАД норкой
         const idle = elapsed - ml.lastAction;
         if (idle > 18) { h.carrot = true; h.hole.classList.add('glow'); }
@@ -4762,10 +5030,46 @@ if (location.hash.indexOf('#shot') === 0) {
       spawnHero('fox');
       gameState = 'explore';
       const kind = location.hash.slice(6);
-      if (kind === 'hedge') { mgDom.pair = MG_PAIRS[0]; openMinigame(); }
+      if (kind === 'album') {
+        setAlbumTestState(8, [0, 1, 2]);
+        openAlbum();
+      }
+      else if (kind === 'album2') {
+        setAlbumTestState(17, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+        activeAlbumPage = 1;
+        openAlbum();
+      }
+      else if (kind === 'albumreward') {
+        setAlbumTestState(4, [0, 1]);
+        dropsCount = 1;
+        waterTree();
+      }
+      else if (kind === 'hedge') { mgDom.pair = MG_PAIRS[0]; openMinigame(); }
+      else if (kind === 'hedge-orange') { mgDom.pair = MG_PAIRS[1]; openMinigame(); }
+      else if (kind === 'hedge-berry') { mgDom.pair = MG_PAIRS[2]; openMinigame(); }
       else if (kind === 'owl') openCountGame();
       else if (kind === 'frog') openBridgeGame();
       else if (kind === 'mole') openMoleGame();
+      else if (kind === 'molegate') {
+        // Точечный тест нового сюжета: все друзья пройдены, ручеёк ещё закрыт.
+        MEADOW_FRIEND_KEYS.forEach(k => localStorage.setItem(k, '1'));
+        localStorage.removeItem('wm_story_mole');
+        localStorage.removeItem('wm_mole_return_hint');
+        checkStory();
+      }
+      else if (kind === 'molespecial') {
+        // Точечный тест особого повторного задания (не сбрасывает уже открытый финал).
+        MEADOW_FRIEND_KEYS.forEach(k => localStorage.setItem(k, '1'));
+        localStorage.setItem('wm_mole_return_hint', '1');
+        startMoleDialog();
+      }
+      else if (kind === 'moleearly') {
+        // Защитный тест: один Крот не должен открыть ручеёк раньше остальных.
+        MEADOW_FRIEND_KEYS.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem('wm_met_mole', '1');
+        localStorage.removeItem('wm_story_mole');
+        document.body.dataset.moleEarlyOpened = checkMoleStory() ? 'yes' : 'no';
+      }
       else if (kind === 'sq') openSqGame();
       else if (kind === 'fire') openStoneGame();
       else if (kind === 'beaver') openBeaverGame();

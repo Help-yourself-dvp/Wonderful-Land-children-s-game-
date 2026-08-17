@@ -1,7 +1,7 @@
 {
   "name": "wonder-meadow",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.19.0",
   "type": "module",
   "description": "Волшебная полянка — детская развивающая 3D-игра (3-6 лет), офлайн, без рекламы",
   "scripts": {
