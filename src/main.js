@@ -1632,6 +1632,72 @@ otter.scale.setScalar(1.15);
 const otterBubble = makeBubbleSprite('🐾', 0.9);
 otterBubble.position.set(OTTER_POS.x, 2.2, OTTER_POS.z);
 scene.add(otterBubble);
+
+// ============ ЛОСЬ (Локация 3: «Лесная тропинка») ============
+// v0.24: первый житель чащи. Добрый великан с большими рогами, моргает и
+// мягко качает головой. Игра — своя, не повторяет Л1/Л2 (тропинка-лабиринт).
+function makeMoose() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const fur = L(0x8a5a3b), furD = L(0x6f452c), cream = L(0xe8d2ae), antlerC = L(0xd8b98a);
+  // крупное тело
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 16), fur);
+  body.position.y = 0.98; body.scale.set(1.25, 1.05, 0.95); body.castShadow = true;
+  // высокая шея и голова
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.6, 10), fur);
+  neck.position.set(0, 1.55, 0.2); neck.rotation.x = 0.18;
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), fur);
+  skull.position.y = 0;
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 12), cream);
+  muzzle.position.set(0, -0.08, 0.22); muzzle.scale.set(1.05, 0.8, 1.1);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), furD);
+  nose.position.set(0, 0.0, 0.4);
+  const eyeGeo = new THREE.SphereGeometry(0.05, 10, 10);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x3a2418 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.13, 0.1, 0.24);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.13;
+  const glGeo = new THREE.SphereGeometry(0.018, 8, 8);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.11, 0.13, 0.285);
+  const glR = glL.clone(); glR.position.x = 0.11;
+  // большие уши
+  const earGeo = new THREE.SphereGeometry(0.13, 10, 10);
+  const earL = new THREE.Mesh(earGeo, furD); earL.position.set(-0.2, 0.2, 0.02); earL.scale.set(1.1, 1.6, 0.45);
+  const earR = earL.clone(); earR.position.x = 0.2;
+  // ветвистые рога
+  const antlerGeo = new THREE.CylinderGeometry(0.045, 0.06, 0.55, 6);
+  const antlerL = new THREE.Mesh(antlerGeo, antlerC); antlerL.position.set(-0.14, 0.42, 0); antlerL.rotation.z = 0.5;
+  const antlerR = antlerL.clone(); antlerR.position.x = 0.14; antlerR.rotation.z = -0.5;
+  const tineGeo = new THREE.CylinderGeometry(0.032, 0.045, 0.34, 6);
+  const t1 = new THREE.Mesh(tineGeo, antlerC); t1.position.set(-0.26, 0.62, 0); t1.rotation.z = 0.75;
+  const t2 = new THREE.Mesh(tineGeo, antlerC); t2.position.set(0.26, 0.62, 0); t2.rotation.z = -0.75;
+  head.add(skull, muzzle, nose, eyeL, eyeR, glL, glR, earL, earR, antlerL, antlerR, t1, t2);
+  head.position.y = 1.98;
+  bodyG.add(body, neck, head);
+  // длинные ноги
+  const legGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.95, 8);
+  const legs = [[-0.28, 0.42], [0.28, 0.42], [-0.22, 0.4], [0.22, 0.4]].map(([x, z], i) => {
+    const l = new THREE.Mesh(legGeo, furD);
+    l.position.set(x, 0.5, z - (i < 2 ? 0.1 : -0.12));
+    return l;
+  });
+  bodyG.add(...legs);
+  g.add(bodyG);
+  g.userData = { body: bodyG, head, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const MOOSE_POS = { x: LOC3.x - 5.6, z: LOC3.z + 6.2 };
+const MOOSE_APPR = { x: LOC3.x - 4.2, z: LOC3.z + 5.0 };
+const moose = makeMoose();
+moose.position.set(MOOSE_POS.x, 0, MOOSE_POS.z);
+moose.rotation.y = Math.atan2(LOC3.x - MOOSE_POS.x, LOC3.z - MOOSE_POS.z);
+scene.add(moose);
+obstacles.push({ x: MOOSE_POS.x, z: MOOSE_POS.z, r: 0.7 });
+moose.scale.setScalar(1.05);
+const mooseBubble = makeBubbleSprite('🫐', 0.95);
+mooseBubble.position.set(MOOSE_POS.x, 3.2, MOOSE_POS.z);
+scene.add(mooseBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -2010,6 +2076,7 @@ function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
   pendingBeaver = pendingFrog2 = false;
   pendingHeron = pendingDuck = pendingOtter = false;
+  pendingMoose = false;
   pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
@@ -2659,7 +2726,7 @@ function exitMinigame() {
   stopVoice();
   const closers = [closeMinigame, closeCountGame, closeBridgeGame,
                   closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
-                  closeHeronGame, closeDuckGame, closeOtterGame];
+                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
   // УРОК (живой тест v0.23.0): closers не сбрасывают gameState — без этой строки
   // после ✕ герой замирал на полянке (мир анимировался, а движение было выключено).
@@ -4038,6 +4105,146 @@ document.getElementById('hintOtterBtn').addEventListener('click', (e) => {
   setTimeout(() => btn.classList.remove('glow'), 8000);
 });
 
+// ============ ЛОСЬ: «ЛЕСНАЯ ТРОПИНКА» (Локация 3) ============
+// Своя механика чащи (не повторяет Л1/Л2): провести Лося по клеточкам до ягод.
+// Zero Fail: неверная клетка мягко качается, верная — Лось шагает.
+const msEl = document.getElementById('moosegame');
+const msMsg = document.getElementById('msMsg');
+const msGrid = document.getElementById('msGrid');
+const msFinger = document.getElementById('msFinger');
+const MS_ROWS = 3, MS_COLS = 5;
+const ms = { path: [], idx: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
+function msRounds() { return ageLevel() ? 3 : 2; }
+function msLen() { return ageLevel() ? 6 : 4; }
+function msMakePath() {
+  // случайная тропинка слева направо без самопересечений; конец — на ягодной стороне (правая колонка)
+  for (let t = 0; t < 60; t++) {
+    const path = [[1, 0]];
+    let r = 1, c = 0;
+    while (path.length < msLen()) {
+      const opts = [];
+      if (c < MS_COLS - 1) opts.push([r, c + 1]);
+      if (r > 0) opts.push([r - 1, c]);
+      if (r < MS_ROWS - 1) opts.push([r + 1, c]);
+      const free = opts.filter(([pr, pc]) => !path.some(([ar, ac]) => ar === pr && ac === pc));
+      if (!free.length) break;
+      const [nr, nc] = free[Math.floor(rand() * free.length)];
+      r = nr; c = nc;
+      path.push([r, c]);
+    }
+    if (path.length === msLen() && path[path.length - 1][1] >= MS_COLS - 2) return path;
+  }
+  // запасной прямой путь
+  return [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4]].slice(0, msLen() >= 6 ? 6 : msLen() >= 5 ? 5 : 4);
+}
+function startMooseDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_moose') === '1' ? 'voice/moose_again.mp3' : 'voice/moose_hello.mp3');
+  speak('voice/moose_ask.mp3', { after: true });
+  const dx = MOOSE_POS.x - hero.position.x, dz = MOOSE_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMooseGame(); }, 2600);
+}
+function buildMooseRound() {
+  msGrid.innerHTML = '';
+  ms.path = msMakePath();
+  ms.idx = 0;
+  msMsg.textContent = '🦌 Тропинка ' + (ms.round + 1) + ' из ' + msRounds();
+  for (let r = 0; r < MS_ROWS; r++) {
+    for (let c = 0; c < MS_COLS; c++) {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'ms-cell';
+      cell.dataset.r = r; cell.dataset.c = c;
+      const pathIdx = ms.path.findIndex(([pr, pc]) => pr === r && pc === c);
+      if (pathIdx >= 0) { cell.classList.add('path'); cell.dataset.seq = pathIdx; }
+      cell.addEventListener('pointerdown', (e) => { e.stopPropagation(); mooseTap(cell, r, c); });
+      msGrid.appendChild(cell);
+    }
+  }
+  // Лось на старте, ягоды на финише
+  const [sr, sc] = ms.path[0];
+  const [gr, gc] = ms.path[ms.path.length - 1];
+  const startCell = msGrid.querySelector(`.ms-cell[data-r="${sr}"][data-c="${sc}"]`);
+  const goalCell = msGrid.querySelector(`.ms-cell[data-r="${gr}"][data-c="${gc}"]`);
+  const marker = document.createElement('span');
+  marker.className = 'ms-marker'; marker.textContent = '🦌';
+  startCell.appendChild(marker);
+  const goal = document.createElement('span');
+  goal.className = 'ms-goal'; goal.textContent = '🫐';
+  goalCell.appendChild(goal);
+}
+function mooseTap(cell, r, c) {
+  if (gameState !== 'moosegame') return;
+  const [mr, mc] = ms.path[ms.idx];
+  const [nr, nc] = ms.path[ms.idx + 1] || [null, null];
+  if (nr == null) return;
+  const isNext = (r === nr && c === nc);
+  const isAdjacent = Math.abs(r - mr) + Math.abs(c - mc) === 1;
+  ms.lastAction = elapsed; ms.fingerShown = false; msFinger.style.display = 'none';
+  if (isNext) {
+    // шаг по тропинке
+    play('pickup');
+    const marker = cell.parentElement.querySelector('.ms-marker');
+    cell.appendChild(marker);
+    ms.idx++;
+    if (ms.idx >= ms.path.length - 1) {
+      // дошли до ягод!
+      play('good');
+      cell.classList.add('goal-reached');
+      ms.round++;
+      if (ms.round >= msRounds()) {
+        setTimeout(() => { if (gameState === 'moosegame') { closeMooseGame(); celebrateMoose(); } }, 750);
+      } else {
+        setTimeout(() => { if (gameState === 'moosegame') buildMooseRound(); }, 1000);
+      }
+    }
+  } else if (isAdjacent) {
+    // рядом, но не по тропинке — мягкий «плинг» и покачивание, пробуем снова
+    play('bad');
+    cell.classList.add('shake');
+    setTimeout(() => cell.classList.remove('shake'), 420);
+  } else {
+    // слишком далеко — просто тихий «плинг», без наказания
+    play('bad');
+  }
+}
+function openMooseGame() {
+  gameState = 'moosegame';
+  ms.round = 0; ms.slow = 0; ms.fingerShown = false;
+  ms.lastAction = elapsed;
+  buildMooseRound();
+  msEl.style.display = 'flex';
+  if (!msEl.querySelector('.mg-exit')) makeExitButton(msEl);
+  msFinger.style.display = 'none';
+}
+function closeMooseGame() { msEl.style.display = 'none'; msFinger.style.display = 'none'; }
+function celebrateMoose() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_moose', '1'); bumpWin('moose');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/moose_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(MOOSE_POS.x, 2.2, MOOSE_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintMooseBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  ms.slow = 8;
+  const btn = document.getElementById('hintMooseBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
 function celebrateBeaver() {
   gameState = 'celebrate';
   dropsCount++;
@@ -4417,6 +4624,7 @@ let pendingBeaver = false;
 let pendingFrog2 = false;
 let pendingPortalDef = null;
 let pendingHeron = false, pendingDuck = false, pendingOtter = false;
+let pendingMoose = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -4582,6 +4790,13 @@ window.addEventListener('pointerup', (e) => {
     const dx = OTTER_POS.x - hero.position.x, dz = OTTER_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.4) startOtterDialog();
     else { pendingOtter = true; givePath(OTTER_APPR.x, OTTER_APPR.z); }
+    return;
+  }
+  // тап по Лосю (Локация 3 «Лесная чаща»)
+  if (curLoc === 2 && rc.intersectObject(moose, true).length) {
+    const dx = MOOSE_POS.x - hero.position.x, dz = MOOSE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.6) startMooseDialog();
+    else { pendingMoose = true; givePath(MOOSE_APPR.x, MOOSE_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -4871,6 +5086,7 @@ function openParent() {
     statRow('🐾 Крот — побед', wins('mole')) +
     statRow('🐿️ Белка — побед', wins('sq')) +
     statRow('✨ Светлячок — побед', wins('fire')) +
+    statRow('🦌 Лось — побед', wins('moose')) +
     statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
@@ -5145,6 +5361,7 @@ camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
 let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0, hedgeBlinkT = 2.4;
 let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
+let mooseBlinkT = 3.1;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -5315,7 +5532,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingPortalDef || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -5380,6 +5597,11 @@ function animate() {
         pendingOtter = false;
         const d = Math.hypot(OTTER_POS.x - hero.position.x, OTTER_POS.z - hero.position.z);
         if (d < 3.6) startOtterDialog();
+      }
+      if (pendingMoose) {
+        pendingMoose = false;
+        const d = Math.hypot(MOOSE_POS.x - hero.position.x, MOOSE_POS.z - hero.position.z);
+        if (d < 3.6) startMooseDialog();
       }
       if (pendingPortalDef) {
         const def = pendingPortalDef;
@@ -5600,6 +5822,16 @@ function animate() {
   }
   // огоньки в Лесной чаще — ночью разгораются ярче
   for (const gl of thicketGlows) { if (gl.material) gl.material.opacity = 0.3 + nightness * 0.65; }
+  // Лось: степенно покачивает головой, добро моргает
+  moose.userData.head.rotation.y = Math.sin(elapsed * 0.7) * 0.16;
+  moose.userData.head.rotation.z = Math.sin(elapsed * 0.45) * 0.04;
+  mooseBlinkT -= dt;
+  if (mooseBlinkT < 0) mooseBlinkT = 2.8 + Math.random() * 3.5;
+  const mbl = mooseBlinkT < 0.12 ? 0.15 : 1;
+  moose.userData.eyes[0].scale.y += (mbl - moose.userData.eyes[0].scale.y) * 0.6;
+  moose.userData.eyes[1].scale.y = moose.userData.eyes[0].scale.y;
+  moose.userData.glints.forEach(gl => gl.visible = mbl > 0.5);
+  mooseBubble.position.y = 3.2 + Math.sin(elapsed * 2.1) * 0.08;
 
   // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
   for (const p of [portalL1, portalL2, portalL3, portalL3b]) {
@@ -5876,6 +6108,21 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «ЛЕСНАЯ ТРОПИНКА» (Лось) ---
+  if (gameState === 'moosegame') {
+    const idle = elapsed - ms.lastAction;
+    const [nr, nc] = ms.path[ms.idx + 1] || [null, null];
+    const next = nr != null ? msGrid.querySelector(`.ms-cell[data-r="${nr}"][data-c="${nc}"]`) : null;
+    if (next && idle > 20) next.classList.add('glow');
+    if (next && idle > 28 && !ms.fingerShown) {
+      ms.fingerShown = true;
+      const rect = next.getBoundingClientRect();
+      msFinger.style.left = (rect.left + rect.width * 0.4) + 'px';
+      msFinger.style.top = (rect.top - 62) + 'px';
+      msFinger.style.display = 'block';
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
@@ -6108,6 +6355,7 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'heron') openHeronGame();
       else if (kind === 'duck') openDuckGame();
       else if (kind === 'otter') openOtterGame();
+      else if (kind === 'moose') openMooseGame();
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);
@@ -6238,9 +6486,10 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'heron') { subj = heron; dist = 2.9; lookY = 1.15; }
       else if (name === 'duck') { subj = duck; dist = 2.5; lookY = 0.55; }
       else if (name === 'otter') { subj = otter; dist = 2.6; lookY = 0.5; }
+      else if (name === 'moose') { subj = moose; dist = 3.4; lookY = 1.1; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
