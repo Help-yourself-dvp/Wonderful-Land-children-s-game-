@@ -1025,12 +1025,16 @@ treeStages.forEach(g => g && g.traverse(m => { if (m.material && m.material.isMe
 const LOCS = [
   { x: 0, z: 0, name: 'Лесная полянка', sub: 'тёплый домик у ручья' },
   { x: 0, z: 150, name: 'Речной берег', sub: 'здесь живёт Бобр-строитель' },
+  { x: 0, z: 300, name: 'Лесная чаща', sub: 'тихий лес, где живут новые друзья' },
 ];
 let curLoc = 0;
 const LOC2 = LOCS[1];
+const LOC3 = LOCS[2];
 // отдельный «шумовой» генератор для декора Л2 — НЕ трогаем общий rand(),
 // чтобы не сдвинуть выверенную рассадку Локации 1
 const r2 = (() => { let s = 987; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+// и отдельный — для декора Л3 «Лесная чаща»
+const r3 = (() => { let s = 456; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
 
 // мягкое свечение для огоньков арки
 let glowTex2 = null;
@@ -1266,26 +1270,152 @@ const portalL2 = makePortal();
 portalL2.position.set(LOC2.x - 11.5, 0.02, LOC2.z + 3.0);
 portalL2.rotation.y = Math.atan2(11.5, -3.0);
 scene.add(portalL2);
+// третья арка: с Речного берега — в Лесную чащу (северный край Л2)
+const portalL3 = makePortal();
+portalL3.position.set(LOC2.x + 3.5, 0.02, LOC2.z + 13.4);
+portalL3.rotation.y = Math.atan2(-3.5, -13.4);
+scene.add(portalL3);
+// и обратная арка в чаще (южный край Л3) — домой, на Речной берег
+const portalL3b = makePortal();
+portalL3b.position.set(LOC3.x - 4.0, 0.02, LOC3.z - 13.2);
+portalL3b.rotation.y = Math.atan2(4.0, 13.2);
+scene.add(portalL3b);
 obstacles.push({ x: 12.4, z: 0.2, r: 0.9 });
 obstacles.push({ x: LOC2.x - 11.5, z: LOC2.z + 3.0, r: 0.9 });
+obstacles.push({ x: LOC2.x + 3.5, z: LOC2.z + 13.4, r: 0.9 });
+obstacles.push({ x: LOC3.x - 4.0, z: LOC3.z - 13.2, r: 0.9 });
 // точка подхода к арке на Л1 — с СЕВЕРО-востока (с юга мешает бревнышко у пруда)
 const PORTAL_APPR = [{ x: 10.9, z: -1.1 }, { x: LOC2.x - 10.0, z: LOC2.z + 3.0 }];
 const LOC_EXIT = [
   { x: 11.15, z: -0.9, ry: -Math.PI / 2 },
   { x: LOC2.x - 10.05, z: LOC2.z + 3.0, ry: Math.atan2(10.05, -3) },
 ];
+// Цепочка путешествий Л1 ↔ Л2 ↔ Л3: у каждой арки своя локация и пункт назначения
+const PORTAL_DEFS = [
+  { obj: portalL1,  loc: 0, dest: 1, appr: { x: 10.9, z: -1.1 } },
+  { obj: portalL2,  loc: 1, dest: 0, appr: { x: LOC2.x - 10.0, z: LOC2.z + 3.0 } },
+  { obj: portalL3,  loc: 1, dest: 2, appr: { x: LOC2.x + 3.5, z: LOC2.z + 11.6 } },
+  { obj: portalL3b, loc: 2, dest: 1, appr: { x: LOC3.x - 4.0, z: LOC3.z - 11.4 } },
+];
+LOC_EXIT.push({ x: LOC3.x - 4.0, z: LOC3.z - 11.4, ry: Math.atan2(4.0, 11.4) });
 function revealPortal(withFx) {
   if (portalL1.visible) return;
   portalL1.visible = true;
   portalL2.visible = true;
+  portalL3.visible = true;
+  portalL3b.visible = true;
   if (!withFx) return;
   spawnBurst(new THREE.Vector3(12.4, 1.6, 0.2), 16);
   play('drop');
 }
 portalL1.visible = starLit;
 portalL2.visible = starLit;
+portalL3.visible = starLit;
+portalL3b.visible = starLit;
 
-// ============ БОБР-СТРОИТЕЛЬ (Локация 2) ============
+// ----- ЛЕСНАЯ ЧАЩА (Локация 3): остров густого леса с ёлками, пеньками и грибами -----
+const thicketGlows = []; // огоньки-светлячки чаще (ночью ярче — в animate)
+{
+  const ground3 = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R * 0.88, 1.8, 48), L(0x6cb96c));
+  ground3.position.set(LOC3.x, -0.9, LOC3.z);
+  ground3.receiveShadow = true;
+  scene.add(ground3);
+  // тёмные пятна мха и трава
+  for (let i = 0; i < 10; i++) {
+    const a = r3() * Math.PI * 2, rr = 2 + Math.sqrt(r3()) * 11.5;
+    const patch = new THREE.Mesh(
+      new THREE.CircleGeometry(1.0 + r3() * 1.3, 20),
+      new THREE.MeshLambertMaterial({ color: r3() > 0.5 ? 0x58a45c : 0x7cc46e, transparent: true, opacity: 0.55 })
+    );
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set(LOC3.x + Math.cos(a) * rr, 0.016 + i * 0.001, LOC3.z + Math.sin(a) * rr);
+    scene.add(patch);
+  }
+  // ёлочки — хвойное кольцо вокруг поляны и несколько внутри
+  const makeFir = (x, z, s) => {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.7, 8), L(0x6f452c));
+    trunk.position.y = 0.35;
+    g.add(trunk);
+    const greens = [0x2f6b45, 0x3d8352, 0x4d9460];
+    greens.forEach((c, i) => {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.85 - i * 0.2, 1.05, 10), L(c));
+      cone.position.y = 0.75 + i * 0.62;
+      cone.castShadow = true;
+      g.add(cone);
+    });
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    scene.add(g);
+    obstacles.push({ x, z, r: 0.5 });
+    return g;
+  };
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + r3() * 0.35;
+    const rr = 10.5 + r3() * 3.2;
+    makeFir(LOC3.x + Math.cos(a) * rr, LOC3.z + Math.sin(a) * rr, 0.9 + r3() * 0.5);
+  }
+  makeFir(LOC3.x + 6.5, LOC3.z - 5.5, 1.15);
+  makeFir(LOC3.x - 7.0, LOC3.z + 4.0, 1.0);
+  makeFir(LOC3.x - 1.5, LOC3.z + 8.5, 1.05);
+  // пеньки с годовыми кольцами
+  const makeStump = (x, z, s) => {
+    const g = new THREE.Group();
+    const side = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.5, 12), L(0x8a5a3b));
+    side.position.y = 0.25; side.castShadow = true;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 12), L(0xd8a566));
+    top.position.y = 0.52;
+    g.add(side, top);
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    scene.add(g);
+    obstacles.push({ x, z, r: 0.45 });
+    return g;
+  };
+  makeStump(LOC3.x - 4.2, LOC3.z + 3.4, 1.0);
+  makeStump(LOC3.x + 5.6, LOC3.z - 3.8, 0.85);
+  makeStump(LOC3.x + 2.2, LOC3.z + 6.6, 0.9);
+  // грибочки-боровички
+  const makeMushroom = (x, z, s) => {
+    const g = new THREE.Group();
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.15, 0.34, 8), L(0xf2e3c9));
+    stem.position.y = 0.17;
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), L(0xc98d5a));
+    cap.position.y = 0.34; cap.scale.set(1, 0.75, 1); cap.castShadow = true;
+    g.add(stem, cap);
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    scene.add(g);
+    return g;
+  };
+  for (const [mx, mz, ms] of [[-6.2, -5.6, 1.0], [-7.4, -6.4, 0.7], [-5.4, -6.8, 0.6], [4.4, 7.2, 0.9], [5.6, 7.8, 0.65]]) {
+    makeMushroom(LOC3.x + mx, LOC3.z + mz, ms);
+  }
+  // моховые валуны
+  for (const [bx, bz, br] of [[-8.4, 1.6, 0.6], [7.8, -1.2, 0.5], [0.8, -8.2, 0.7]]) {
+    const rock = new THREE.Mesh(new THREE.SphereGeometry(br, 14, 12), L(0x9aa28c));
+    rock.position.set(LOC3.x + bx, br * 0.35, LOC3.z + bz);
+    rock.scale.y = 0.8; rock.castShadow = true;
+    scene.add(rock);
+    obstacles.push({ x: LOC3.x + bx, z: LOC3.z + bz, r: br + 0.05 });
+  }
+  // лесные фиалки
+  for (let i = 0; i < 14; i++) {
+    const a = r3() * Math.PI * 2, rr = 2.2 + Math.sqrt(r3()) * 10.5;
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), L(0xb39ddb));
+    f.position.set(LOC3.x + Math.cos(a) * rr, 0.05, LOC3.z + Math.sin(a) * rr);
+    f.scale.set(1, 0.6, 1);
+    scene.add(f);
+  }
+  // мягкие огоньки-светлячки в чаще (видны всегда, ночью «горят» ярче — см. animate)
+  for (let i = 0; i < 6; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex(), color: 0xd9ffb0, transparent: true, depthWrite: false }));
+    s.position.set(LOC3.x + (r3() - 0.5) * 16, 0.8 + r3() * 1.2, LOC3.z + (r3() - 0.5) * 16);
+    s.scale.setScalar(0.5 + r3() * 0.4);
+    scene.add(s);
+    thicketGlows.push(s);
+  }
+}
 function makeBeaver() {
   const g = new THREE.Group();
   const fur = L(0x8a5a3b);
@@ -1728,7 +1858,8 @@ function syncAgeUI() {
 }
 function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
-  pendingBeaver = pendingPortal = pendingFrog2 = false;
+  pendingBeaver = pendingFrog2 = false;
+  pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
 
@@ -3761,7 +3892,7 @@ let pendingSq = false;
 let pendingFire = false;
 let pendingBeaver = false;
 let pendingFrog2 = false;
-let pendingPortal = false;
+let pendingPortalDef = null;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -3883,11 +4014,15 @@ window.addEventListener('pointerup', (e) => {
     return;
   }
   // тап по волшебной арке (только когда она уже есть и мы в «её» локации)
-  const portalObj = curLoc === 0 ? portalL1 : portalL2;
-  if (portalObj.visible && rc.intersectObject(portalObj, true).length) {
-    const ap = PORTAL_APPR[curLoc];
-    if (Math.hypot(ap.x - hero.position.x, ap.z - hero.position.z) < 2.0) travelTo(1 - curLoc);
-    else { pendingPortal = true; givePath(ap.x, ap.z); }
+  let portalDef = null;
+  for (const def of PORTAL_DEFS) {
+    if (def.loc !== curLoc || !def.obj.visible) continue;
+    if (rc.intersectObject(def.obj, true).length) { portalDef = def; break; }
+  }
+  if (portalDef) {
+    const ap = portalDef.appr;
+    if (Math.hypot(ap.x - hero.position.x, ap.z - hero.position.z) < 2.0) travelTo(portalDef.dest);
+    else { pendingPortalDef = portalDef; givePath(ap.x, ap.z); }
     return;
   }
   // тап по Бобру (Локация 2)
@@ -3952,7 +4087,7 @@ function travelTo(dest) {
   for (const w of wolves) { spawnPoof(w.g.position, 4); scene.remove(w.g); }
   wolves.length = 0;
   hideGuideArrow();
-  travelEmoji.textContent = dest === 1 ? '🌉' : '🏡';
+  travelEmoji.textContent = dest === 2 ? '🌲' : dest === 1 ? '🌉' : '🏡';
   travelName.textContent = LOCS[dest].name;
   travelSub.textContent = LOCS[dest].sub;
   travelOv.style.display = 'flex';
@@ -4594,7 +4729,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingPortal || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -4645,10 +4780,11 @@ function animate() {
         const d = Math.hypot(FROG2_POS.x - hero.position.x, FROG2_POS.z - hero.position.z);
         if (d < 3.6) startFrog2Dialog();
       }
-      if (pendingPortal) {
-        pendingPortal = false;
-        const ap = PORTAL_APPR[curLoc];
-        if (Math.hypot(ap.x - hero.position.x, ap.z - hero.position.z) < 2.2) travelTo(1 - curLoc);
+      if (pendingPortalDef) {
+        const def = pendingPortalDef;
+        pendingPortalDef = null;
+        const ap = def.appr;
+        if (Math.hypot(ap.x - hero.position.x, ap.z - hero.position.z) < 2.2) travelTo(def.dest);
       }
     }
 
@@ -4826,9 +4962,11 @@ function animate() {
     beaver.userData.tail.rotation.x = Math.sin(elapsed * 1.1) * 0.12;
     beaverBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
   }
+  // огоньки в Лесной чаще — ночью разгораются ярче
+  for (const gl of thicketGlows) { if (gl.material) gl.material.opacity = 0.3 + nightness * 0.65; }
 
   // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
-  for (const p of [portalL1, portalL2]) {
+  for (const p of [portalL1, portalL2, portalL3, portalL3b]) {
     if (!p.visible) continue;
     const u = p.userData;
     for (let i = 0; i < u.orbs.length; i++) {
@@ -5306,6 +5444,16 @@ if (location.hash.indexOf('#shot') === 0) {
         camera.position.copy(hero.position).add(camOffset);
         lookTarget.copy(hero.position);
       }
+      else if (kind === 'l3' || kind === 'l3night') {
+        // Локация 3 «Лесная чаща»: герой у южного края, вид на ёлки и полянку
+        starLit = true; applyStarLit(); revealPortal(false);
+        if (kind === 'l3night') dayT = 0.6;
+        jumpToLoc(2);
+        hero.position.set(LOC3.x - 1.0, 0, LOC3.z - 8.0);
+        hero.rotation.y = Math.atan2(LOC3.x - hero.position.x, LOC3.z - hero.position.z);
+        camera.position.copy(hero.position).add(camOffset);
+        lookTarget.set(LOC3.x, 1.0, LOC3.z + 1.0);
+      }
       else if (kind === 'walk' || kind === 'walk2' || kind === 'walk3') {
         // DBG-лог позиции героя — для E2E-проверки плавности движения в Playwright
         setInterval(() => console.log('DBG hp=' + hero.position.x.toFixed(2) + ',' + hero.position.z.toFixed(2) + ' cl=' + curLoc + ' gs=' + gameState), 1000);
@@ -5317,7 +5465,7 @@ if (location.hash.indexOf('#shot') === 0) {
           hero.position.set(LOC2.x - 6, 0, LOC2.z + 3);
           camera.position.copy(hero.position).add(camOffset);
           lookTarget.copy(hero.position);
-          pendingPortal = true;
+          pendingPortalDef = { appr: PORTAL_APPR[1], dest: 0 };
           givePath(PORTAL_APPR[1].x, PORTAL_APPR[1].z);
         } else if (kind === 'walk3') {
           jumpToLoc(1);
@@ -5326,7 +5474,7 @@ if (location.hash.indexOf('#shot') === 0) {
           lookTarget.copy(hero.position);
           givePath(LOC2.x + 6, LOC2.z + 2.2);
         } else {
-          pendingPortal = true;
+          pendingPortalDef = { appr: PORTAL_APPR[0], dest: 1 };
           givePath(PORTAL_APPR[0].x, PORTAL_APPR[0].z);
         }
       }
