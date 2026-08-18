@@ -55,3 +55,18 @@ node shoot.mjs hedge world                # имена хук-сценариев
 - Хеш-сценарии: `#shot-world|hedge|owl|frog|mole|sq|fire|beaver|pause|gate|
   parent|break|choir|choirnight|portal|travel|l2|l2night|walk|walk2|walk3|
   whedge|wfrog` и `#solo-<зверь>`.
+
+## Полный QA-прогон (qa_full.mjs) — перед каждым релизом
+
+```bash
+cd tools/shot
+export LD_LIBRARY_PATH="$PWD/al2023/lib:$LD_LIBRARY_PATH" FONTCONFIG_PATH="$PWD/fonts"
+node qa_full.mjs games ui      # быстрый прогон (~15 мин в песочнице)
+node qa_full.mjs screens       # обход всех #shot-хуков (планшет+телефон)
+node qa_full.mjs routes chaos slow  # порталы, хаотичные тапы, CPU-throttle
+```
+
+Проверяет: прохождение всех мини-игр до победы, Zero Fail, экраны без ошибок,
+маршруты Л1→Л2→Л3 по DBG-позициям, устойчивость к случайным тапам, работу при
+CPU 4–6x, паузу/выход/сброс/альбом/статистику. Правила и уроки — в
+AI_GUIDE_WONDERMEADOW.md (раздел «Полный QA-прогон»).
