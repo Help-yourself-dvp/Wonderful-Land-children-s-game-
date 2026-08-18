@@ -632,41 +632,66 @@ const frogBubTex = {
 function setFrogBubble(t) { frogBubble.material.map = t; frogBubble.material.needsUpdate = true; }
 
 // ============ КРОТ В КАСКЕ (у огородика — «кто таскает морковку?») ============
+// v0.23: оживлён по образу из своей мини-игры (mole-carrot-garden.webp) —
+// тёплая оранжево-коричневая шубка, кремовая мордочка, крупные добрые глаза
+// с бликами и морганием, румянец, улыбка и золотая каска с фонариком.
 function makeMole() {
   const g = new THREE.Group();
-  const furC = L(0x6b4f3a);
+  const furC = L(0xd79744), furD = L(0xba7134), creamC = L(0xf2d7b6), darkC = L(0x523222);
   // кучка рыхлой земли
-  const mound = new THREE.Mesh(new THREE.SphereGeometry(0.95, 18, 12), L(0x7a5a40));
+  const mound = new THREE.Mesh(new THREE.SphereGeometry(0.95, 18, 12), L(0x8a684c));
   mound.position.y = -0.55; mound.scale.set(1.35, 0.75, 1.35);
   mound.castShadow = true; mound.receiveShadow = true;
   // голова с шахтёрской каской
   const head = new THREE.Group();
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 20), furC);
   skull.castShadow = true;
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 12), L(0xd99a90));
-  snout.position.set(0, -0.06, 0.44); snout.scale.set(1, 0.8, 1.05);
-  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), L(0xc9768a));
-  noseTip.position.set(0, 0.0, 0.62);
-  const eyeGeo = new THREE.SphereGeometry(0.055, 10, 10);
-  const eyeL = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0x2b2118 }));
-  eyeL.position.set(-0.2, 0.14, 0.42);
-  const eyeR = eyeL.clone(); eyeR.position.x = 0.2;
+  // мягкий пушок на щёчках
+  const fluffGeo = new THREE.SphereGeometry(0.14, 10, 10);
+  const fluffL = new THREE.Mesh(fluffGeo, furD); fluffL.position.set(-0.4, -0.02, 0.3); fluffL.scale.set(0.8, 1.1, 0.9);
+  const fluffR = fluffL.clone(); fluffR.position.x = 0.4;
+  // кремовая мордочка
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), creamC);
+  snout.position.set(0, -0.06, 0.44); snout.scale.set(1, 0.82, 1.05);
+  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), darkC);
+  noseTip.position.set(0, 0.02, 0.63);
+  const noseGlint = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  noseGlint.position.set(0.02, 0.045, 0.68);
+  // крупные добрые глаза с бликами (моргают — см. animate)
+  const eyeGeo = new THREE.SphereGeometry(0.085, 12, 12);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: darkC });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.19, 0.14, 0.44);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.19;
+  const glGeo = new THREE.SphereGeometry(0.03, 8, 8);
+  const glMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.16, 0.19, 0.51);
+  const glR = glL.clone(); glR.position.x = 0.16;
+  // румянец
+  const blushGeo = new THREE.SphereGeometry(0.065, 8, 8);
+  const blushMat = L(0xe8a08a);
+  const blushL = new THREE.Mesh(blushGeo, blushMat); blushL.position.set(-0.27, 0.0, 0.43); blushL.scale.set(1, 0.6, 0.4);
+  const blushR = blushL.clone(); blushR.position.x = 0.27;
+  // улыбка (дуга)
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.016, 6, 14, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: darkC }));
+  smile.position.set(0, -0.09, 0.52); smile.rotation.set(Math.PI / 2, 0, 0);
+  // каска как в мини-игре: золотая, с козырьком и фонариком
   const helmet = new THREE.Mesh(
-    new THREE.SphereGeometry(0.44, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.4),
-    L(0xf2c94c)
+    new THREE.SphereGeometry(0.47, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.4),
+    L(0xdaca64)
   );
   helmet.position.y = 0.17;
-  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.49, 0.49, 0.055, 20), L(0xd9ad3a));
-  brim.position.y = 0.17;
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.06, 20), L(0xc5b23f));
+  brim.position.y = 0.16;
   // фонарик на каске — ночью светится
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), new THREE.MeshBasicMaterial({ color: 0xfff3b0 }));
-  lamp.position.set(0, 0.36, 0.38);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), new THREE.MeshBasicMaterial({ color: 0xfff3b0 }));
+  lamp.position.set(0, 0.38, 0.4);
   const pawGeo = new THREE.SphereGeometry(0.15, 10, 10);
-  const pawL = new THREE.Mesh(pawGeo, furC); pawL.position.set(-0.44, -0.34, 0.28); pawL.scale.set(1.15, 0.6, 1.25);
+  const pawL = new THREE.Mesh(pawGeo, furD); pawL.position.set(-0.44, -0.34, 0.28); pawL.scale.set(1.15, 0.6, 1.25);
   const pawR = pawL.clone(); pawR.position.x = 0.44;
-  head.add(skull, snout, noseTip, eyeL, eyeR, helmet, brim, lamp, pawL, pawR);
+  head.add(skull, fluffL, fluffR, snout, noseTip, noseGlint, eyeL, eyeR, glL, glR,
+    blushL, blushR, smile, helmet, brim, lamp, pawL, pawR);
   g.add(mound, head);
-  g.userData = { head, lamp };
+  g.userData = { head, lamp, eyes: [eyeL, eyeR], glints: [glL, glR] };
   return g;
 }
 const MOLE_POS = { x: 4.8, z: -4.6 }; // рядом с огородиком (грядки 2.5,-6)
@@ -4383,7 +4408,7 @@ let portraitCam = null; // только для скрытого режима п�
 const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
-let blinkT = 2.5, squashT = 0;
+let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -4748,10 +4773,17 @@ function animate() {
     frog2.userData.body.position.y = fhop2 * 0.1;
     frog2.userData.body.scale.y = 0.92 + fhop2 * 0.08;
     frog2Bubble.position.y = 2.2 + Math.sin(elapsed * 2.2 + 0.9) * 0.08;
-    // Крот: голова то выглядывает, то прячется, фонарик светится ночью
+    // Крот: голова то выглядывает, то прячется, фонарик светится ночью,
+    // глаза добро моргают (как у героя — с бликами)
     const mp = (Math.sin(elapsed * 1.25) + 1) / 2;
     mole.userData.head.position.y = 0.08 + mp * 0.55;
     mole.userData.head.rotation.y = Math.sin(elapsed * 0.85) * 0.35;
+    moleBlinkT -= dt;
+    if (moleBlinkT < 0) moleBlinkT = 2 + Math.random() * 3.5;
+    const mblink = moleBlinkT < 0.12 ? 0.15 : 1;
+    mole.userData.eyes[0].scale.y += (mblink - mole.userData.eyes[0].scale.y) * 0.6;
+    mole.userData.eyes[1].scale.y = mole.userData.eyes[0].scale.y;
+    mole.userData.glints.forEach(gl => gl.visible = mblink > 0.5);
     mole.userData.lamp.material.color.setHex(nightness > 0.3 ? 0xffe27a : 0xfff3b0);
     moleBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     // Белка: подпрыгивает, виляет большим хвостом
