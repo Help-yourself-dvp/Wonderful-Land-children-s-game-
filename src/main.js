@@ -7273,6 +7273,26 @@ if (location.hash.indexOf('#shot') === 0) {
           givePath(PORTAL_APPR[0].x, PORTAL_APPR[0].z);
         }
       }
+      else if (kind === 'walk4' || kind === 'walk5') {
+        // маршруты QA: walk4 — с Речного берега через северную арку в чащу; walk5 — обратно
+        setInterval(() => console.log('DBG hp=' + hero.position.x.toFixed(2) + ',' + hero.position.z.toFixed(2) + ' cl=' + curLoc + ' gs=' + gameState), 1000);
+        starLit = true; applyStarLit(); revealPortal(false);
+        if (kind === 'walk4') {
+          jumpToLoc(1);
+          hero.position.set(LOC2.x + 1.6, 0, LOC2.z + 10.8);
+          camera.position.copy(hero.position).add(camOffset);
+          lookTarget.copy(hero.position);
+          pendingPortalDef = { appr: PORTAL_DEFS[2].appr, dest: 2 };
+          givePath(PORTAL_DEFS[2].appr.x, PORTAL_DEFS[2].appr.z);
+        } else {
+          jumpToLoc(2);
+          hero.position.set(LOC3.x - 4.0, 0, LOC3.z - 9.4);
+          camera.position.copy(hero.position).add(camOffset);
+          lookTarget.copy(hero.position);
+          pendingPortalDef = { appr: PORTAL_DEFS[3].appr, dest: 1 };
+          givePath(PORTAL_DEFS[3].appr.x, PORTAL_DEFS[3].appr.z);
+        }
+      }
       else if (kind === 'frog2') {
         // вид на речную Лягушку у кувшинок (Локация 2)
         jumpToLoc(1);
