@@ -5198,6 +5198,17 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'owl') openCountGame();
       else if (kind === 'frog') openBridgeGame();
       else if (kind === 'mole') openMoleGame();
+      else if (kind === 'mole2') {
+        // Точечный тест второго этапа Крота: большое поле 3×3 видом сверху.
+        openMoleGame();
+        ml.stage = 2;
+        setTimeout(() => {
+          if (gameState !== 'molegame') return;
+          buildMoleField(true);
+          ml.lastAction = elapsed;
+          ml.timer = 1.2;
+        }, 400);
+      }
       else if (kind === 'molegate') {
         // Точечный тест нового сюжета: все друзья пройдены, ручеёк ещё закрыт.
         MEADOW_FRIEND_KEYS.forEach(k => localStorage.setItem(k, '1'));
