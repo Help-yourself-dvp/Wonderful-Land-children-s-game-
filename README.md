@@ -66,7 +66,7 @@ v0.23.0: Крот и Белка оживлены по образам своих 
 
 ### Проверено перед публикацией v0.24.0
 
-> ℹ️ v0.24.0 готов и ждёт ручного запуска workflow (инструкция — у владельца). Последний опубликованный — v0.23.0: [wonder-meadow-0.23.0.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.23.0/wonder-meadow-0.23.0.apk).
+> ✅ **v0.24.0 опубликован (18.08.2026):** прогон Actions [32147979412](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/actions/runs/32147979412), тег на полном SHA `9fe80e1…`, отпечаток подписи совпал с эталоном. APK: [wonder-meadow-0.24.0.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.24.0/wonder-meadow-0.24.0.apk) (9,8 МБ, ставится поверх v0.9.1+ с сохранением прогресса).
 >
 > - Production-сборка Vite и офлайн-превью собраны без ошибок (63 MP3 и 8 артов встроены локально).
 > - Playwright 1280×800 и 812×375: все мини-игры открываются, 0 ошибок `console`/`page`, нет overflow; второй этап Крота проверен геометрически (норы внутри поля, нырок — в центр норы).
