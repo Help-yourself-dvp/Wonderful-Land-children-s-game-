@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused } from './audio.js';
+import { initAudio, play, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused, voicePlaying } from './audio.js';
 // @capacitor/app регистрируется НАТИВНО (window.Capacitor.Plugins.App) после `cap sync`;
 // импортировать его в веб-бандл нельзя — он тянет динамический чанк, который ломает
 // file://-превью («Failed to fetch dynamically imported module»).
@@ -557,20 +557,21 @@ const owl = new THREE.Group();
   const wingL = new THREE.Mesh(wingGeo, wingMat);
   wingL.position.set(-0.36, 0.45, 0); wingL.scale.set(0.5, 0.9, 0.75); wingL.rotation.z = 0.3;
   const wingR = wingL.clone(); wingR.position.x = 0.36; wingR.rotation.z = -0.3;
-  const eyeWGeo = new THREE.SphereGeometry(0.14, 12, 12);
+  // v0.25.1 (живой тест): глаза совы аккуратнее — не «выпученные»
+  const eyeWGeo = new THREE.SphereGeometry(0.11, 12, 12);
   const eyeWM = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const eyeWL = new THREE.Mesh(eyeWGeo, eyeWM);
-  eyeWL.position.set(-0.15, 0.72, 0.3); eyeWL.scale.z = 0.5;
+  eyeWL.position.set(-0.15, 0.72, 0.27); eyeWL.scale.z = 0.45;
   const eyeWR = eyeWL.clone(); eyeWR.position.x = 0.15;
-  const pupilGeo = new THREE.SphereGeometry(0.07, 10, 10);
+  const pupilGeo = new THREE.SphereGeometry(0.052, 10, 10);
   const pupilM = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
   const pupilL = new THREE.Mesh(pupilGeo, pupilM);
-  pupilL.position.set(-0.15, 0.72, 0.4);
+  pupilL.position.set(-0.15, 0.72, 0.35);
   const pupilR = pupilL.clone(); pupilR.position.x = 0.15;
   // блики в глазах + добрая улыбка (v0.25)
-  const ogGeo = new THREE.SphereGeometry(0.024, 8, 8);
+  const ogGeo = new THREE.SphereGeometry(0.02, 8, 8);
   const ogM = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const ogl = new THREE.Mesh(ogGeo, ogM); ogl.position.set(-0.125, 0.765, 0.445);
+  const ogl = new THREE.Mesh(ogGeo, ogM); ogl.position.set(-0.125, 0.765, 0.4);
   const ogr = ogl.clone(); ogr.position.x = 0.125;
   const owlSmile = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.011, 6, 14, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: 0x5b3a22 }));
   owlSmile.position.set(0, 0.55, 0.42); owlSmile.rotation.set(Math.PI / 2, 0, 0);
@@ -697,14 +698,14 @@ function makeMole() {
   noseTip.position.set(0, 0.02, 0.63);
   const noseGlint = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   noseGlint.position.set(0.02, 0.045, 0.68);
-  // крупные добрые глаза с бликами (моргают — см. animate)
-  const eyeGeo = new THREE.SphereGeometry(0.085, 12, 12);
+  // v0.25.1 (живой тест): глаза крота меньше и мягче — не «большие белые»
+  const eyeGeo = new THREE.SphereGeometry(0.066, 12, 12);
   const eyeMat = new THREE.MeshBasicMaterial({ color: darkC });
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.19, 0.14, 0.44);
   const eyeR = eyeL.clone(); eyeR.position.x = 0.19;
-  const glGeo = new THREE.SphereGeometry(0.03, 8, 8);
+  const glGeo = new THREE.SphereGeometry(0.02, 8, 8);
   const glMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.16, 0.19, 0.51);
+  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.16, 0.18, 0.5);
   const glR = glL.clone(); glR.position.x = 0.16;
   // румянец
   const blushGeo = new THREE.SphereGeometry(0.065, 8, 8);
@@ -1461,6 +1462,44 @@ const thicketGlows = []; // огоньки-светлячки чаще (ночь
     s.scale.setScalar(0.5 + r3() * 0.4);
     scene.add(s);
     thicketGlows.push(s);
+  }
+}
+
+// ============ v0.25.1: «ЛЕС ЗА ГРАНИЦЕЙ ПОЛЯНКИ» ============
+// Живой тест: полянки выглядели кругами на голубом фоне. Теперь под ними — земля,
+// а вокруг каждой локации — кольца ёлок: лес заполняет пустоту, но зайти нельзя
+// (навигация и так ограничена островом, ёлки стоят за его радиусом).
+{
+  const plain = new THREE.Mesh(new THREE.PlaneGeometry(520, 520), L(0x3f6b3a));
+  plain.rotation.x = -Math.PI / 2;
+  plain.position.y = -1.85;
+  scene.add(plain);
+  const makePine = (x, z, s) => {
+    const g = new THREE.Group();
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * s, 0.14 * s, 0.8 * s, 6), L(0x6f452c));
+    tr.position.y = 0.4 * s;
+    g.add(tr);
+    const greens = [0x2f6b45, 0x3d8352, 0x4d9460];
+    for (let i = 0; i < 3; i++) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry((0.75 - i * 0.18) * s, (0.9 - i * 0.12) * s, 7), L(greens[i]));
+      c.position.y = (0.8 + i * 0.55) * s;
+      g.add(c);
+    }
+    g.position.set(x, 0, z);
+    scene.add(g);
+  };
+  for (const loc of LOCS) {
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const rr = ISLAND_R + 4.5 + (i % 3) * 1.7;
+      makePine(loc.x + Math.cos(a) * rr, loc.z + Math.sin(a) * rr, 1.0 + (i % 4) * 0.28);
+    }
+    // второй, дальний ряд для глубины
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.22;
+      const rr = ISLAND_R + 9.5 + (i % 2) * 2.4;
+      makePine(loc.x + Math.cos(a) * rr, loc.z + Math.sin(a) * rr, 1.3 + (i % 3) * 0.3);
+    }
   }
 }
 function makeBeaver() {
@@ -2420,9 +2459,12 @@ const STICKERS = [
   { emoji: '🪵', name: 'брёвнышко', x: 36, y: 48 },
   { emoji: '💎', name: 'речной камушек', x: 16, y: 73 },
 ];
+// v0.25.1 (живой тест): 4 страницы по 6 наклеек — значки крупнее, внимание не расплывается
 const ALBUM_PAGES = [
-  { title: '🌿 Глава 1', name: 'Друзья Полянки', from: 0, to: 12 },
-  { title: '⭐ Глава 2', name: 'Песня Древа', from: 12, to: 24 },
+  { title: '1', name: 'Друзья Полянки', from: 0, to: 6 },
+  { title: '2', name: 'Друзья Полянки', from: 6, to: 12 },
+  { title: '3', name: 'Песня Древа', from: 12, to: 18 },
+  { title: '4', name: 'Песня Древа', from: 18, to: 24 },
 ];
 const ALBUM_SCHEMA = '2';
 const albumEl = document.getElementById('album');
@@ -2550,8 +2592,12 @@ function renderAlbum(message = '') {
     slot.type = 'button';
     slot.className = 'album-slot';
     slot.dataset.sticker = String(i);
-    slot.style.setProperty('--x', sticker.x + '%');
-    slot.style.setProperty('--y', sticker.y + '%');
+    // v0.25.1: раскладка 3×2 на страницу (6 наклеек), с лёгким живым разбросом
+    const xs = [24, 50, 76], ys = [30, 72];
+    const col = pageOffset % 3, row = Math.floor(pageOffset / 3);
+    const jx = (sticker.x % 11) - 5, jy = (sticker.y % 11) - 5;
+    slot.style.setProperty('--x', (xs[col] + jx) + '%');
+    slot.style.setProperty('--y', (ys[row] + jy) + '%');
     if (i >= albumUnlocked) {
       slot.classList.add('locked');
       slot.textContent = '✦';
@@ -2739,8 +2785,15 @@ function checkMoleStory() {
   revealSprout();
   showStory({
     key: 'wm_story_mole', emoji: '💧', voice: 'voice/story_sprout.mp3',
-    text: 'Крот сдержал слово! Смотри — от его норки к Дереву потянулся светящийся ручеёк-росток! Древо теперь пьёт и под землёй… Продолжение следует!',
+    text: 'Крот сдержал слово! Смотри — от его норки к Дереву потянулся светящийся ручеёк-росток. Теперь поливай Древо капельками: когда оно дорастёт до звезды, друзья споют самую дружную песню!',
   });
+  // понятная последовательность: сразу объясняем следующий шаг, потом — стрелка к Древу
+  localStorage.setItem('wm_story6hint', '1');
+  pendingNextStory = {
+    emoji: '🌳', voice: 'voice/story2_hint.mp3',
+    text: 'Ты помог всем шестерым друзьям! Осталось одно: поливай Древо капельками, чтобы оно доросло до звезды. Тогда друзья споют самую дружную песню!',
+  };
+  pendingTreeArrow = true;
   return true;
 }
 
@@ -2772,7 +2825,7 @@ function openMinigame() {
   // v0.24 (живой тест): несколько раундов подряд с РАЗНЫМИ парами плодов;
   // с каждым возвращением к Ёжику (победами) раундов и плодов становится больше.
   mgDom.round = 0;
-  mgDom.rounds = 3 + (visits >= 2 ? 1 : 0);   // 3 раунда; после 2 побед — 4
+  mgDom.rounds = ageLevel() ? 4 : 3;  // v0.25.1: раунды ЕДИНЫЕ во всех играх (3–4 года — 3, 5–6 — 4)
   mgDom.lastAction = elapsed;
   mgDom.fingerShown = false;
   if (mgDom.seed == null) mgDom.seed = Math.floor(rand() * MG_PAIRS.length);
@@ -3248,7 +3301,7 @@ function openBridgeGame(shore) {
   bg.round = 0;
   bg.shore = !!shore;
   // 5–6 лет: у речной Лягушки все 3 раунда (в т.ч. А-Б-В); 3–4 года: 2 раунда попроще
-  bg.total = ageLevel() ? (shore ? 4 : 3) : (shore ? 3 : 2);
+  bg.total = ageLevel() ? 4 : 3; // v0.25.1: единые раунды у всех игр
   bgEl.querySelector('.cg-title').textContent = bg.shore ? '🌺 Речные камушки' : '🐸 Волшебный мостик';
   bgEl.style.display = 'flex';
   if (!bgEl.querySelector('.mg-exit')) makeExitButton(bgEl);
@@ -3382,17 +3435,18 @@ const ml = { holes: [], got: 0, timer: 0, lastAction: 0, slow: 0, fingerShown: f
 // На обычные повторные игры это не влияет.
 let moleSpecialRun = false;
 
+// v0.25.1 (живой тест): цвета как у крота из его мини-игры, глаза мягче
 const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
   + '<ellipse cx="20" cy="76" rx="11" ry="6" fill="#5c4030"/>'
   + '<ellipse cx="80" cy="76" rx="11" ry="6" fill="#5c4030"/>'
-  + '<circle cx="50" cy="52" r="30" fill="#6b4f3a"/>'
-  + '<path d="M20 45 A30 30 0 0 1 80 45 Z" fill="#f2c94c"/>'
-  + '<ellipse cx="50" cy="46" rx="31" ry="4.5" fill="#d9ad3a"/>'
+  + '<circle cx="50" cy="52" r="30" fill="#a56f3d"/>'
+  + '<path d="M20 45 A30 30 0 0 1 80 45 Z" fill="#daca64"/>'
+  + '<ellipse cx="50" cy="46" rx="31" ry="4.5" fill="#c5b23f"/>'
   + '<circle cx="50" cy="26" r="6.5" fill="#fff3b0"/>'
-  + '<circle cx="38" cy="53" r="4" fill="#2b2118"/><circle cx="62" cy="53" r="4" fill="#2b2118"/>'
-  + '<circle cx="39.3" cy="51.7" r="1.3" fill="#ffffff"/><circle cx="63.3" cy="51.7" r="1.3" fill="#ffffff"/>'
-  + '<ellipse cx="50" cy="65" rx="9.5" ry="7" fill="#d99a90"/>'
-  + '<circle cx="50" cy="62.2" r="3.2" fill="#c9768a"/>'
+  + '<circle cx="38" cy="53" r="3.2" fill="#2b2118"/><circle cx="62" cy="53" r="3.2" fill="#2b2118"/>'
+  + '<circle cx="39.3" cy="51.7" r="1" fill="#ffffff"/><circle cx="63.3" cy="51.7" r="1" fill="#ffffff"/>'
+  + '<ellipse cx="50" cy="65" rx="9.5" ry="7" fill="#e8c39a"/>'
+  + '<circle cx="50" cy="62.2" r="3.2" fill="#7a4a30"/>'
   + '</svg>';
 
 function startMoleDialog() {
@@ -3560,7 +3614,8 @@ function sqRounds() {
     ? [{ n: 3, shuffle: false }, { n: 4, shuffle: false }, { n: 4, shuffle: true }, { n: 4, shuffle: true }]
     : [{ n: 3, shuffle: false }, { n: 3, shuffle: false }, { n: 3, shuffle: false }];
 }
-const SQ_SLOTS = { 3: [18, 45, 72], 4: [12, 35, 58, 81] };
+// v0.25.1 (живой тест): грибочки только в центрально-правой зоне — слева на арте Белка
+const SQ_SLOTS = { 3: [55, 73, 91], 4: [45, 61, 77, 93] };
 const sg = { round: 0, mushs: [], answer: 0, canTap: false, answered: false, lastAction: 0, fingerShown: false, lastAnswer: -1 };
 
 function startSqDialog() {
@@ -4037,7 +4092,7 @@ const hgFinger = document.getElementById('hgFinger');
 const FISH_COLORS = [['#f28ba8', '#d96f92'], ['#f5b45e', '#d98e3a'], ['#8fc3f0', '#5f9fd8'], ['#8fd694', '#5fb968'], ['#c9a0dc', '#a97fc4']];
 const hg = { sizes: [], next: 0, got: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
 function hgN() { return ageLevel() ? 5 : 3; }
-function hgRounds() { return ageLevel() ? 3 : 2; }
+function hgRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function startHeronDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -4141,7 +4196,7 @@ const DK_POOL = [
 ];
 const dk = { diffs: [], found: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
 function dkCount() { return ageLevel() ? 3 : 2; }
-function dkRounds() { return ageLevel() ? 2 : 1; }
+function dkRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function dkRenderPanel(panel, variant) {
   panel.querySelectorAll('.dk-el, .dk-mark, .dk-glow').forEach(el => el.remove());
   for (let di = 0; di < DK_POOL.length; di++) {
@@ -4369,7 +4424,7 @@ const msGrid = document.getElementById('msGrid');
 const msFinger = document.getElementById('msFinger');
 const MS_ROWS = 3, MS_COLS = 5;
 const ms = { path: [], idx: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
-function msRounds() { return ageLevel() ? 3 : 2; }
+function msRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function msLen() { return ageLevel() ? 6 : 4; }
 function msMakePath() {
   // случайная тропинка слева направо без самопересечений; конец — на ягодной стороне (правая колонка)
@@ -4510,7 +4565,7 @@ const rcFinger = document.getElementById('rcFinger');
 // [зверь, тень, похожие тени] — для 5–6 лет «похожие» действительно похожи
 const RC_POOL = [['🐿️', '🐿️', '🐹', '🦔'], ['🦆', '🦆', '🐔', '🦢'], ['🐰', '🐰', '🐹', '🐭'], ['🦊', '🦊', '🐺', '🐕'], ['🐻', '🐻', '🐨', '🐹'], ['🦌', '🦌', '🐐', '🐎']];
 const rc = { round: 0, rightIdx: 0, lastPick: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
-function rcRounds() { return ageLevel() ? 3 : 2; }
+function rcRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function startRaccoonDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -4621,7 +4676,7 @@ const MP_HARD = [
   { items: ['🦋', '🐞', '🐝', '🐟'] },
 ];
 const mp = { round: 0, oddIdx: 0, lastSet: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
-function mpRounds() { return ageLevel() ? 3 : 2; }
+function mpRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function startMagpieDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -4723,7 +4778,7 @@ const MW_PAIRS = [['🪶', '🎃'], ['🍎', '🍉'], ['🌰', '🍉'], ['🐭',
 // тройки [.., .., самый тяжёлый] — тяжёлый всегда третьим
 const MW_TRIPLES = [['🍎', '🍌', '🍉'], ['🍒', '🍓', '🍍'], ['🐹', '🐰', '🐻'], ['🐝', '🐦', '🦆']];
 const mw = { round: 0, heavyIdx: 0, lastSet: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
-function mwRounds() { return ageLevel() ? 3 : 2; }
+function mwRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function startMouseDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -4847,8 +4902,9 @@ const bdTray = document.getElementById('bdTray');
 const bdFinger = document.getElementById('bdFinger');
 const BD_IMGS = ['art/puzzle-mushroom.webp', 'art/puzzle-daisy.webp'];
 const bd = { round: 0, n: 4, cols: 2, rows: 2, img: 0, selected: null, done: 0, lastAction: 0, slow: 0, fingerShown: false };
-function bdSizes() { return ageLevel() ? [6, 8] : [4, 6]; }
-function bdRounds() { return 2; }
+// v0.25.1: единые раунды — 3–4 года: 3 картинки (4,4,6 кусочков); 5–6: 4 (6,6,8,8)
+function bdSizes() { return ageLevel() ? [6, 6, 8, 8] : [4, 4, 6]; }
+function bdRounds() { return ageLevel() ? 4 : 3; }
 function bdPieceCss(idx) {
   // позиция кусочка в сетке cols×rows (картинка — в CSS-классе .bd-img-N)
   const col = idx % bd.cols, row = Math.floor(idx / bd.cols);
@@ -5026,6 +5082,10 @@ const STORIES = [
   { key: 'wm_story2', at: 5, emoji: '🌳', voice: 'voice/story2.mp3',
     text: 'Древо подросло! Оно мечтает вырасти большим и зажечь на макушке волшебную звезду…' },
 ];
+// v0.25.1: цепочка карточек — после «Дальше» показывается следующая (понятная
+// последовательность: ручеёк → «поливай Древо» → стрелка к Древу).
+let pendingNextStory = null;
+let pendingTreeArrow = false;
 function showStory(s) {
   if (gameState !== 'explore') return;
   gameState = 'story';
@@ -5082,9 +5142,16 @@ document.getElementById('storyNext').addEventListener('click', () => {
     setTimeout(() => startChoirCeremony(), 350);
   } else {
     gameState = 'explore';
-    if (pendingMoleArrow) {
+    if (pendingNextStory) {
+      const n = pendingNextStory;
+      pendingNextStory = null;
+      setTimeout(() => { if (gameState === 'explore') showStory(n); }, 400);
+    } else if (pendingMoleArrow) {
       pendingMoleArrow = false;
       showGuideArrowAt(MOLE_POS.x, 2.8, MOLE_POS.z, 'mole-special');
+    } else if (pendingTreeArrow) {
+      pendingTreeArrow = false;
+      showGuideArrowAt(TREE_POS.x, 3.0, TREE_POS.z, 'tree');
     } else if (pendingPortalArrow) {
       pendingPortalArrow = false;
       showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
@@ -6100,6 +6167,7 @@ function spawnHero(type) {
 
 // Вступительный облёт с рассказом
 let introIdx = 0, introT = 0;
+let introVoiceEnded = false;
 const introSteps = [];
 let introStartPos = null, introStartLook = null;
 function startIntro() {
@@ -6137,6 +6205,13 @@ function startIntro() {
   } catch (e) {}
   // Запускаем голос с небольшой задержкой, чтобы метаданные успели подгрузиться.
   setTimeout(() => { if (gameState === 'intro') speak('voice/intro.mp3'); }, 120);
+  // v0.25.1 (живой тест): если голос закончился раньше камеры — камера ускоряется,
+  // а не «долго едет по полянке» после конца рассказа.
+  introVoiceEnded = false;
+  const ivChk = setInterval(() => {
+    if (gameState !== 'intro') { clearInterval(ivChk); return; }
+    if (!voicePlaying()) { introVoiceEnded = true; clearInterval(ivChk); }
+  }, 250);
   document.getElementById('skipIntro').style.display = 'block';
 }
 function finishIntro(skipped) {
@@ -6570,6 +6645,20 @@ function animate() {
     }
   }
 
+  // v0.25.1 (живой тест): индикатор-облачко над жителем виден только до выполнения
+  // его основного сюжетного задания; потом зверька можно навещать, но без «иконки-задания».
+  if (gameState === 'explore') {
+    const bubMet = (bub, key) => { bub.visible = localStorage.getItem(key) !== '1'; };
+    bubMet(hedgeBubble, 'wm_met_hedge'); bubMet(owlBubble, 'wm_met_owl');
+    bubMet(frogBubble, 'wm_met_frog'); bubMet(moleBubble, 'wm_met_mole');
+    bubMet(sqBubble, 'wm_met_sq'); bubMet(svetBubble, 'wm_met_fire');
+    bubMet(beaverBubble, 'wm_met_beaver'); bubMet(frog2Bubble, 'wm_met_frog2');
+    bubMet(heronBubble, 'wm_met_heron'); bubMet(duckBubble, 'wm_met_duck');
+    bubMet(otterBubble, 'wm_met_otter'); bubMet(mooseBubble, 'wm_met_moose');
+    bubMet(raccoonBubble, 'wm_met_raccoon'); bubMet(magpieBubble, 'wm_met_magpie');
+    bubMet(mouseBubble, 'wm_met_mouse'); bubMet(badgerBubble, 'wm_met_badger');
+  }
+
   // --- ЁЖИК / СОВА / ЛЯГУШКА ---
   if (hero && (gameState === 'explore' || gameState === 'intro')) {
     hedgehog.position.y = Math.abs(Math.sin(elapsed * 3)) * 0.06;
@@ -6860,7 +6949,8 @@ function animate() {
 
   // --- ВСТУПЛЕНИЕ: ключевые кадры камеры ---
   if (gameState === 'intro' && introSteps.length) {
-    introT += dt;
+    // v0.25.1: голос закончился → камера догоняет финал в 2.2 раза быстрее
+    introT += dt * (introVoiceEnded ? 2.2 : 1);
     const i = Math.min(introIdx, introSteps.length - 1);
     const st = introSteps[i];
     const prev = introSteps[Math.max(0, i - 1)];
