@@ -156,22 +156,38 @@ export function speak(file, opts = {}) {
     if (!a) { a = new Audio(file); voiceCache[file] = a; }
     a.muted = muted;
     a.volume = opts.vol != null ? opts.vol : 0.95;
-    const gen = voiceGen;
+    let gen = voiceGen;
+    // opts.then: следующая реплика цепочкой после ЭТОЙ (иначе два {after:true}
+    // привязались бы к одному и тому же текущему звуку и заговорили одновременно).
+    const chainNext = (src) => {
+      const b = voiceCache[opts.then] || (voiceCache[opts.then] = new Audio(opts.then));
+      b.muted = muted; b.volume = 0.95;
+      const onEnd2 = () => {
+        src.removeEventListener('ended', onEnd2);
+        if (gen === voiceGen) {
+          try { b.currentTime = 0; b.play().catch(() => {}); lastVoice = b; } catch (e) {}
+        }
+      };
+      src.addEventListener('ended', onEnd2);
+    };
     if (opts.after && lastVoice && !lastVoice.paused && !lastVoice.ended) {
       const cur = lastVoice;
       const onEnd = () => {
         cur.removeEventListener('ended', onEnd);
         if (gen === voiceGen) {
           try { a.currentTime = 0; a.play().catch(() => {}); lastVoice = a; } catch (e) {}
+          if (opts.then) chainNext(a);
         }
       };
       cur.addEventListener('ended', onEnd);
       return;
     }
     stopVoice();
+    gen = voiceGen; // поколение после гашения: цепочка then должна выжить
     a.currentTime = 0;
     a.play().catch(() => {});
     lastVoice = a;
+    if (opts.then) chainNext(a);
   } catch (e) {}
 }
 export function stopVoice() {

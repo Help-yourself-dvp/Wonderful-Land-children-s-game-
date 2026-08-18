@@ -4356,9 +4356,10 @@ function finishIntro(skipped) {
   document.getElementById('skipIntro').style.display = 'none';
   const hint = document.getElementById('hint');
   if (hint) hint.style.opacity = '1';
-  // в конце — ведём малыша к Ёжику: голос + золотая стрелка над ним
-  if (skipped) { stopVoice(); speak('voice/intro_go.mp3'); }
-  else speak('voice/intro_go.mp3', { after: true }); // дождётся конца рассказа
+  // в конце — ведём малыша к Ёжику: голос + золотая стрелка над ним.
+  // Сначала — добрая подсказка: на полянке есть и другие зверята, отыщи их сам.
+  if (skipped) { stopVoice(); speak('voice/intro_friends.mp3', { then: 'voice/intro_go.mp3' }); }
+  else speak('voice/intro_friends.mp3', { after: true, then: 'voice/intro_go.mp3' }); // дождётся конца рассказа
   showGuideArrow();
   // Проверяем незавершённый сюжетный шаг и у старых сохранений: если все друзья
   // уже встречены, Рассказчица напомнит про особое задание Крота.
