@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { initAudio, play, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused } from './audio.js';
+// @capacitor/app регистрируется НАТИВНО (window.Capacitor.Plugins.App) после `cap sync`;
+// импортировать его в веб-бандл нельзя — он тянет динамический чанк, который ломает
+// file://-превью («Failed to fetch dynamically imported module»).
 
 // ============ БАЗА ============
 const scene = new THREE.Scene();
@@ -486,22 +489,37 @@ function makeBubbleSprite(emoji, scale = 1.15) {
 }
 
 // ============ ЁЖИК ============
+// v0.24: оживлён по образу своей мини-игры (hedgehog-autumn-workshop.webp) —
+// тёплые карамельные иголки, кремовая мордочка, крупные добрые глаза с бликами
+// и морганием, румянец, улыбка и ушки.
 const hedgehog = new THREE.Group();
 {
-  const spikes = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 2), L(0x8a6b9e));
+  const spikes = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 3), L(0xb88447));
   spikes.position.y = 0.45; spikes.scale.set(1.15, 0.9, 1.15); spikes.castShadow = true;
-  const face = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 18), L(0xf2d7b6));
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 18), L(0xf2dfc0));
   face.position.set(0, 0.42, 0.34);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), L(0x4a3b32));
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), L(0x843f22));
   nose.position.set(0, 0.45, 0.62);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
-  const eL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat);
+  const eyeGeo = new THREE.SphereGeometry(0.065, 12, 12);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x5b3322 });
+  const eL = new THREE.Mesh(eyeGeo, eyeMat);
   eL.position.set(-0.11, 0.53, 0.56);
   const eR = eL.clone(); eR.position.x = 0.11;
-  const earGeo = new THREE.SphereGeometry(0.08, 10, 10);
-  const earL = new THREE.Mesh(earGeo, L(0xf2d7b6)); earL.position.set(-0.22, 0.62, 0.3);
-  const earR = earL.clone(); earR.position.x = 0.22;
-  hedgehog.add(spikes, face, nose, eL, eR, earL, earR);
+  const glGeo = new THREE.SphereGeometry(0.022, 8, 8);
+  const glMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.085, 0.565, 0.615);
+  const glR = glL.clone(); glR.position.x = 0.085;
+  const blushGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const blushMat = L(0xe8a08a);
+  const blushL = new THREE.Mesh(blushGeo, blushMat); blushL.position.set(-0.17, 0.47, 0.48); blushL.scale.set(1, 0.6, 0.4);
+  const blushR = blushL.clone(); blushR.position.x = 0.17;
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.011, 6, 14, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: 0x843f22 }));
+  smile.position.set(0, 0.36, 0.585); smile.rotation.set(Math.PI / 2, 0, 0);
+  const earGeo = new THREE.SphereGeometry(0.07, 10, 10);
+  const earL = new THREE.Mesh(earGeo, L(0xd5a55f)); earL.position.set(-0.2, 0.6, 0.32);
+  const earR = earL.clone(); earR.position.x = 0.2;
+  hedgehog.add(spikes, face, nose, eL, eR, glL, glR, blushL, blushR, smile, earL, earR);
+  hedgehog.userData = { eyes: [eL, eR], glints: [glL, glR] };
 }
 const HEDGE_POS = { x: -2.2, z: 7.2 };
 hedgehog.position.set(HEDGE_POS.x, 0, HEDGE_POS.z);
@@ -2409,7 +2427,11 @@ const mgEl = document.getElementById('minigame');
 const mgField = document.getElementById('mgField');
 const mgFinger = document.getElementById('mgFinger');
 const basketEls = { red: document.getElementById('basketRed'), green: document.getElementById('basketGreen') };
-const mgDom = { apples: [], done: 0, total: 6, lastAction: 0, fingerFlip: 0 };
+const mgDom = { apples: [], done: 0, total: 6, round: 0, rounds: 3, seed: null, lastAction: 0, fingerFlip: 0, fingerShown: false };
+const mgRound = document.getElementById('mgRound');
+// тёмные оттенки корзин — чтобы корзины РАЗНЫХ цветов были различимы и без color-mix
+const BASKET_DARK = { '#e26d5c': '#9e4234', '#7fb069': '#4f7a41', '#f2994c': '#b36a24', '#5b8fd9': '#3a63a6', '#e05263': '#a83647', '#f2d24c': '#b9972a' };
+function mgVisits() { return parseInt(localStorage.getItem('wm_wins_hedge') || '0', 10); }
 
 const MG_PAIRS = [
   { id: 'apples', a: '🍎', b: '🍏', sa: 'apple-red', sb: 'apple-green', la: 'красное яблоко', lb: 'зелёное яблоко', ca: '#e26d5c', cb: '#7fb069' },
@@ -2424,10 +2446,28 @@ const HEDGE_ASKS = {
 };
 function openMinigame() {
   gameState = 'minigame';
-  mgDom.done = 0;
+  const visits = mgVisits();
+  // v0.24 (живой тест): несколько раундов подряд с РАЗНЫМИ парами плодов;
+  // с каждым возвращением к Ёжику (победами) раундов и плодов становится больше.
+  mgDom.round = 0;
+  mgDom.rounds = 3 + (visits >= 2 ? 1 : 0);   // 3 раунда; после 2 побед — 4
   mgDom.lastAction = elapsed;
-  mgDom.total = ageLevel() ? 8 : 6; // 5–6 лет: больше плодов — чуть больше работы
-  if (!mgDom.pair) mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
+  mgDom.fingerShown = false;
+  if (mgDom.seed == null) mgDom.seed = Math.floor(rand() * MG_PAIRS.length);
+  buildMinigameRound();
+  mgEl.style.display = 'flex';
+  if (!mgEl.querySelector('.mg-exit')) makeExitButton(mgEl);
+  mgFinger.style.display = 'none';
+}
+function buildMinigameRound() {
+  const visits = mgVisits();
+  mgDom.done = 0;
+  mgDom.pair = MG_PAIRS[(mgDom.seed + mgDom.round) % MG_PAIRS.length];
+  // 3–4 года: 6 плодов (после визитов — 8); 5–6 лет: 8 (после визитов — 10)
+  const base = ageLevel() ? 8 : 6;
+  mgDom.total = Math.min(base + Math.min(visits, 2) * 2, 10);
+  const rd = document.getElementById('mgRound');
+  rd.textContent = 'Раунд ' + (mgDom.round + 1) + ' из ' + mgDom.rounds;
   const ruleFruitA = document.getElementById('mgEmojiA');
   const ruleFruitB = document.getElementById('mgEmojiB');
   ruleFruitA.className = `mg-fruit-icon mg-fruit-shape mg-fruit--${mgDom.pair.sa}`;
@@ -2437,11 +2477,11 @@ function openMinigame() {
   document.getElementById('mgDotA').style.background = mgDom.pair.ca;
   document.getElementById('mgDotB').style.background = mgDom.pair.cb;
   basketEls.red.style.setProperty('--basket-color', mgDom.pair.ca);
+  basketEls.red.style.setProperty('--basket-dark', BASKET_DARK[mgDom.pair.ca] || '#8a5a3b');
   basketEls.green.style.setProperty('--basket-color', mgDom.pair.cb);
-  mgEl.style.display = 'flex';
-  if (!mgEl.querySelector('.mg-exit')) makeExitButton(mgEl);
-  mgFinger.style.display = 'none';
+  basketEls.green.style.setProperty('--basket-dark', BASKET_DARK[mgDom.pair.cb] || '#8a5a3b');
   Object.values(basketEls).forEach(b => b.classList.remove('glow'));
+  mgFinger.style.display = 'none';
   // ждём кадр для раскладки
   requestAnimationFrame(() => {
     const rect = mgField.getBoundingClientRect();
@@ -2450,10 +2490,12 @@ function openMinigame() {
     mgDom.apples = [];
     const half = mgDom.total / 2;
     const kinds = Array(half).fill('red').concat(Array(half).fill('green')).sort(() => rand() - 0.5);
+    // до 8 плодов — сетка 4×2; 10 плодов — сетка 5×2 (без наложений)
+    const cols = mgDom.total > 8 ? 5 : 4;
     kinds.forEach((color, i) => {
       // В новой горизонтальной сцене Ёжик занимает левую треть, поэтому плоды
-      // всегда раскладываются в свободной игровой зоне справа: 4 × 2 без наложений.
-      const col = i % 4, row = Math.floor(i / 4);
+      // всегда раскладываются в свободной игровой зоне справа.
+      const col = i % cols, row = Math.floor(i / cols);
       const el = document.createElement('div');
       const fruitShape = color === 'red' ? mgDom.pair.sa : mgDom.pair.sb;
       const fruitLabel = color === 'red' ? mgDom.pair.la : mgDom.pair.lb;
@@ -2461,7 +2503,7 @@ function openMinigame() {
       el.setAttribute('role', 'img');
       el.setAttribute('aria-label', fruitLabel);
       el.dataset.color = color;
-      const x = Math.min(rect.width * (0.47 + col * 0.115) + rand() * 6, rect.width - 66);
+      const x = Math.min(rect.width * (0.47 + col * (cols === 5 ? 0.105 : 0.115)) + rand() * 6, rect.width - 66);
       const y = Math.min(rect.height * (0.26 + row * 0.23) + rand() * 5, rect.height * 0.57);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
@@ -2471,11 +2513,15 @@ function openMinigame() {
       mgDom.apples.push(a);
     });
   });
+  // слова ≡ картинке: каждая новая пара озвучивается своим файлом
+  if (mgDom.round > 0) { play('pop'); speak(HEDGE_ASKS[mgDom.pair.id]); }
 }
 function closeMinigame() {
   mgEl.style.display = 'none';
   mgFinger.style.display = 'none';
   mgDom.pair = null;
+  mgDom.round = 0;
+  mgDom.seed = null;
 }
 
 let appleDrag = null;
@@ -2540,7 +2586,15 @@ function appleDrop(a) {
     a.el.style.opacity = '0.5';
     setTimeout(() => a.el.remove(), 400);
     mgDom.done++;
-    if (mgDom.done >= mgDom.total) setTimeout(() => { closeMinigame(); celebrate(); }, 550);
+    if (mgDom.done >= mgDom.total) {
+      // v0.24: несколько раундов подряд; каждый следующий — другая пара плодов
+      if (mgDom.round + 1 < mgDom.rounds) {
+        mgDom.round++;
+        setTimeout(() => { if (gameState === 'minigame') buildMinigameRound(); }, 950);
+      } else {
+        setTimeout(() => { closeMinigame(); celebrate(); }, 550);
+      }
+    }
   } else {
     // мягкий возврат «плинг»
     play('bad');
@@ -2607,10 +2661,12 @@ function exitMinigame() {
                   closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
                   closeHeronGame, closeDuckGame, closeOtterGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
-  paused = true;
-  pauseOv.style.display = 'flex';
-  setGamePaused(true);
-  document.getElementById('pauseMute').firstChild.textContent = isMuted() ? '🔇' : '🔊';
+  // УРОК (живой тест v0.23.0): closers не сбрасывают gameState — без этой строки
+  // после ✕ герой замирал на полянке (мир анимировался, а движение было выключено).
+  gameState = 'explore';
+  paused = false;
+  pauseOv.style.display = 'none';
+  setGamePaused(false);
   play('pop');
 }
 
@@ -2634,7 +2690,8 @@ function startDialog() {
   stopVoice();
   hideGuideArrow('hedge');
   // фрукты выбираем ДО озвучки — Ёжик озвучивает именно то, что появится на экране
-  mgDom.pair = MG_PAIRS[Math.floor(rand() * MG_PAIRS.length)];
+  mgDom.seed = Math.floor(rand() * MG_PAIRS.length);
+  mgDom.pair = MG_PAIRS[mgDom.seed];
   speak(localStorage.getItem('wm_met_hedge') === '1' ? 'voice/hedge_again.mp3' : 'voice/hedge_hello.mp3');
   speak(HEDGE_ASKS[mgDom.pair.id], { after: true });
   const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
@@ -4693,6 +4750,37 @@ document.getElementById('pauseResume').addEventListener('click', () => {
   setGamePaused(false);
   play('pop');
 });
+// Выход из игры: кнопка в паузе + системная кнопка/жест «назад» → доброе подтверждение
+const exitOv = document.getElementById('exitOv');
+function showExitConfirm() {
+  exitOv.style.display = 'flex';
+  play('pop');
+}
+document.getElementById('pauseExit').addEventListener('click', () => { showExitConfirm(); });
+document.getElementById('exitNo').addEventListener('click', () => {
+  exitOv.style.display = 'none';
+  play('pop');
+});
+document.getElementById('exitYes').addEventListener('click', () => {
+  // В Capacitor (APK) — настоящий выход; в веб-превью мягко сообщаем, как закрыть.
+  const A = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.App : null;
+  if (A) { try { A.exitApp(); return; } catch (e) {} }
+  exitYes.textContent = 'Можно закрыть игру 🚪';
+  setTimeout(() => { exitYes.textContent = '🚪 Выйти'; exitOv.style.display = 'none'; }, 2500);
+});
+// Системная кнопка/жест «назад» (Android): не выходим молча — показываем подтверждение
+try {
+  const A = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.App : null;
+  if (A && A.addListener) {
+    A.addListener('backButton', () => {
+      if (exitOv.style.display === 'flex') { exitOv.style.display = 'none'; return; }
+      if (pauseOv.style.display === 'flex') { document.getElementById('pauseResume').click(); return; }
+      if (parentOv.style.display === 'flex') { document.getElementById('parentClose').click(); return; }
+      if (gameState !== 'explore' && gameState !== 'intro' && gameState !== 'loading' && gameState !== 'travel') { exitMinigame(); return; }
+      showExitConfirm();
+    });
+  }
+} catch (e) {}
 // Свёрнутое приложение (кнопка «домой» / экран блокировки) — мир и ВСЕ звуки на паузе.
 // Вернулись — звук просыпается сам (если не была открыта ручная пауза).
 document.addEventListener('visibilitychange', () => {
@@ -4852,11 +4940,18 @@ document.getElementById('parentClose').addEventListener('click', () => {
 });
 // «Стереть прогресс»: удерживать 2.5 с — защита от случайных пальчиков
 const resetBtn = document.getElementById('parentReset');
+const resetBar = document.getElementById('resetBar');
+const resetLbl = document.getElementById('resetLbl');
 const resetOv = document.getElementById('resetOv');
 let resetT = null;
-resetBtn.addEventListener('pointerdown', () => {
+// УРОК (живой тест v0.23.0): владельцу было непонятно, ЧТО удерживать и держать ли.
+// Теперь видимый прогресс-бар 3 секунды + подпись «нажми и удерживай» рядом с кнопкой.
+resetBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
   resetBtn.classList.add('arm');
-  resetBtn.textContent = 'Держи ещё — и сказка начнётся сначала…';
+  resetBar.style.transition = 'width 3s linear';
+  resetBar.style.width = '100%';
+  resetLbl.textContent = 'Держи ещё…';
   resetT = setTimeout(() => {
     Object.keys(localStorage).filter(k => k.indexOf('wm_') === 0).forEach(k => localStorage.removeItem(k));
     // ЯВНОЕ подтверждение: тёплая заставка + голос «начинаем сначала», потом чистый перезапуск
@@ -4868,13 +4963,15 @@ resetBtn.addEventListener('pointerdown', () => {
     play('fanfare');
     speak('voice/reset_done.mp3');
     setTimeout(() => location.reload(), 3000);
-  }, 2500);
+  }, 3000);
 });
 ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => resetBtn.addEventListener(ev, () => {
   clearTimeout(resetT);
+  resetBar.style.transition = 'none';
+  resetBar.style.width = '0';
   if (resetOv.style.display !== 'flex') { // уже сработало — не трогаем кнопку, идёт перезапуск
     resetBtn.classList.remove('arm');
-    resetBtn.textContent = 'Стереть прогресс и начать сказку сначала';
+    resetLbl.textContent = 'Стереть прогресс и начать сказку сначала';
   }
 }));
 // ============ КАРТА СКАЗКИ (главы как в старых играх: клеточки-мостик по миру) ============
@@ -5046,7 +5143,7 @@ let portraitCam = null; // только для скрытого режима п�
 const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
-let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0;
+let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0, hedgeBlinkT = 2.4;
 let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
 
 function applyCamFraming() {
@@ -5415,6 +5512,12 @@ function animate() {
   // --- ЁЖИК / СОВА / ЛЯГУШКА ---
   if (hero && (gameState === 'explore' || gameState === 'intro')) {
     hedgehog.position.y = Math.abs(Math.sin(elapsed * 3)) * 0.06;
+    hedgeBlinkT -= dt;
+    if (hedgeBlinkT < 0) hedgeBlinkT = 2 + Math.random() * 3.5;
+    const hebl = hedgeBlinkT < 0.12 ? 0.15 : 1;
+    hedgehog.userData.eyes[0].scale.y += (hebl - hedgehog.userData.eyes[0].scale.y) * 0.6;
+    hedgehog.userData.eyes[1].scale.y = hedgehog.userData.eyes[0].scale.y;
+    hedgehog.userData.glints.forEach(gl => gl.visible = hebl > 0.5);
     hedgeBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     owl.userData.bird.rotation.z = Math.sin(elapsed * 1.6) * 0.05;
     owl.userData.bird.position.y = 0.55 + Math.abs(Math.sin(elapsed * 2.4)) * 0.03;
@@ -5650,15 +5753,12 @@ function animate() {
     if (remain.length) {
       const need = basketEls[remain[0].color];
       if (idle > 20) need.classList.add('glow');
+      // v0.24: палец показывает РОВНО на следующий плод (раньше «гулял» между плодом и корзиной)
       if (idle > 28 && !appleDrag) {
-        mgFinger.style.display = 'block';
-        mgDom.fingerFlip = Math.sin(elapsed * 1.4) > 0 ? 0 : 1;
         const from = remain[0].el.getBoundingClientRect();
-        const to = need.getBoundingClientRect();
-        const fx = mgDom.fingerFlip ? to.left + to.width * 0.5 : from.left + from.width * 0.5;
-        const fy = mgDom.fingerFlip ? to.top : from.top - 14;
-        mgFinger.style.left = fx + 'px';
-        mgFinger.style.top = fy + 'px';
+        mgFinger.style.left = (from.left + from.width * 0.5 - 18) + 'px';
+        mgFinger.style.top = (from.top - 12) + 'px';
+        mgFinger.style.display = 'block';
       }
     }
   }
@@ -5966,14 +6066,13 @@ if (location.hash.indexOf('#shot') === 0) {
         dropsCount = 1;
         waterTree();
       }
-      else if (kind === 'hedge') { mgDom.pair = MG_PAIRS[0]; openMinigame(); }
-      else if (kind === 'hedge-orange') { mgDom.pair = MG_PAIRS[1]; openMinigame(); }
-      else if (kind === 'hedge-berry') { mgDom.pair = MG_PAIRS[2]; openMinigame(); }
+      else if (kind === 'hedge') { mgDom.seed = 0; openMinigame(); }
+      else if (kind === 'hedge-orange') { mgDom.seed = 1; openMinigame(); }
+      else if (kind === 'hedge-berry') { mgDom.seed = 2; openMinigame(); }
       else if (kind === 'owl') openCountGame();
       else if (kind === 'frog') openBridgeGame();
       else if (kind === 'mole') openMoleGame();
       else if (kind === 'mole2') {
-        // Точечный тест второго этапа Крота: большое поле 3×3 видом сверху.
         openMoleGame();
         ml.stage = 2;
         setTimeout(() => {

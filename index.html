@@ -560,11 +560,13 @@
       position: relative; width: clamp(78px, 17vh, 132px); height: clamp(74px, 16vh, 124px);
       border: 4px solid rgba(255,235,200,.45); border-radius: 22% 22% 34% 34%;
       display: flex; align-items: center; justify-content: center; color: transparent; font-size: 0;
+      /* v0.24: цвет корзины берётся из ПАРЫ плодов (--basket-color/--basket-dark) —
+         раньше обе корзины были коричневыми, и ребёнок не понимал, куда складывать */
       background:
         radial-gradient(ellipse at 35% 14%, rgba(255,238,200,.60) 0 12%, transparent 30%),
         radial-gradient(ellipse at 50% 106%, rgba(30,15,3,.55) 0 40%, transparent 68%),
-        repeating-linear-gradient(90deg, rgba(255,225,175,.10) 0 3px, rgba(60,32,10,.18) 4px 6px),
-        linear-gradient(165deg, #c98a4e 0%, #a6672f 55%, #74431a 100%);
+        repeating-linear-gradient(90deg, rgba(255,255,255,.20) 0 3px, rgba(60,32,10,.22) 4px 6px),
+        linear-gradient(165deg, var(--basket-color, #c98a4e) 0%, var(--basket-dark, #74431a) 100%);
       box-shadow:
         inset 0 -12px 0 rgba(35,18,4,.42),
         inset 0 5px 0 rgba(255,235,200,.28),
@@ -573,7 +575,7 @@
     }
     .mg-basket::before {
       content: ''; position: absolute; left: 10%; right: 10%; top: -30%; height: 60%;
-      border: clamp(6px, 1.4vh, 11px) solid #a6703f; border-bottom: 0; border-radius: 55% 55% 0 0;
+      border: clamp(6px, 1.4vh, 11px) solid var(--basket-dark, #a6703f); border-bottom: 0; border-radius: 55% 55% 0 0;
       background: linear-gradient(180deg, rgba(255,230,180,.45), rgba(166,112,63,.0) 70%);
       box-shadow:
         inset 3px 2px 0 rgba(255,255,255,.45),
@@ -594,6 +596,34 @@
       .mg-basket { border-width: 3px; }
     }
     .mg-basket.glow { animation: basketGlow .7s ease-in-out infinite alternate; }
+    /* v0.24: бейдж «Раунд N из M» у Ёжика — видно, что впереди ещё задания */
+    .mg-round {
+      position: absolute; top: 8px; left: 10px; z-index: 6;
+      background: rgba(255,255,255,.92); border: 2px solid #fff; border-radius: 99px;
+      padding: 2px 12px; font-weight: 800; color: #7a5a40; font-size: clamp(12px, 2.4vh, 16px);
+      box-shadow: 0 3px 8px rgba(103,60,27,.2); pointer-events: none;
+    }
+    /* пауза: кнопка выхода + подтверждение (детское и понятное) */
+    #exitOv {
+      position: fixed; inset: 0; z-index: 40; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(40,40,70,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .exit-card { text-align: center; padding: 26px 24px; }
+    .exit-btns { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+    .exit-btn { border: none; border-radius: 99px; padding: 13px 24px; font-size: clamp(18px, 3.4vh, 22px); font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .exit-btn.yes { background: linear-gradient(180deg, #f0a28e, #e07a5f); color: #fff; box-shadow: 0 6px 16px rgba(160,60,30,.3); }
+    .exit-btn.no { background: linear-gradient(180deg, #8ed081, #6cbf6f); color: #fff; box-shadow: 0 6px 16px rgba(61,92,68,.3); }
+    .exit-btn:active { transform: scale(.93); }
+    /* сброс прогресса: видимый прогресс удержания */
+    .parent-sticky {
+      position: sticky; bottom: -14px; margin-top: 10px; padding: 10px 6px 6px;
+      background: linear-gradient(180deg, rgba(253,252,255,0), #fdfcff 22%);
+      border-radius: 0 0 26px 26px;
+    }
+    .parent-reset { position: relative; overflow: hidden; }
+    .parent-reset .reset-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.30); pointer-events: none; }
+    .parent-reset .reset-lbl { position: relative; z-index: 1; }
     @keyframes basketGlow { from { transform: scale(1); box-shadow: 0 0 0 4px rgba(255,209,102,0.9), 0 4px 10px rgba(0,0,0,0.12); } to { transform: scale(1.07); box-shadow: 0 0 0 14px rgba(255,209,102,0.25), 0 4px 10px rgba(0,0,0,0.12); } }
     .mg-finger {
       position: fixed; z-index: 29; font-size: 52px; pointer-events: none;
@@ -622,11 +652,13 @@
     }
     /* мягкая нижняя вуаль, чтобы числа-ответы читались */
     .cg-field::after {
-      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28%;
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 20%;
       background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.5));
       pointer-events: none;
     }
-    .cg-items { position: absolute; left: 0; right: 0; top: 0; bottom: 22%; }
+    /* v0.24: предметы живут ТОЛЬКО в правой зоне (куда Сова указывает крылом) —
+       на саму сову и её насест ничего не залезает */
+    .cg-items { position: absolute; left: 42%; right: 1.5%; top: 3%; bottom: 22%; }
     .cg-item {
       position: absolute; font-size: clamp(40px, 8vh, 54px); line-height: 1;
       animation: cgItemIn .4s cubic-bezier(.34,1.56,.64,1) both;
@@ -649,6 +681,15 @@
       -webkit-tap-highlight-color: transparent; transition: transform .15s; touch-action: manipulation;
     }
     .cg-answer:active { transform: scale(.9); }
+    /* v0.24 (живой тест): поле Совы 16:9 было выше телефона — ответы-цифры уезжали
+       за край. На низких экранах поле ограничено по высоте, цифры всегда видны.
+       Блок стоит ПОСЛЕ базовых правил .cg-*, иначе его перебивает каскад. */
+    @media (max-height: 480px) {
+      .cg-field { height: min(50vh, 285px); aspect-ratio: auto; }
+      .cg-items { bottom: 26%; }
+      .cg-answers { bottom: 6px; gap: clamp(10px, 3vw, 22px); }
+      .cg-answer { width: clamp(48px, 12vh, 64px); height: clamp(48px, 12vh, 64px); font-size: clamp(24px, 5.5vh, 32px); }
+    }
     .cg-answer.right { background: linear-gradient(180deg, #b4e59a, #8ed081); color: #274b1f; animation: cgRight .5s cubic-bezier(.34,1.56,.64,1); }
     @keyframes cgRight { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
     .cg-answer.glow { animation: basketGlow .7s ease-in-out infinite alternate; }
@@ -1154,6 +1195,7 @@
   <div id="minigame">
     <div class="mg-card mg-card--hedgehog">
       <button class="mg-hint" id="hintHedgeBtn" aria-label="подсказка">💡</button>
+      <div class="mg-round" id="mgRound"></div>
       <div class="mg-field" id="mgField">
         <div class="mg-head" aria-label="разложи плоды по цветам">
           <div class="mg-rule"><span class="mg-fruit-icon mg-fruit-shape mg-fruit--apple-red" id="mgEmojiA"></span><i class="mg-arrow"></i><span class="mg-dot" id="mgDotA" style="background:#e26d5c"></span></div>
@@ -1301,6 +1343,18 @@
       <div class="pause-row">
         <button class="pause-mini" id="pauseMute" aria-label="звук">🔊<span class="lbl">звук</span></button>
         <button class="pause-mini" id="pauseParent" aria-label="родителям">👪<span class="lbl">взрослым</span></button>
+        <button class="pause-mini" id="pauseExit" aria-label="выход">🚪<span class="lbl">выход</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="exitOv">
+    <div class="mg-card exit-card">
+      <div class="story-emoji">🚪</div>
+      <div class="story-text">Выйти из игры? Твой прогресс сохранится — в следующий раз продолжишь с того же места!</div>
+      <div class="exit-btns">
+        <button class="exit-btn no" id="exitNo">▶ Играем дальше</button>
+        <button class="exit-btn yes" id="exitYes">🚪 Выйти</button>
       </div>
     </div>
   </div>
@@ -1318,6 +1372,7 @@
   <div id="parentOv">
     <div class="parent-card">
       <h2>👪 Родительский уголок</h2>
+      <div class="parent-note" style="margin-bottom:4px">👇 Если что-то не видно — карточку можно прокрутить</div>
       <h3>📊 Как малыш растёт</h3>
       <table class="parent-stats" id="parentStats"></table>
       <h3>🐰 Друг в игре</h3>
@@ -1332,11 +1387,16 @@
       <div class="parent-note" style="margin-top:8px">3–4 года — базовые задания; 5–6 лет — счёт до 9, длиннее узоры и песенки, больше дощечек и норок.</div>
       <h3>⏱ Таймер отдыха (напоминание)</h3>
       <div class="limit-row" id="limitRow"></div>
-      <h3>🔄 Заново</h3>
-      <button class="parent-reset" id="parentReset">Стереть прогресс и начать сказку сначала</button>
       <div class="parent-note">Волшебная полянка работает полностью офлайн: без рекламы, без покупок, без интернета.
         Весь прогресс хранится только на этом устройстве и никуда не отправляется. Версия <span id="parentVer">__APP_VERSION__</span>.</div>
-      <button class="parent-close" id="parentClose">Закрыть</button>
+      <!-- v0.24 (живой тест): «Заново» и «Закрыть» прилипают к низу карточки —
+           раньше кнопка сброса была за краем экрана, и нажатие «не работало». -->
+      <div class="parent-sticky">
+        <h3>🔄 Заново</h3>
+        <button class="parent-reset" id="parentReset"><span class="reset-bar" id="resetBar"></span><span class="reset-lbl" id="resetLbl">Стереть прогресс и начать сказку сначала</span></button>
+        <div class="parent-note" style="margin-top:6px">Нажми и удерживай кнопку 3 секунды — белая полоска заполнится, и сказка начнётся сначала. Остальные настройки ничего не стирают.</div>
+        <button class="parent-close" id="parentClose">Закрыть</button>
+      </div>
     </div>
   </div>
 
