@@ -1757,6 +1757,67 @@ raccoon.scale.setScalar(1.08);
 const raccoonBubble = makeBubbleSprite('🌑', 0.9);
 raccoonBubble.position.set(RACCOON_POS.x, 2.3, RACCOON_POS.z);
 scene.add(raccoonBubble);
+
+// ============ СОРОКА (Локация 3: «Что лишнее?») ============
+// v0.24: третий житель чащи. Чёрно-белая, длинный хвост, сидит на пеньке.
+function makeMagpie() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const black = L(0x3a3f4a), white = L(0xf5f2e8), grey = L(0x9aa2ad), orange = L(0xe8a24a);
+  const perch = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.5, 10), L(0x8a5a3b));
+  perch.position.y = 0.25;
+  const perchTop = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 10), L(0xd8a566));
+  perchTop.position.y = 0.53;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), black);
+  body.position.y = 0.78; body.scale.set(0.9, 1.1, 0.85); body.castShadow = true;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), white);
+  belly.position.set(0, 0.74, 0.16); belly.scale.set(0.85, 1, 0.6);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), black);
+  head.position.set(0, 1.1, 0.1);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.2, 8), grey);
+  beak.position.set(0, 1.09, 0.27); beak.rotation.x = Math.PI / 2;
+  const eyeGeo = new THREE.SphereGeometry(0.034, 8, 8);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x1c1c1c });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.07, 1.13, 0.2);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.07;
+  const glGeo = new THREE.SphereGeometry(0.012, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.055, 1.15, 0.235);
+  const glR = glL.clone(); glR.position.x = 0.055;
+  // крылья: чёрные с белой полосой
+  const wingGeo = new THREE.SphereGeometry(0.17, 10, 10);
+  const wingL = new THREE.Mesh(wingGeo, black); wingL.position.set(-0.22, 0.8, -0.04); wingL.scale.set(0.4, 1, 0.75);
+  const wingR = wingL.clone(); wingR.position.x = 0.22;
+  const stripeGeo = new THREE.SphereGeometry(0.09, 8, 8);
+  const stripeL = new THREE.Mesh(stripeGeo, white); stripeL.position.set(-0.26, 0.92, -0.06); stripeL.scale.set(0.5, 1, 0.6);
+  const stripeR = stripeL.clone(); stripeR.position.x = 0.26;
+  // длинный хвост из трёх сегментов, кончик белый
+  const tailSegs = [];
+  for (let i = 0; i < 3; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.09 - i * 0.012, 10, 10), i === 2 ? white : black);
+    s.position.set(0, 0.8 - i * 0.05, -0.22 - i * 0.16);
+    s.scale.set(0.7, 0.7, 0.9);
+    tailSegs.push(s);
+  }
+  const legGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.24, 6);
+  const legL = new THREE.Mesh(legGeo, orange); legL.position.set(-0.07, 0.66, 0.06);
+  const legR = legL.clone(); legR.position.x = 0.07;
+  bodyG.add(body, belly, head, beak, eyeL, eyeR, glL, glR, wingL, wingR, stripeL, stripeR, ...tailSegs, legL, legR);
+  g.add(perch, perchTop, bodyG);
+  g.userData = { body: bodyG, tailSegs, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const MAGPIE_POS = { x: LOC3.x + 8.4, z: LOC3.z - 4.4 };
+const MAGPIE_APPR = { x: LOC3.x + 6.8, z: LOC3.z - 3.6 };
+const magpie = makeMagpie();
+magpie.position.set(MAGPIE_POS.x, 0, MAGPIE_POS.z);
+magpie.rotation.y = Math.atan2(LOC3.x - MAGPIE_POS.x, LOC3.z - MAGPIE_POS.z);
+scene.add(magpie);
+obstacles.push({ x: MAGPIE_POS.x, z: MAGPIE_POS.z, r: 0.5 });
+magpie.scale.setScalar(1.15);
+const magpieBubble = makeBubbleSprite('🔍', 0.85);
+magpieBubble.position.set(MAGPIE_POS.x, 2.2, MAGPIE_POS.z);
+scene.add(magpieBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -2137,6 +2198,7 @@ function clearPendings() {
   pendingHeron = pendingDuck = pendingOtter = false;
   pendingMoose = false;
   pendingRaccoon = false;
+  pendingMagpie = false;
   pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
@@ -2786,7 +2848,7 @@ function exitMinigame() {
   stopVoice();
   const closers = [closeMinigame, closeCountGame, closeBridgeGame,
                   closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
-                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame];
+                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame, closeMagpieGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
   // УРОК (живой тест v0.23.0): closers не сбрасывают gameState — без этой строки
   // после ✕ герой замирал на полянке (мир анимировался, а движение было выключено).
@@ -4405,6 +4467,118 @@ document.getElementById('hintRaccoonBtn').addEventListener('click', (e) => {
   setTimeout(() => btn.classList.remove('glow'), 8000);
 });
 
+// ============ СОРОКА: «ЧТО ЛИШНЕЕ?» (Локация 3) ============
+// Классификация: 4 карточки, одна не подходит. Zero Fail, подсказки 20/28 с.
+const mpEl = document.getElementById('magpiegame');
+const mpMsg = document.getElementById('mpMsg');
+const mpCards = document.getElementById('mpCards');
+const mpFinger = document.getElementById('mpFinger');
+// для 3–4 лет — очевидные наборы, для 5–6 — посложнее (все «почти подходят»)
+const MP_EASY = [
+  { items: ['🍎', '🍌', '🍇', '🎈'] },
+  { items: ['🌼', '🌷', '🌻', '🚗'] },
+  { items: ['🐱', '🐶', '🐭', '🧢'] },
+  { items: ['🍓', '🍒', '🍇', '🧦'] },
+];
+const MP_HARD = [
+  { items: ['🦆', '🦢', '🐔', '🐸'] },
+  { items: ['🍓', '🍒', '🍇', '🥕'] },
+  { items: ['🚗', '🚌', '🚒', '⛵'] },
+  { items: ['🌳', '🌲', '🌴', '🍄'] },
+  { items: ['🦋', '🐞', '🐝', '🐟'] },
+];
+const mp = { round: 0, oddIdx: 0, lastSet: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
+function mpRounds() { return ageLevel() ? 3 : 2; }
+function startMagpieDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_magpie') === '1' ? 'voice/magpie_again.mp3' : 'voice/magpie_hello.mp3');
+  speak('voice/magpie_ask.mp3', { after: true });
+  const dx = MAGPIE_POS.x - hero.position.x, dz = MAGPIE_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMagpieGame(); }, 2600);
+}
+function buildMagpieRound() {
+  mpCards.innerHTML = '';
+  const pool = ageLevel() ? MP_HARD : MP_EASY;
+  let set = pool[Math.floor(rand() * pool.length)];
+  if (mp.lastSet && set.items[0] === mp.lastSet.items[0]) set = pool[(pool.indexOf(set) + 1) % pool.length];
+  mp.lastSet = set;
+  mp.answered = false;
+  // лишний — последний элемент набора; карточки перемешиваем
+  const order = [0, 1, 2, 3].sort(() => rand() - 0.5);
+  mp.oddIdx = order.indexOf(3);
+  order.forEach((itemIdx, pos) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mp-card';
+    b.setAttribute('aria-label', 'карточка');
+    b.textContent = set.items[itemIdx];
+    b.dataset.odd = itemIdx === 3 ? '1' : '0';
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); magpieTap(b, itemIdx === 3); });
+    mpCards.appendChild(b);
+  });
+  mpMsg.textContent = '🔍 Найди лишнее ' + (mp.round + 1) + ' из ' + mpRounds();
+}
+function magpieTap(btn, isOdd) {
+  if (gameState !== 'magpiegame' || mp.answered) return;
+  mp.lastAction = elapsed; mp.fingerShown = false; mpFinger.style.display = 'none';
+  if (isOdd) {
+    mp.answered = true;
+    play('good');
+    btn.classList.add('right');
+    setTimeout(() => {
+      mp.answered = false;
+      mp.round++;
+      if (mp.round >= mpRounds()) {
+        closeMagpieGame();
+        celebrateMagpie();
+      } else {
+        buildMagpieRound();
+      }
+    }, 800);
+  } else {
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 420);
+  }
+}
+function openMagpieGame() {
+  gameState = 'magpiegame';
+  mp.round = 0; mp.lastSet = null; mp.answered = false;
+  mp.slow = 0; mp.fingerShown = false;
+  mp.lastAction = elapsed;
+  buildMagpieRound();
+  mpEl.style.display = 'flex';
+  if (!mpEl.querySelector('.mg-exit')) makeExitButton(mpEl);
+  mpFinger.style.display = 'none';
+}
+function closeMagpieGame() { mpEl.style.display = 'none'; mpFinger.style.display = 'none'; }
+function celebrateMagpie() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_magpie', '1'); bumpWin('magpie');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/magpie_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(MAGPIE_POS.x, 1.7, MAGPIE_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintMagpieBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  mp.slow = 8;
+  const btn = document.getElementById('hintMagpieBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
 function celebrateBeaver() {
   gameState = 'celebrate';
   dropsCount++;
@@ -4786,6 +4960,7 @@ let pendingPortalDef = null;
 let pendingHeron = false, pendingDuck = false, pendingOtter = false;
 let pendingMoose = false;
 let pendingRaccoon = false;
+let pendingMagpie = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -4965,6 +5140,13 @@ window.addEventListener('pointerup', (e) => {
     const dx = RACCOON_POS.x - hero.position.x, dz = RACCOON_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.6) startRaccoonDialog();
     else { pendingRaccoon = true; givePath(RACCOON_APPR.x, RACCOON_APPR.z); }
+    return;
+  }
+  // тап по Сороке (Локация 3)
+  if (curLoc === 2 && rc.intersectObject(magpie, true).length) {
+    const dx = MAGPIE_POS.x - hero.position.x, dz = MAGPIE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.6) startMagpieDialog();
+    else { pendingMagpie = true; givePath(MAGPIE_APPR.x, MAGPIE_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -5256,6 +5438,7 @@ function openParent() {
     statRow('✨ Светлячок — побед', wins('fire')) +
     statRow('🦌 Лось — побед', wins('moose')) +
     statRow('🦝 Енот — побед', wins('raccoon')) +
+    statRow('🐦 Сорока — побед', wins('magpie')) +
     statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
@@ -5532,6 +5715,7 @@ let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0, hedgeBlinkT = 2
 let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
 let mooseBlinkT = 3.1;
 let raccoonBlinkT = 2.6;
+let magpieBlinkT = 2.9;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -5702,7 +5886,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingPortalDef || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingMagpie || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -5777,6 +5961,11 @@ function animate() {
         pendingRaccoon = false;
         const d = Math.hypot(RACCOON_POS.x - hero.position.x, RACCOON_POS.z - hero.position.z);
         if (d < 3.6) startRaccoonDialog();
+      }
+      if (pendingMagpie) {
+        pendingMagpie = false;
+        const d = Math.hypot(MAGPIE_POS.x - hero.position.x, MAGPIE_POS.z - hero.position.z);
+        if (d < 3.6) startMagpieDialog();
       }
       if (pendingPortalDef) {
         const def = pendingPortalDef;
@@ -6016,6 +6205,15 @@ function animate() {
   raccoon.userData.eyes[1].scale.y = raccoon.userData.eyes[0].scale.y;
   raccoon.userData.glints.forEach(gl => gl.visible = rbl > 0.5);
   raccoonBubble.position.y = 2.3 + Math.sin(elapsed * 2.2 + 0.7) * 0.08;
+  // Сорока: покачивает длинным хвостом, моргает
+  magpie.userData.tailSegs.forEach((s, i) => { s.rotation.x = Math.sin(elapsed * 2.4 + i * 0.6) * 0.16; });
+  magpieBlinkT -= dt;
+  if (magpieBlinkT < 0) magpieBlinkT = 2.4 + Math.random() * 3.5;
+  const gpbl = magpieBlinkT < 0.12 ? 0.15 : 1;
+  magpie.userData.eyes[0].scale.y += (gpbl - magpie.userData.eyes[0].scale.y) * 0.6;
+  magpie.userData.eyes[1].scale.y = magpie.userData.eyes[0].scale.y;
+  magpie.userData.glints.forEach(gl => gl.visible = gpbl > 0.5);
+  magpieBubble.position.y = 2.2 + Math.sin(elapsed * 2.3 + 1.1) * 0.08;
 
   // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
   for (const p of [portalL1, portalL2, portalL3, portalL3b]) {
@@ -6321,6 +6519,20 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «ЧТО ЛИШНЕЕ?» (Сорока) ---
+  if (gameState === 'magpiegame' && !mp.answered) {
+    const idle = elapsed - mp.lastAction;
+    const oddBtn = mpCards.querySelector('.mp-card[data-odd="1"]');
+    if (oddBtn && idle > 20) oddBtn.classList.add('glow');
+    if (oddBtn && idle > 28 && !mp.fingerShown) {
+      mp.fingerShown = true;
+      const r = oddBtn.getBoundingClientRect();
+      mpFinger.style.left = (r.left + r.width * 0.35) + 'px';
+      mpFinger.style.top = (r.top - 64) + 'px';
+      mpFinger.style.display = 'block';
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
@@ -6555,6 +6767,7 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'otter') openOtterGame();
       else if (kind === 'moose') openMooseGame();
       else if (kind === 'raccoon') openRaccoonGame();
+      else if (kind === 'magpie') openMagpieGame();
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);
@@ -6687,9 +6900,10 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'otter') { subj = otter; dist = 2.6; lookY = 0.5; }
       else if (name === 'moose') { subj = moose; dist = 3.4; lookY = 1.1; }
       else if (name === 'raccoon') { subj = raccoon; dist = 2.5; lookY = 0.55; }
+      else if (name === 'magpie') { subj = magpie; dist = 2.5; lookY = 0.75; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble], [magpie, magpieBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
