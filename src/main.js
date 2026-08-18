@@ -1698,6 +1698,65 @@ moose.scale.setScalar(1.05);
 const mooseBubble = makeBubbleSprite('🫐', 0.95);
 mooseBubble.position.set(MOOSE_POS.x, 3.2, MOOSE_POS.z);
 scene.add(mooseBubble);
+
+// ============ ЕНОТ (Локация 3: «Чья тень?») ============
+// v0.24: второй житель чащи. Полосатая маска, пышный хвост с кольцами, моргает.
+function makeRaccoon() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const fur = L(0x8f8577), furD = L(0x5b5348), cream = L(0xe8dcc8), maskC = L(0x3a332c);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), fur);
+  body.position.y = 0.52; body.scale.set(0.95, 1.05, 0.85); body.castShadow = true;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), cream);
+  belly.position.set(0, 0.46, 0.22); belly.scale.set(0.8, 0.95, 0.55);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), fur);
+  head.position.set(0, 0.94, 0.1); head.castShadow = true;
+  // фирменная полосатая маска: два тёмных «очка» вокруг глаз
+  const maskGeo = new THREE.SphereGeometry(0.11, 10, 10);
+  const maskL = new THREE.Mesh(maskGeo, L(maskC)); maskL.position.set(-0.12, 0.95, 0.3); maskL.scale.set(1, 0.8, 0.6);
+  const maskR = maskL.clone(); maskR.position.x = 0.12;
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), cream);
+  muzzle.position.set(0, 0.84, 0.3); muzzle.scale.set(1, 0.8, 0.8);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), L(0x2b2118));
+  nose.position.set(0, 0.87, 0.42);
+  const eyeGeo = new THREE.SphereGeometry(0.045, 10, 10);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.11, 0.98, 0.33);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.11;
+  const glGeo = new THREE.SphereGeometry(0.016, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.09, 1.0, 0.375);
+  const glR = glL.clone(); glR.position.x = 0.09;
+  const earGeo = new THREE.SphereGeometry(0.09, 10, 10);
+  const earL = new THREE.Mesh(earGeo, furD); earL.position.set(-0.2, 1.14, 0.02);
+  const earR = earL.clone(); earR.position.x = 0.2;
+  // пышный хвост с тёмными кольцами (4 сегмента)
+  const tailSegs = [];
+  for (let i = 0; i < 4; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.14 - i * 0.015, 12, 12), i % 2 ? furD : fur);
+    s.position.set(0, 0.5 - i * 0.05, -0.32 - i * 0.13);
+    s.scale.set(0.8, 0.8, 0.75);
+    tailSegs.push(s);
+  }
+  const pawGeo = new THREE.SphereGeometry(0.1, 10, 10);
+  const pawL = new THREE.Mesh(pawGeo, furD); pawL.position.set(-0.22, 0.24, 0.26);
+  const pawR = pawL.clone(); pawR.position.x = 0.22;
+  bodyG.add(body, belly, head, maskL, maskR, muzzle, nose, eyeL, eyeR, glL, glR, earL, earR, ...tailSegs, pawL, pawR);
+  g.add(bodyG);
+  g.userData = { body: bodyG, tailSegs, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const RACCOON_POS = { x: LOC3.x + 6.0, z: LOC3.z + 5.4 };
+const RACCOON_APPR = { x: LOC3.x + 4.6, z: LOC3.z + 4.4 };
+const raccoon = makeRaccoon();
+raccoon.position.set(RACCOON_POS.x, 0, RACCOON_POS.z);
+raccoon.rotation.y = Math.atan2(LOC3.x - RACCOON_POS.x, LOC3.z - RACCOON_POS.z);
+scene.add(raccoon);
+obstacles.push({ x: RACCOON_POS.x, z: RACCOON_POS.z, r: 0.6 });
+raccoon.scale.setScalar(1.08);
+const raccoonBubble = makeBubbleSprite('🌑', 0.9);
+raccoonBubble.position.set(RACCOON_POS.x, 2.3, RACCOON_POS.z);
+scene.add(raccoonBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -2077,6 +2136,7 @@ function clearPendings() {
   pendingBeaver = pendingFrog2 = false;
   pendingHeron = pendingDuck = pendingOtter = false;
   pendingMoose = false;
+  pendingRaccoon = false;
   pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
@@ -2726,7 +2786,7 @@ function exitMinigame() {
   stopVoice();
   const closers = [closeMinigame, closeCountGame, closeBridgeGame,
                   closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
-                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame];
+                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
   // УРОК (живой тест v0.23.0): closers не сбрасывают gameState — без этой строки
   // после ✕ герой замирал на полянке (мир анимировался, а движение было выключено).
@@ -4245,6 +4305,106 @@ document.getElementById('hintMooseBtn').addEventListener('click', (e) => {
   setTimeout(() => btn.classList.remove('glow'), 8000);
 });
 
+// ============ ЕНОТ: «ЧЬЯ ТЕНЬ?» (Локация 3) ============
+// Тень = чёрный силуэт эмодзи (filter: brightness(0)). Zero Fail, подсказки 20/28 с.
+const rcEl = document.getElementById('raccoongame');
+const rcMsg = document.getElementById('rcMsg');
+const rcQ = document.getElementById('rcQ');
+const rcAnswers = document.getElementById('rcAnswers');
+const rcFinger = document.getElementById('rcFinger');
+// [зверь, тень, похожие тени] — для 5–6 лет «похожие» действительно похожи
+const RC_POOL = [['🐿️', '🐿️', '🐹', '🦔'], ['🦆', '🦆', '🐔', '🦢'], ['🐰', '🐰', '🐹', '🐭'], ['🦊', '🦊', '🐺', '🐕'], ['🐻', '🐻', '🐨', '🐹'], ['🦌', '🦌', '🐐', '🐎']];
+const rc = { round: 0, rightIdx: 0, lastPick: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
+function rcRounds() { return ageLevel() ? 3 : 2; }
+function startRaccoonDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_raccoon') === '1' ? 'voice/raccoon_again.mp3' : 'voice/raccoon_hello.mp3');
+  speak('voice/raccoon_ask.mp3', { after: true });
+  const dx = RACCOON_POS.x - hero.position.x, dz = RACCOON_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openRaccoonGame(); }, 2600);
+}
+function buildRaccoonRound() {
+  rcAnswers.innerHTML = '';
+  let pick = RC_POOL[Math.floor(rand() * RC_POOL.length)];
+  if (rc.lastPick && pick[0] === rc.lastPick[0]) pick = RC_POOL[(RC_POOL.indexOf(pick) + 1) % RC_POOL.length];
+  rc.lastPick = pick;
+  rc.answered = false;
+  rcQ.textContent = pick[0];
+  // тени: верная + 2 «похожих», перемешанные
+  const shades = [pick[1], pick[2], pick[3]].sort(() => rand() - 0.5);
+  rc.rightIdx = shades.indexOf(pick[1]);
+  shades.forEach((sh, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rc-shade';
+    b.setAttribute('aria-label', 'тень');
+    b.innerHTML = '<span class="rc-em">' + sh + '</span>';
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); raccoonTap(b, i); });
+    rcAnswers.appendChild(b);
+  });
+  rcMsg.textContent = '🌑 Тень ' + (rc.round + 1) + ' из ' + rcRounds();
+}
+function raccoonTap(btn, i) {
+  if (gameState !== 'raccoongame' || rc.answered) return;
+  rc.lastAction = elapsed; rc.fingerShown = false; rcFinger.style.display = 'none';
+  if (i === rc.rightIdx) {
+    rc.answered = true;
+    play('good');
+    btn.classList.add('right');
+    setTimeout(() => {
+      rc.answered = false;
+      rc.round++;
+      if (rc.round >= rcRounds()) {
+        closeRaccoonGame();
+        celebrateRaccoon();
+      } else {
+        buildRaccoonRound();
+      }
+    }, 800);
+  } else {
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 420);
+  }
+}
+function openRaccoonGame() {
+  gameState = 'raccoongame';
+  rc.round = 0; rc.lastPick = null; rc.answered = false;
+  rc.slow = 0; rc.fingerShown = false;
+  rc.lastAction = elapsed;
+  buildRaccoonRound();
+  rcEl.style.display = 'flex';
+  if (!rcEl.querySelector('.mg-exit')) makeExitButton(rcEl);
+  rcFinger.style.display = 'none';
+}
+function closeRaccoonGame() { rcEl.style.display = 'none'; rcFinger.style.display = 'none'; }
+function celebrateRaccoon() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_raccoon', '1'); bumpWin('raccoon');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/raccoon_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(RACCOON_POS.x, 1.6, RACCOON_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintRaccoonBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  rc.slow = 8;
+  const btn = document.getElementById('hintRaccoonBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
 function celebrateBeaver() {
   gameState = 'celebrate';
   dropsCount++;
@@ -4625,6 +4785,7 @@ let pendingFrog2 = false;
 let pendingPortalDef = null;
 let pendingHeron = false, pendingDuck = false, pendingOtter = false;
 let pendingMoose = false;
+let pendingRaccoon = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -4797,6 +4958,13 @@ window.addEventListener('pointerup', (e) => {
     const dx = MOOSE_POS.x - hero.position.x, dz = MOOSE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.6) startMooseDialog();
     else { pendingMoose = true; givePath(MOOSE_APPR.x, MOOSE_APPR.z); }
+    return;
+  }
+  // тап по Еноту (Локация 3)
+  if (curLoc === 2 && rc.intersectObject(raccoon, true).length) {
+    const dx = RACCOON_POS.x - hero.position.x, dz = RACCOON_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.6) startRaccoonDialog();
+    else { pendingRaccoon = true; givePath(RACCOON_APPR.x, RACCOON_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -5087,6 +5255,7 @@ function openParent() {
     statRow('🐿️ Белка — побед', wins('sq')) +
     statRow('✨ Светлячок — побед', wins('fire')) +
     statRow('🦌 Лось — побед', wins('moose')) +
+    statRow('🦝 Енот — побед', wins('raccoon')) +
     statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
@@ -5362,6 +5531,7 @@ camera.lookAt(lookTarget);
 let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0, hedgeBlinkT = 2.4;
 let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
 let mooseBlinkT = 3.1;
+let raccoonBlinkT = 2.6;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -5532,7 +5702,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingPortalDef || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -5602,6 +5772,11 @@ function animate() {
         pendingMoose = false;
         const d = Math.hypot(MOOSE_POS.x - hero.position.x, MOOSE_POS.z - hero.position.z);
         if (d < 3.6) startMooseDialog();
+      }
+      if (pendingRaccoon) {
+        pendingRaccoon = false;
+        const d = Math.hypot(RACCOON_POS.x - hero.position.x, RACCOON_POS.z - hero.position.z);
+        if (d < 3.6) startRaccoonDialog();
       }
       if (pendingPortalDef) {
         const def = pendingPortalDef;
@@ -5832,6 +6007,15 @@ function animate() {
   moose.userData.eyes[1].scale.y = moose.userData.eyes[0].scale.y;
   moose.userData.glints.forEach(gl => gl.visible = mbl > 0.5);
   mooseBubble.position.y = 3.2 + Math.sin(elapsed * 2.1) * 0.08;
+  // Енот: виляет полосатым хвостом, моргает
+  raccoon.userData.tailSegs.forEach((s, i) => { s.rotation.x = Math.sin(elapsed * 2.6 + i * 0.5) * 0.14; });
+  raccoonBlinkT -= dt;
+  if (raccoonBlinkT < 0) raccoonBlinkT = 2.2 + Math.random() * 3.5;
+  const rbl = raccoonBlinkT < 0.12 ? 0.15 : 1;
+  raccoon.userData.eyes[0].scale.y += (rbl - raccoon.userData.eyes[0].scale.y) * 0.6;
+  raccoon.userData.eyes[1].scale.y = raccoon.userData.eyes[0].scale.y;
+  raccoon.userData.glints.forEach(gl => gl.visible = rbl > 0.5);
+  raccoonBubble.position.y = 2.3 + Math.sin(elapsed * 2.2 + 0.7) * 0.08;
 
   // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
   for (const p of [portalL1, portalL2, portalL3, portalL3b]) {
@@ -6123,6 +6307,20 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «ЧЬЯ ТЕНЬ?» (Енот) ---
+  if (gameState === 'raccoongame' && !rc.answered) {
+    const idle = elapsed - rc.lastAction;
+    const rightBtn = rcAnswers.children[rc.rightIdx];
+    if (rightBtn && idle > 20) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 28 && !rc.fingerShown) {
+      rc.fingerShown = true;
+      const r = rightBtn.getBoundingClientRect();
+      rcFinger.style.left = (r.left + r.width * 0.35) + 'px';
+      rcFinger.style.top = (r.top - 64) + 'px';
+      rcFinger.style.display = 'block';
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
@@ -6356,6 +6554,7 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'duck') openDuckGame();
       else if (kind === 'otter') openOtterGame();
       else if (kind === 'moose') openMooseGame();
+      else if (kind === 'raccoon') openRaccoonGame();
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);
@@ -6487,9 +6686,10 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'duck') { subj = duck; dist = 2.5; lookY = 0.55; }
       else if (name === 'otter') { subj = otter; dist = 2.6; lookY = 0.5; }
       else if (name === 'moose') { subj = moose; dist = 3.4; lookY = 1.1; }
+      else if (name === 'raccoon') { subj = raccoon; dist = 2.5; lookY = 0.55; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
