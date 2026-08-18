@@ -547,12 +547,13 @@ const owl = new THREE.Group();
   stumpTop.position.y = 0.53;
   owl.add(stump, stumpTop);
   const bird = new THREE.Group();
-  const owlBody = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 18), L(0xb08a5f));
+  // v0.25: палитра из арта её мини-игры (owl-counting-scene.webp): тёплый бурый
+  const owlBody = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 18), L(0xa87f4e));
   owlBody.position.y = 0.42; owlBody.scale.set(1, 1.15, 0.9); owlBody.castShadow = true;
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), L(0xf2e3c9));
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), L(0xf6e9cf));
   belly.position.set(0, 0.36, 0.16); belly.scale.set(0.85, 1, 0.55);
   const wingGeo = new THREE.SphereGeometry(0.24, 12, 12);
-  const wingMat = L(0x8a6a44);
+  const wingMat = L(0x7c5a3a);
   const wingL = new THREE.Mesh(wingGeo, wingMat);
   wingL.position.set(-0.36, 0.45, 0); wingL.scale.set(0.5, 0.9, 0.75); wingL.rotation.z = 0.3;
   const wingR = wingL.clone(); wingR.position.x = 0.36; wingR.rotation.z = -0.3;
@@ -566,16 +567,25 @@ const owl = new THREE.Group();
   const pupilL = new THREE.Mesh(pupilGeo, pupilM);
   pupilL.position.set(-0.15, 0.72, 0.4);
   const pupilR = pupilL.clone(); pupilR.position.x = 0.15;
+  // блики в глазах + добрая улыбка (v0.25)
+  const ogGeo = new THREE.SphereGeometry(0.024, 8, 8);
+  const ogM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const ogl = new THREE.Mesh(ogGeo, ogM); ogl.position.set(-0.125, 0.765, 0.445);
+  const ogr = ogl.clone(); ogr.position.x = 0.125;
+  const owlSmile = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.011, 6, 14, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: 0x5b3a22 }));
+  owlSmile.position.set(0, 0.55, 0.42); owlSmile.rotation.set(Math.PI / 2, 0, 0);
   const beak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.15, 8), L(0xf2994c));
   beak.position.set(0, 0.6, 0.36); beak.rotation.x = Math.PI * 0.6;
   const tuftGeoO = new THREE.ConeGeometry(0.08, 0.2, 6);
   const tuftL = new THREE.Mesh(tuftGeoO, wingMat);
   tuftL.position.set(-0.22, 0.95, 0.02); tuftL.rotation.z = 0.35;
   const tuftR = tuftL.clone(); tuftR.position.x = 0.22; tuftR.rotation.z = -0.35;
-  bird.add(owlBody, belly, wingL, wingR, eyeWL, eyeWR, pupilL, pupilR, beak, tuftL, tuftR);
+  bird.add(owlBody, belly, wingL, wingR, eyeWL, eyeWR, pupilL, pupilR, ogl, ogr, owlSmile, beak, tuftL, tuftR);
   bird.position.y = 0.55;
   owl.add(bird);
   owl.userData.bird = bird;
+  owl.userData.eyes = [pupilL, pupilR];
+  owl.userData.glints = [ogl, ogr];
 }
 const OWL_POS = { x: -6.5, z: 10.5 };
 owl.position.set(OWL_POS.x, 0, OWL_POS.z);
@@ -602,12 +612,13 @@ function buildFrogGroup() {
   pad.rotation.x = -Math.PI / 2; pad.position.y = 0.06;
   g.add(pad);
   const fBody = new THREE.Group();
-  const fbodyM = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 18), L(0x69c34d));
+  // v0.25: палитра из арта (frog-magic-bridge.webp) — сочный лесной зелёный
+  const fbodyM = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 18), L(0x5cb84a));
   fbodyM.position.y = 0.42; fbodyM.scale.set(1, 0.85, 0.9); fbodyM.castShadow = true;
   const fbelly = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 14), L(0xd9f2b8));
   fbelly.position.set(0, 0.36, 0.18); fbelly.scale.set(0.85, 0.8, 0.5);
   const fsocketGeo = new THREE.SphereGeometry(0.13, 12, 12);
-  const fsockL = new THREE.Mesh(fsocketGeo, L(0x69c34d));
+  const fsockL = new THREE.Mesh(fsocketGeo, L(0x5cb84a));
   fsockL.position.set(-0.16, 0.72, 0.08);
   const fsockR = fsockL.clone(); fsockR.position.x = 0.16;
   const feyeGeo = new THREE.SphereGeometry(0.09, 10, 10);
@@ -620,16 +631,27 @@ function buildFrogGroup() {
   const fpupL = new THREE.Mesh(fpupGeo, fpupM);
   fpupL.position.set(-0.16, 0.75, 0.22);
   const fpupR = fpupL.clone(); fpupR.position.x = 0.16;
+  // блики в глазах + румянец (v0.25)
+  const fglGeo = new THREE.SphereGeometry(0.016, 8, 8);
+  const fglM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const fglL = new THREE.Mesh(fglGeo, fglM); fglL.position.set(-0.145, 0.79, 0.255);
+  const fglR = fglL.clone(); fglR.position.x = 0.145;
+  const fblushGeo = new THREE.SphereGeometry(0.06, 8, 8);
+  const fblushM = L(0xe8a08a);
+  const fblushL = new THREE.Mesh(fblushGeo, fblushM); fblushL.position.set(-0.24, 0.46, 0.27); fblushL.scale.set(1, 0.55, 0.4);
+  const fblushR = fblushL.clone(); fblushR.position.x = 0.24;
   const fmouth = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.028, 8, 16, Math.PI),
     new THREE.MeshBasicMaterial({ color: 0x3f7a2e }));
   fmouth.position.set(0, 0.42, 0.31); fmouth.rotation.z = Math.PI;
   const flegGeo = new THREE.SphereGeometry(0.14, 10, 10);
-  const flegL = new THREE.Mesh(flegGeo, L(0x57a83f));
+  const flegL = new THREE.Mesh(flegGeo, L(0x4d9e38));
   flegL.position.set(-0.32, 0.2, -0.05); flegL.scale.set(1.2, 0.6, 1.1);
   const flegR = flegL.clone(); flegR.position.x = 0.32;
-  fBody.add(fbodyM, fbelly, fsockL, fsockR, feyeL, feyeR, fpupL, fpupR, fmouth, flegL, flegR);
+  fBody.add(fbodyM, fbelly, fsockL, fsockR, feyeL, feyeR, fpupL, fpupR, fglL, fglR, fblushL, fblushR, fmouth, flegL, flegR);
   g.add(fBody);
   g.userData.body = fBody;
+  g.userData.eyes = [fpupL, fpupR];
+  g.userData.glints = [fglL, fglR];
   return g;
 }
 const frog = buildFrogGroup();
@@ -826,6 +848,13 @@ function makeFirefly() {
   const eR = eL.clone(); eR.position.x = 0.085;
   const pL = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 8), pupilMat); pL.position.set(-0.085, 0.7, 0.318);
   const pR = pL.clone(); pR.position.x = 0.085;
+  // блики в глазах + улыбка (v0.25)
+  const fgGeo = new THREE.SphereGeometry(0.009, 6, 6);
+  const fgM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const fgL = new THREE.Mesh(fgGeo, fgM); fgL.position.set(-0.075, 0.725, 0.32);
+  const fgR = fgL.clone(); fgR.position.x = 0.075;
+  const fireSmile = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 6, 12, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: 0x2b2118 }));
+  fireSmile.position.set(0, 0.62, 0.3); fireSmile.rotation.set(Math.PI / 2, 0, 0);
   // усики
   const antGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.16, 5);
   const aL = new THREE.Mesh(antGeo, dark); aL.position.set(-0.07, 0.84, 0.2); aL.rotation.z = 0.5;
@@ -844,13 +873,13 @@ function makeFirefly() {
     const l2 = l1.clone(); l2.position.x = 0.14;
     legs.push(l1, l2);
   }
-  bodyG.add(body, bulb, head, eL, eR, pL, pR, aL, aR, wL, wR, ...legs);
+  bodyG.add(body, bulb, head, eL, eR, pL, pR, fgL, fgR, fireSmile, aL, aR, wL, wR, ...legs);
   g.add(bodyG);
   // тёплый свет фонарика: вечером и ночью ярче
   const lamp = new THREE.PointLight(0xffe98a, 0.55, 5.5, 1.6);
   lamp.position.set(0, 1.0, 0.55); // светит вперёд-вниз: и мордочка, и камушки подсвечены
   g.add(lamp);
-  g.userData = { body: bodyG, bulb, bulbMat, lamp, wL, wR };
+  g.userData = { body: bodyG, bulb, bulbMat, lamp, wL, wR, eyes: [eL, eR], glints: [fgL, fgR] };
   return g;
 }
 const firefly = makeFirefly();
@@ -1461,6 +1490,9 @@ function makeBeaver() {
   const glintM = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const gl = new THREE.Mesh(glintGeo, glintM); gl.position.set(-0.155, 0.94, 0.465);
   const gr = new THREE.Mesh(glintGeo, glintM); gr.position.set(0.185, 0.94, 0.465);
+  // добрая улыбка (v0.25)
+  const bvSmile = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.011, 6, 14, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: 0x4a2f22 }));
+  bvSmile.position.set(0, 0.68, 0.62); bvSmile.rotation.set(Math.PI / 2, 0, 0);
   // ушки-кнопки
   const earGeo = new THREE.SphereGeometry(0.1, 10, 10);
   const earL = new THREE.Mesh(earGeo, darkFur); earL.position.set(-0.24, 1.02, 0.05); earL.scale.set(1, 1, 0.55);
@@ -1484,9 +1516,9 @@ function makeBeaver() {
   scarf.position.set(0, 0.64, 0.06); scarf.rotation.x = Math.PI / 2;
   const knot = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), L(0xd15a4a));
   knot.position.set(0, 0.6, 0.44); knot.scale.set(1.25, 0.9, 0.9);
-  bodyG.add(body, belly, snout, nose, tL, tR, eL, eR, gl, gr, earL, earR, pL, pR, plank, fL, fR, scarf, knot);
+  bodyG.add(body, belly, snout, nose, tL, tR, eL, eR, gl, gr, bvSmile, earL, earR, pL, pR, plank, fL, fR, scarf, knot);
   g.add(bodyG, tail);
-  g.userData = { body: bodyG, tail };
+  g.userData = { body: bodyG, tail, eyes: [eL, eR], glints: [gl, gr] };
   return g;
 }
 const BEAVER_POS = { x: LOC2.x + 2.7, z: LOC2.z + 3.7 };
@@ -5004,6 +5036,28 @@ function showStory(s) {
   play('pop');
   speak(s.voice);
 }
+
+// ============ ФИНАЛ: все 16 друзей собраны ============
+// Мягкая концовка (один раз): «у зверят ещё много приключений — следите за
+// обновлениями» + добрая просьба к родителям оценить игру в магазине.
+const ALL_FRIENDS = ['hedge', 'owl', 'frog', 'mole', 'sq', 'fire', 'beaver', 'frog2',
+  'heron', 'duck', 'otter', 'moose', 'raccoon', 'magpie', 'mouse', 'badger'];
+const endingOv = document.getElementById('endingOv');
+function checkEnding() {
+  if (localStorage.getItem('wm_ending_seen') === '1') return;
+  if (!ALL_FRIENDS.every(k => localStorage.getItem('wm_met_' + k) === '1')) return;
+  localStorage.setItem('wm_ending_seen', '1');
+  gameState = 'ending';
+  endingOv.style.display = 'flex';
+  stopVoice();
+  play('fanfare');
+  speak('voice/ending.mp3');
+}
+document.getElementById('endingOk').addEventListener('click', () => {
+  endingOv.style.display = 'none';
+  if (gameState === 'ending') gameState = 'explore';
+  play('pop');
+});
 // После главы 2 (да и у «ветеранов» на старте): рассказчица зовёт к волшебной арке.
 let pendingPortalArrow = false;
 // После приглашения Рассказчицы стрелка мягко указывает на Крота.
@@ -5042,6 +5096,7 @@ document.getElementById('storyNext').addEventListener('click', () => {
   }
 });
 function checkStory() {
+  checkEnding(); // все 16 друзей собраны? → мягкий финал (один раз)
   for (const s of STORIES) {
     if (tasksDone >= s.at && localStorage.getItem(s.key) !== '1') {
       localStorage.setItem(s.key, '1');
@@ -5605,6 +5660,17 @@ function travelTo(dest) {
         showGuideArrowAt(BEAVER_POS.x, 3.3, BEAVER_POS.z, 'beaver');
       }
     }
+    if (dest === 2) {
+      // первый визит в чащу: добрая карточка-приветствие с озвучкой
+      const first3 = localStorage.getItem('wm_visit_l3') !== '1';
+      localStorage.setItem('wm_visit_l3', '1');
+      if (first3) {
+        setTimeout(() => { if (gameState === 'explore') showStory({
+          emoji: '🌲', voice: 'voice/story4_l3.mp3',
+          text: 'За второй волшебной аркой — Лесная чаща! Здесь живут Лось, Енот, Сорока, Мышка и Барсук. У каждого — своя игра. Пойдём знакомиться!',
+        }); }, 700);
+      }
+    }
   }, 950);
   setTimeout(() => {
     travelOv.classList.remove('on');
@@ -6114,6 +6180,7 @@ let raccoonBlinkT = 2.6;
 let magpieBlinkT = 2.9;
 let mouseBlinkT = 2.3;
 let badgerBlinkT = 2.7;
+let owlBlinkT = 2.5, frogBlinkT = 2.2, frog2BlinkT = 3.0, fireBlinkT = 2.1, beaverBlinkT = 2.8;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -6515,6 +6582,12 @@ function animate() {
     hedgeBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     owl.userData.bird.rotation.z = Math.sin(elapsed * 1.6) * 0.05;
     owl.userData.bird.position.y = 0.55 + Math.abs(Math.sin(elapsed * 2.4)) * 0.03;
+    owlBlinkT -= dt;
+    if (owlBlinkT < 0) owlBlinkT = 2.3 + Math.random() * 3.5;
+    const owlBl = owlBlinkT < 0.12 ? 0.15 : 1;
+    owl.userData.eyes[0].scale.y += (owlBl - owl.userData.eyes[0].scale.y) * 0.6;
+    owl.userData.eyes[1].scale.y = owl.userData.eyes[0].scale.y;
+    owl.userData.glints.forEach(gl => gl.visible = owlBl > 0.5);
     owlBubble.position.y = 2.5 + Math.sin(elapsed * 2.2) * 0.08;
     const fhop = Math.abs(Math.sin(elapsed * 2.6));
     frog.userData.body.position.y = fhop * 0.1;
@@ -6524,6 +6597,18 @@ function animate() {
     const fhop2 = Math.abs(Math.sin(elapsed * 2.6 + 1.3));
     frog2.userData.body.position.y = fhop2 * 0.1;
     frog2.userData.body.scale.y = 0.92 + fhop2 * 0.08;
+    frogBlinkT -= dt;
+    if (frogBlinkT < 0) frogBlinkT = 2.0 + Math.random() * 3.2;
+    const frBl = frogBlinkT < 0.12 ? 0.15 : 1;
+    frog.userData.eyes[0].scale.y += (frBl - frog.userData.eyes[0].scale.y) * 0.6;
+    frog.userData.eyes[1].scale.y = frog.userData.eyes[0].scale.y;
+    frog.userData.glints.forEach(gl => gl.visible = frBl > 0.5);
+    frog2BlinkT -= dt;
+    if (frog2BlinkT < 0) frog2BlinkT = 2.4 + Math.random() * 3.4;
+    const fr2Bl = frog2BlinkT < 0.12 ? 0.15 : 1;
+    frog2.userData.eyes[0].scale.y += (fr2Bl - frog2.userData.eyes[0].scale.y) * 0.6;
+    frog2.userData.eyes[1].scale.y = frog2.userData.eyes[0].scale.y;
+    frog2.userData.glints.forEach(gl => gl.visible = fr2Bl > 0.5);
     frog2Bubble.position.y = 2.2 + Math.sin(elapsed * 2.2 + 0.9) * 0.08;
     // Крот: голова то выглядывает, то прячется, фонарик светится ночью,
     // глаза добро моргают (как у героя — с бликами)
@@ -6554,6 +6639,12 @@ function animate() {
     firefly.userData.wR.rotation.z = -0.9 - Math.sin(elapsed * 21) * 0.5;
     firefly.userData.lamp.intensity = 0.45 + nightness * 1.6 + Math.sin(elapsed * 3.2) * 0.12;
     firefly.userData.bulbMat.color.setHex(nightness > 0.3 ? 0xffd95e : 0xfff3a0);
+    fireBlinkT -= dt;
+    if (fireBlinkT < 0) fireBlinkT = 1.8 + Math.random() * 3.0;
+    const fiBl = fireBlinkT < 0.12 ? 0.15 : 1;
+    firefly.userData.eyes[0].scale.y += (fiBl - firefly.userData.eyes[0].scale.y) * 0.6;
+    firefly.userData.eyes[1].scale.y = firefly.userData.eyes[0].scale.y;
+    firefly.userData.glints.forEach(gl => gl.visible = fiBl > 0.5);
     svetBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
     sqBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
     // Бобр: мягко подпрыгивает, хвост-лопасть покачивается
@@ -6561,6 +6652,12 @@ function animate() {
     beaver.userData.body.position.y = bHop * 0.07;
     beaver.userData.body.scale.y = 0.94 + bHop * 0.06;
     beaver.userData.tail.rotation.x = Math.sin(elapsed * 1.1) * 0.12;
+    beaverBlinkT -= dt;
+    if (beaverBlinkT < 0) beaverBlinkT = 2.4 + Math.random() * 3.4;
+    const bvBl = beaverBlinkT < 0.12 ? 0.15 : 1;
+    beaver.userData.eyes[0].scale.y += (bvBl - beaver.userData.eyes[0].scale.y) * 0.6;
+    beaver.userData.eyes[1].scale.y = beaver.userData.eyes[0].scale.y;
+    beaver.userData.glints.forEach(gl => gl.visible = bvBl > 0.5);
     beaverBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
     // Цапля: степенно покачивается, моргает; Утка: хвостиком виляет; Выдра: хвост-руль
     heron.userData.body.position.y = Math.sin(elapsed * 1.1) * 0.03;
@@ -7228,6 +7325,11 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'magpie') openMagpieGame();
       else if (kind === 'mouse') openMouseGame();
       else if (kind === 'badger') openBadgerGame();
+      else if (kind === 'ending') {
+        // Точечный тест финала: все 16 друзей знакомы → карточка «ещё много приключений»
+        ALL_FRIENDS.forEach(k => localStorage.setItem('wm_met_' + k, '1'));
+        checkEnding();
+      }
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);

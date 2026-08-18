@@ -1163,7 +1163,7 @@
       .bd-piece { border-width: 2px; border-radius: 8px; }
     }
 
-    #storyOv {
+    #storyOv, #endingOv {
       position: fixed; inset: 0; z-index: 33; display: none;
       align-items: center; justify-content: center;
       background: rgba(40,40,70,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -1600,6 +1600,14 @@
       <div class="story-emoji" id="storyEmoji">🌟</div>
       <div class="story-text" id="storyText"></div>
       <button class="story-btn" id="storyNext">Дальше ▶</button>
+    </div>
+  </div>
+
+  <div id="endingOv">
+    <div class="mg-card story-card">
+      <div class="story-emoji">🎉</div>
+      <div class="story-text">Вот и все друзья собрались! У зверят впереди ещё много приключений — следите за обновлениями. 💛<br><br>Если игра понравилась, поставьте оценку в магазине приложений и оставьте отзыв — это очень помогает проекту расти.</div>
+      <button class="story-btn" id="endingOk">Спасибо! ❤️</button>
     </div>
   </div>
 
