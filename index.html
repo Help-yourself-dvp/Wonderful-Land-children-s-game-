@@ -831,6 +831,84 @@
     .cg-answer, .bg-item, .bv-slot {
       box-shadow: inset 0 -6px 0 rgba(70,43,26,.12), inset 0 3px 0 rgba(255,255,255,.45), 0 7px 14px rgba(68,47,31,.20);
     }
+    /* ============ НОВЫЕ ИГРЫ РЕЧНОГО БЕРЕГА: Цапля, Утка, Выдра ============ */
+    #herongame, #duckgame, #ottergame {
+      position: fixed; inset: 0; z-index: 25; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(61,92,68,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .hg-msg, .dk-msg, .ot-msg { text-align: center; font-size: clamp(15px, 3.2vh, 20px); font-weight: 700; color: #5d7a63; margin: 0 0 6px; min-height: 1.3em; }
+    .hg-field {
+      position: relative; width: 100%; aspect-ratio: 16/9; height: auto;
+      border: 3px solid rgba(255,255,255,.82); border-radius: 22px;
+      background: #7ecbe8 url('./art/heron-fish-size.webp') center / cover no-repeat;
+      box-shadow: inset 0 0 30px rgba(40,70,30,.25); overflow: hidden;
+    }
+    .hg-pool { position: absolute; left: 5%; right: 5%; top: 42%; height: 24%; display: flex; align-items: flex-end; justify-content: center; gap: clamp(8px, 1.6vw, 18px); }
+    .hg-fish {
+      position: relative; height: 100%; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      filter: drop-shadow(0 4px 4px rgba(0,0,0,.22)); transition: transform .25s ease;
+    }
+    .hg-fish .fbody {
+      position: absolute; inset: 8% 4% 12% 8%; border-radius: 50% 55% 55% 50% / 60% 60% 40% 40%;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,.95) 0 8%, transparent 22%),
+        radial-gradient(circle at 75% 80%, rgba(0,0,0,.25) 0 10%, transparent 34%),
+        linear-gradient(145deg, var(--f-light), var(--f-color) 55%, var(--f-dark));
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,.12), inset 0 3px 0 rgba(255,255,255,.5);
+    }
+    .hg-fish .ftail { position: absolute; left: -14%; top: 26%; width: 30%; height: 44%; clip-path: polygon(100% 0, 0 50%, 100% 100%); background: var(--f-color); }
+    .hg-fish .feye { position: absolute; right: 16%; top: 26%; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #2b2118; }
+    .hg-fish .feye::after { content: ''; position: absolute; left: 16%; top: 12%; width: 40%; height: 40%; border-radius: 50%; background: #fff; }
+    .hg-fish.s1 { width: clamp(30px, 5vh, 40px); }
+    .hg-fish.s2 { width: clamp(38px, 6.4vh, 50px); }
+    .hg-fish.s3 { width: clamp(46px, 7.8vh, 60px); }
+    .hg-fish.s4 { width: clamp(54px, 9.2vh, 70px); }
+    .hg-fish.s5 { width: clamp(62px, 10.6vh, 80px); }
+    .hg-fish.glow { animation: basketGlow .7s ease-in-out infinite alternate; }
+    .hg-fish.shake { animation: mgShake .4s ease; }
+    .hg-fish.done { cursor: default; }
+    .hg-line { position: absolute; left: 5%; right: 5%; bottom: 5%; height: 15%; display: flex; align-items: flex-end; justify-content: center; gap: 6px; border-radius: 14px; background: rgba(255,255,255,.38); }
+    /* Утка: две картинки рядом */
+    .dk-panels { display: flex; gap: clamp(6px, 1vw, 14px); justify-content: center; margin-top: 6px; }
+    .dk-panel {
+      position: relative; flex: 1; max-width: 560px; aspect-ratio: 16/9;
+      border: 3px solid rgba(255,255,255,.85); border-radius: 18px; overflow: hidden;
+      background: #9ed8f0 url('./art/duck-pond-differences.webp') center / cover no-repeat;
+    }
+    .dk-el { position: absolute; transform: translate(-50%, -50%); font-size: clamp(22px, 4.5vh, 34px); line-height: 1; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
+    .dk-el.circle { width: clamp(30px, 5vh, 40px); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 14px rgba(255,240,150,.8); }
+    .dk-mark { position: absolute; transform: translate(-50%, -50%); width: clamp(40px, 7vh, 56px); aspect-ratio: 1; border-radius: 50%; border: 5px solid #ffd166; background: rgba(255,209,102,.35); animation: cgItemIn .4s cubic-bezier(.34,1.56,.64,1) both; pointer-events: none; }
+    .dk-glow { position: absolute; transform: translate(-50%, -50%); width: clamp(44px, 7.5vh, 60px); aspect-ratio: 1; border-radius: 50%; border: 4px dashed #ffd166; animation: basketGlow .7s ease-in-out infinite alternate; pointer-events: none; }
+    /* Выдра: зверь и следы */
+    .ot-field {
+      position: relative; width: 100%; aspect-ratio: 16/9; height: auto;
+      border: 3px solid rgba(255,255,255,.82); border-radius: 22px;
+      background: #e9d3a0 url('./art/otter-tracks-bank.webp') center / cover no-repeat;
+      box-shadow: inset 0 0 30px rgba(90,60,25,.22); overflow: hidden;
+    }
+    .ot-q {
+      position: absolute; left: 6%; top: 16%; width: clamp(74px, 15vh, 104px); aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center; font-size: clamp(44px, 9.5vh, 68px);
+      background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.92); border-radius: 50%;
+      box-shadow: 0 6px 14px rgba(103,60,27,.2);
+    }
+    .ot-answers { position: absolute; left: 38%; right: 5%; top: 22%; bottom: 10%; display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(8px, 1.6vh, 16px); }
+    .ot-btn {
+      background: rgba(255,255,255,.72); border: 3px solid rgba(255,255,255,.95); border-radius: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: inset 0 -5px 0 rgba(0,0,0,.08), 0 5px 12px rgba(103,60,27,.2);
+      -webkit-tap-highlight-color: transparent; transition: transform .15s;
+    }
+    .ot-btn svg { width: 74%; height: 74%; }
+    .ot-btn.right { animation: cgJump .5s ease; }
+    .ot-btn.glow { box-shadow: 0 0 0 4px #ffd166; animation: basketGlow .7s ease-in-out infinite alternate; }
+    .ot-btn.shake { animation: mgShake .4s ease; }
+    @media (max-height: 480px) {
+      .hg-field, .ot-field { height: min(56vh, 320px); }
+      .dk-panel { max-width: 380px; }
+    }
+
     #storyOv {
       position: fixed; inset: 0; z-index: 33; display: none;
       align-items: center; justify-content: center;
@@ -1159,6 +1237,45 @@
       </div>
     </div>
     <div class="cg-finger" id="bvFinger" style="display:none">👇</div>
+  </div>
+
+  <div id="herongame">
+    <div class="mg-card">
+      <button class="mg-hint" id="hintHeronBtn" aria-label="подсказка">💡</button>
+      <div class="cg-title">🐟 Рыбки по росту</div>
+      <div class="hg-msg" id="hgMsg"></div>
+      <div class="hg-field">
+        <div class="hg-pool" id="hgPool"></div>
+        <div class="hg-line" id="hgLine"></div>
+      </div>
+    </div>
+    <div class="cg-finger" id="hgFinger" style="display:none">👇</div>
+  </div>
+
+  <div id="duckgame">
+    <div class="mg-card">
+      <button class="mg-hint" id="hintDuckBtn" aria-label="подсказка">💡</button>
+      <div class="cg-title">🦆 Найди отличия</div>
+      <div class="dk-msg" id="dkMsg"></div>
+      <div class="dk-panels">
+        <div class="dk-panel" id="dkLeft"></div>
+        <div class="dk-panel" id="dkRight"></div>
+      </div>
+    </div>
+    <div class="cg-finger" id="dkFinger" style="display:none">👇</div>
+  </div>
+
+  <div id="ottergame">
+    <div class="mg-card">
+      <button class="mg-hint" id="hintOtterBtn" aria-label="подсказка">💡</button>
+      <div class="cg-title">🐾 Чьи следы?</div>
+      <div class="ot-msg" id="otMsg"></div>
+      <div class="ot-field">
+        <div class="ot-q" id="otQ">🦆</div>
+        <div class="ot-answers" id="otAnswers"></div>
+      </div>
+    </div>
+    <div class="cg-finger" id="otFinger" style="display:none">👇</div>
   </div>
 
   <div id="storyOv">

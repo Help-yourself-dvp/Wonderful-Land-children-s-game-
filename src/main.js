@@ -1482,6 +1482,138 @@ const BEAVER_APPR = { x: BEAVER_POS.x - 1.3, z: BEAVER_POS.z - 1.5 };
 const beaverBubble = makeBubbleSprite('🔷', 1.0);
 beaverBubble.position.set(BEAVER_POS.x, 2.35, BEAVER_POS.z);
 scene.add(beaverBubble);
+
+// ============ НОВЫЕ ЖИТЕЛИ РЕЧНОГО БЕРЕГА (v0.24): Цапля, Утка, Выдра ============
+// Цапля — «Рыбки по росту»
+function makeHeron() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const white = L(0xf7f5ee), grey = L(0x9aa5b8), yellow = L(0xe8b04a);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), white);
+  body.position.y = 1.06; body.scale.set(0.8, 1.25, 0.9); body.castShadow = true;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.8, 10), white);
+  neck.position.set(0, 1.62, 0.06); neck.rotation.x = 0.28;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), white);
+  head.position.set(0, 2.02, 0.24);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.42, 8), yellow);
+  beak.position.set(0, 2.06, 0.5); beak.rotation.x = Math.PI / 2;
+  const wing = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), grey);
+  wing.position.set(0.18, 1.02, -0.08); wing.scale.set(0.5, 1.1, 0.8);
+  const eyeGeo = new THREE.SphereGeometry(0.032, 8, 8);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.075, 2.06, 0.34);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.075;
+  const glGeo = new THREE.SphereGeometry(0.012, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.06, 2.08, 0.365);
+  const glR = glL.clone(); glR.position.x = 0.06;
+  const legGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.9, 6);
+  const legL = new THREE.Mesh(legGeo, yellow); legL.position.set(-0.09, 0.45, 0.05);
+  const legR = new THREE.Mesh(legGeo, yellow); legR.position.set(0.09, 0.45, 0.05);
+  bodyG.add(body, neck, head, beak, wing, eyeL, eyeR, glL, glR, legL, legR);
+  g.add(bodyG);
+  g.userData = { body: bodyG, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const HERON_POS = { x: LOC2.x + 5.2, z: LOC2.z - 8.2 };
+const HERON_APPR = { x: LOC2.x + 3.4, z: LOC2.z - 7.4 };
+const heron = makeHeron();
+heron.position.set(HERON_POS.x, 0, HERON_POS.z);
+heron.rotation.y = Math.atan2(LOC2.x - HERON_POS.x, LOC2.z - HERON_POS.z);
+scene.add(heron);
+obstacles.push({ x: HERON_POS.x, z: HERON_POS.z, r: 0.55 });
+heron.scale.setScalar(1.15);
+const heronBubble = makeBubbleSprite('🐟', 0.9);
+heronBubble.position.set(HERON_POS.x, 2.7, HERON_POS.z);
+scene.add(heronBubble);
+
+// Утка — «Найди отличия»
+function makeDuck() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const yellowF = L(0xf5c94e), orange = L(0xe8903a), white = L(0xfff6e0);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), yellowF);
+  body.position.y = 0.38; body.scale.set(0.95, 1.05, 0.9); body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), yellowF);
+  head.position.set(0, 0.72, 0.22);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 8), orange);
+  beak.position.set(0, 0.68, 0.42); beak.rotation.x = Math.PI / 2;
+  const wingL = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), yellowF);
+  wingL.position.set(-0.28, 0.42, 0); wingL.scale.set(0.45, 0.9, 0.8);
+  const wingR = wingL.clone(); wingR.position.x = 0.28;
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 8), yellowF);
+  tail.position.set(0, 0.5, -0.32); tail.rotation.x = -Math.PI / 2.6;
+  const eyeGeo = new THREE.SphereGeometry(0.036, 8, 8);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.09, 0.78, 0.32);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.09;
+  const glGeo = new THREE.SphereGeometry(0.013, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.075, 0.8, 0.355);
+  const glR = glL.clone(); glR.position.x = 0.075;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), white);
+  belly.position.set(0, 0.34, 0.2); belly.scale.set(0.75, 0.9, 0.6);
+  bodyG.add(body, head, beak, wingL, wingR, tail, eyeL, eyeR, glL, glR, belly);
+  g.add(bodyG);
+  g.userData = { body: bodyG, eyes: [eyeL, eyeR], glints: [glL, glR], tail };
+  return g;
+}
+const DUCK_POS = { x: LOC2.x - 3.4, z: LOC2.z + 9.6 };
+const DUCK_APPR = { x: LOC2.x - 1.8, z: LOC2.z + 8.6 };
+const duck = makeDuck();
+duck.position.set(DUCK_POS.x, 0, DUCK_POS.z);
+duck.rotation.y = Math.atan2(LOC2.x - DUCK_POS.x, LOC2.z - DUCK_POS.z);
+scene.add(duck);
+obstacles.push({ x: DUCK_POS.x, z: DUCK_POS.z, r: 0.55 });
+duck.scale.setScalar(1.2);
+const duckBubble = makeBubbleSprite('🐤', 0.9);
+duckBubble.position.set(DUCK_POS.x, 2.2, DUCK_POS.z);
+scene.add(duckBubble);
+
+// Выдра — «Чьи следы?»
+function makeOtter() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const fur = L(0x8a5a3b), furD = L(0x6f452c), cream = L(0xd9b48a);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), fur);
+  body.position.y = 0.42; body.scale.set(1.5, 0.9, 0.9); body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), fur);
+  head.position.set(0, 0.72, 0.4);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), cream);
+  muzzle.position.set(0, 0.64, 0.6); muzzle.scale.set(0.9, 0.75, 0.8);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), L(0x4a2f22));
+  nose.position.set(0, 0.7, 0.72);
+  const earGeo = new THREE.SphereGeometry(0.06, 8, 8);
+  const earL = new THREE.Mesh(earGeo, furD); earL.position.set(-0.18, 0.9, 0.28);
+  const earR = earL.clone(); earR.position.x = 0.18;
+  const eyeGeo = new THREE.SphereGeometry(0.042, 8, 8);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.11, 0.78, 0.56);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.11;
+  const glGeo = new THREE.SphereGeometry(0.015, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.09, 0.8, 0.595);
+  const glR = glL.clone(); glR.position.x = 0.09;
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.7, 8), furD);
+  tail.position.set(0, 0.42, -0.62); tail.rotation.x = Math.PI / 2.2;
+  const rock = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 0.16, 12), L(0x9aa28c));
+  rock.position.y = 0.02;
+  bodyG.add(body, head, muzzle, nose, earL, earR, eyeL, eyeR, glL, glR, tail);
+  g.add(rock, bodyG);
+  g.userData = { body: bodyG, tail, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const OTTER_POS = { x: LOC2.x - 8.8, z: LOC2.z - 8.8 };
+const OTTER_APPR = { x: LOC2.x - 7.2, z: LOC2.z - 7.6 };
+const otter = makeOtter();
+otter.position.set(OTTER_POS.x, 0, OTTER_POS.z);
+otter.rotation.y = Math.atan2(LOC2.x - OTTER_POS.x, LOC2.z - OTTER_POS.z);
+scene.add(otter);
+obstacles.push({ x: OTTER_POS.x, z: OTTER_POS.z, r: 0.6 });
+otter.scale.setScalar(1.15);
+const otterBubble = makeBubbleSprite('🐾', 0.9);
+otterBubble.position.set(OTTER_POS.x, 2.2, OTTER_POS.z);
+scene.add(otterBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -1859,6 +1991,7 @@ function syncAgeUI() {
 function clearPendings() {
   pendingHedge = pendingTree = pendingOwl = pendingFrog = pendingMole = pendingSq = pendingHouse = false;
   pendingBeaver = pendingFrog2 = false;
+  pendingHeron = pendingDuck = pendingOtter = false;
   pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
@@ -2471,7 +2604,8 @@ document.getElementById('hintBridgeBtn').addEventListener('click', (e) => {
 function exitMinigame() {
   stopVoice();
   const closers = [closeMinigame, closeCountGame, closeBridgeGame,
-                  closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame];
+                  closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
+                  closeHeronGame, closeDuckGame, closeOtterGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
   paused = true;
   pauseOv.style.display = 'flex';
@@ -3515,6 +3649,338 @@ function answerBeaver(v, btn) {
   }
 }
 
+// ============ ЦАПЛЯ: «РЫБКИ ПО РОСТУ» (Локация 2) ============
+const hgEl = document.getElementById('herongame');
+const hgMsg = document.getElementById('hgMsg');
+const hgPool = document.getElementById('hgPool');
+const hgLine = document.getElementById('hgLine');
+const hgFinger = document.getElementById('hgFinger');
+const FISH_COLORS = [['#f28ba8', '#d96f92'], ['#f5b45e', '#d98e3a'], ['#8fc3f0', '#5f9fd8'], ['#8fd694', '#5fb968'], ['#c9a0dc', '#a97fc4']];
+const hg = { sizes: [], next: 0, got: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
+function hgN() { return ageLevel() ? 5 : 3; }
+function hgRounds() { return ageLevel() ? 3 : 2; }
+function startHeronDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_heron') === '1' ? 'voice/heron_again.mp3' : 'voice/heron_hello.mp3');
+  speak('voice/heron_ask.mp3', { after: true });
+  const dx = HERON_POS.x - hero.position.x, dz = HERON_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openHeronGame(); }, 2600);
+}
+function buildHeronRound() {
+  hgPool.innerHTML = '';
+  hgLine.innerHTML = '';
+  const n = hgN();
+  const sizes = Array.from({ length: n }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+  hg.sizes = sizes; hg.next = 1; hg.got = 0;
+  sizes.forEach(sz => {
+    const f = document.createElement('div');
+    f.className = 'hg-fish s' + sz;
+    const [c1, c2] = FISH_COLORS[Math.floor(Math.random() * FISH_COLORS.length)];
+    f.style.setProperty('--f-color', c1);
+    f.style.setProperty('--f-light', c1);
+    f.style.setProperty('--f-dark', c2);
+    f.innerHTML = '<span class="ftail"></span><span class="feye"></span><span class="fbody"></span>';
+    f.addEventListener('pointerdown', (e) => { e.stopPropagation(); heronTap(f); });
+    hgPool.appendChild(f);
+  });
+  hgMsg.textContent = '🐟 ' + (hg.round + 1) + ' из ' + hgRounds();
+}
+function heronTap(f) {
+  if (gameState !== 'herongame' || f.dataset.done) return;
+  hg.lastAction = elapsed; hg.fingerShown = false; hgFinger.style.display = 'none';
+  const sz = parseInt((f.className.match(/s(\d)/) || [])[1], 10);
+  if (sz === hg.next) {
+    play('good');
+    f.dataset.done = '1';
+    f.classList.add('done');
+    hgLine.appendChild(f);
+    hg.next++; hg.got++;
+    if (hg.got >= hgN()) {
+      hg.round++;
+      if (hg.round >= hgRounds()) {
+        setTimeout(() => { if (gameState === 'herongame') { closeHeronGame(); celebrateHeron(); } }, 700);
+      } else {
+        setTimeout(() => { if (gameState === 'herongame') buildHeronRound(); }, 900);
+      }
+    }
+  } else {
+    play('bad');
+    f.classList.add('shake');
+    setTimeout(() => f.classList.remove('shake'), 420);
+  }
+}
+function openHeronGame() {
+  gameState = 'herongame';
+  hg.round = 0; hg.slow = 0; hg.fingerShown = false;
+  hg.lastAction = elapsed;
+  buildHeronRound();
+  hgEl.style.display = 'flex';
+  if (!hgEl.querySelector('.mg-exit')) makeExitButton(hgEl);
+  hgFinger.style.display = 'none';
+}
+function closeHeronGame() { hgEl.style.display = 'none'; hgFinger.style.display = 'none'; }
+function celebrateHeron() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_heron', '1'); bumpWin('heron');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/heron_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(HERON_POS.x, 1.8, HERON_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintHeronBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  hg.slow = 8;
+  const btn = document.getElementById('hintHeronBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
+// ============ УТКА: «НАЙДИ ОТЛИЧИЯ» (Локация 2) ============
+const dkEl = document.getElementById('duckgame');
+const dkMsg = document.getElementById('dkMsg');
+const dkLeft = document.getElementById('dkLeft');
+const dkRight = document.getElementById('dkRight');
+const dkFinger = document.getElementById('dkFinger');
+const DK_POOL = [
+  { x: 84, y: 13, a: { circle: '#ffd166' }, b: { circle: '#ff9f6e' } },       // солнышко другого цвета
+  { x: 16, y: 15, a: { e: '☁️' }, b: null },                                  // облачко пропало
+  { x: 42, y: 74, a: { e: '🌼' }, b: { e: '🍄' } },                            // цветок стал грибочком
+  { x: 70, y: 78, a: { e: '🐟' }, b: null },                                  // рыбка уплыла
+  { x: 12, y: 62, a: { e: '🐤' }, b: { e: '🐸' } },                            // утёнок стал лягушонком
+  { x: 88, y: 60, a: { e: '🐞' }, b: null },                                  // жучок спрятался
+];
+const dk = { diffs: [], found: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
+function dkCount() { return ageLevel() ? 3 : 2; }
+function dkRounds() { return ageLevel() ? 2 : 1; }
+function dkRenderPanel(panel, variant) {
+  panel.querySelectorAll('.dk-el, .dk-mark, .dk-glow').forEach(el => el.remove());
+  for (let di = 0; di < DK_POOL.length; di++) {
+    const d = DK_POOL[di];
+    const v = variant[di];
+    if (!v) continue;
+    const el = document.createElement('span');
+    el.className = 'dk-el' + (v.circle ? ' circle' : '');
+    el.style.left = d.x + '%';
+    el.style.top = d.y + '%';
+    if (v.circle) { el.style.background = v.circle; }
+    else { el.textContent = v.e; }
+    panel.appendChild(el);
+  }
+}
+function startDuckDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_duck') === '1' ? 'voice/duck_again.mp3' : 'voice/duck_hello.mp3');
+  speak('voice/duck_ask.mp3', { after: true });
+  const dx = DUCK_POS.x - hero.position.x, dz = DUCK_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openDuckGame(); }, 2600);
+}
+function buildDuckRound() {
+  dk.found = 0;
+  dk.diffs = [];
+  const idx = DK_POOL.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, dkCount());
+  const base = [];
+  idx.forEach((di, k) => base.push({ index: di, pick: k }));
+  const used = new Set(idx);
+  for (let di = 0; di < DK_POOL.length; di++) if (!used.has(di)) base.push({ index: di, pick: -1 });
+  const leftV = {}, rightV = {};
+  DK_POOL.forEach((d, di) => {
+    const st = base.find(b => b.index === di);
+    leftV[di] = d.a;
+    rightV[di] = st && st.pick >= 0 ? (d.b === undefined ? null : d.b) : d.a;
+  });
+  dk.diffs = idx.map(di => ({ x: DK_POOL[di].x, y: DK_POOL[di].y, found: false }));
+  dkRenderPanel(dkLeft, leftV);
+  dkRenderPanel(dkRight, rightV);
+  dkMsg.textContent = 'Найди ' + dkCount() + (dkCount() === 1 ? ' отличие' : ' отличия') + (dkRounds() > 1 ? ' · ' + (dk.round + 1) + ' из ' + dkRounds() : '');
+}
+function duckTap(clientX, clientY) {
+  const rect = dkRight.getBoundingClientRect();
+  const px = (clientX - rect.left) / rect.width * 100;
+  const py = (clientY - rect.top) / rect.height * 100;
+  for (const d of dk.diffs) {
+    if (d.found) continue;
+    if (Math.hypot(px - d.x, py - d.y) < 13) {
+      d.found = true; dk.found++;
+      play('good');
+      const mark = document.createElement('span');
+      mark.className = 'dk-mark';
+      mark.style.left = d.x + '%';
+      mark.style.top = d.y + '%';
+      dkRight.appendChild(mark);
+      if (dk.found >= dkCount()) {
+        dk.round++;
+        if (dk.round >= dkRounds()) {
+          setTimeout(() => { if (gameState === 'duckgame') { closeDuckGame(); celebrateDuck(); } }, 700);
+        } else {
+          setTimeout(() => { if (gameState === 'duckgame') buildDuckRound(); }, 900);
+        }
+      }
+      return;
+    }
+  }
+  play('bad');
+}
+dkRight.addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  if (gameState !== 'duckgame') return;
+  dk.lastAction = elapsed; dk.fingerShown = false; dkFinger.style.display = 'none';
+  duckTap(e.clientX, e.clientY);
+});
+dkLeft.addEventListener('pointerdown', () => {
+  if (gameState !== 'duckgame') return;
+  play('bad'); // левая картинка — эталон, но мягко отвечаем и на неё
+});
+function openDuckGame() {
+  gameState = 'duckgame';
+  dk.round = 0; dk.slow = 0; dk.fingerShown = false;
+  dk.lastAction = elapsed;
+  buildDuckRound();
+  dkEl.style.display = 'flex';
+  if (!dkEl.querySelector('.mg-exit')) makeExitButton(dkEl);
+  dkFinger.style.display = 'none';
+}
+function closeDuckGame() { dkEl.style.display = 'none'; dkFinger.style.display = 'none'; }
+function celebrateDuck() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_duck', '1'); bumpWin('duck');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/duck_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(DUCK_POS.x, 1.6, DUCK_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintDuckBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  dk.slow = 8;
+  const btn = document.getElementById('hintDuckBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
+// ============ ВЫДРА: «ЧЬИ СЛЕДЫ?» (Локация 2) ============
+const otEl = document.getElementById('ottergame');
+const otMsg = document.getElementById('otMsg');
+const otQ = document.getElementById('otQ');
+const otAnswers = document.getElementById('otAnswers');
+const otFinger = document.getElementById('otFinger');
+const OT_TRACKS = {
+  web: '<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="#6f452c"><path d="M50 6 L24 46 L42 52 Z"/><path d="M50 6 L50 50 L60 54 Z"/><path d="M50 6 L76 46 L58 52 Z"/><ellipse cx="50" cy="72" rx="21" ry="15"/></g></svg>',
+  hoof: '<svg viewBox="0 0 100 100" aria-hidden="true"><path fill="#6f452c" d="M18 34 Q50 8 82 34 L82 62 Q64 78 50 62 Q36 78 18 62 Z"/></svg>',
+  paw: '<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="#6f452c"><circle cx="26" cy="34" r="9"/><circle cx="44" cy="26" r="9"/><circle cx="56" cy="26" r="9"/><circle cx="74" cy="34" r="9"/><ellipse cx="50" cy="68" rx="23" ry="19"/></g></svg>',
+  bird: '<svg viewBox="0 0 100 100" aria-hidden="true"><g stroke="#6f452c" stroke-width="8" stroke-linecap="round" fill="none"><path d="M50 80 L50 26"/><path d="M50 80 L22 40"/><path d="M50 80 L78 40"/></g></svg>',
+};
+const OT_ANIMALS = [['🦆', 'web'], ['🦌', 'hoof'], ['🐦', 'bird'], ['🐻', 'paw']];
+const ot = { round: 0, answer: null, rightKey: null, lastAction: 0, slow: 0, fingerShown: false };
+function otPool() { return ageLevel() ? OT_ANIMALS : OT_ANIMALS.slice(0, 3); }
+function otRounds() { return ageLevel() ? 4 : 3; }
+function startOtterDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_otter') === '1' ? 'voice/otter_again.mp3' : 'voice/otter_hello.mp3');
+  speak('voice/otter_ask.mp3', { after: true });
+  const dx = OTTER_POS.x - hero.position.x, dz = OTTER_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openOtterGame(); }, 2600);
+}
+function buildOtterRound() {
+  otAnswers.innerHTML = '';
+  const pool = otPool();
+  let right = pool[Math.floor(Math.random() * pool.length)];
+  if (ot.answer && right[1] === ot.answer[1]) right = pool[(pool.indexOf(right) + 1) % pool.length];
+  ot.answer = right; ot.rightKey = right[1];
+  otQ.textContent = right[0];
+  const opts = pool.slice().sort(() => Math.random() - 0.5);
+  opts.forEach(([emoji, key]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ot-btn';
+    b.setAttribute('aria-label', 'след');
+    b.innerHTML = OT_TRACKS[key];
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); otterTap(b, key); });
+    otAnswers.appendChild(b);
+  });
+  otMsg.textContent = '🐾 ' + (ot.round + 1) + ' из ' + otRounds();
+}
+function otterTap(btn, key) {
+  if (gameState !== 'ottergame' || ot.answered) return;
+  ot.lastAction = elapsed; ot.fingerShown = false; otFinger.style.display = 'none';
+  if (key === ot.rightKey) {
+    ot.answered = true;
+    play('good');
+    btn.classList.add('right');
+    setTimeout(() => {
+      ot.answered = false;
+      ot.round++;
+      if (ot.round >= otRounds()) {
+        closeOtterGame();
+        celebrateOtter();
+      } else {
+        buildOtterRound();
+      }
+    }, 800);
+  } else {
+    play('bad');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 420);
+  }
+}
+function openOtterGame() {
+  gameState = 'ottergame';
+  ot.round = 0; ot.answer = null; ot.answered = false;
+  ot.slow = 0; ot.fingerShown = false;
+  ot.lastAction = elapsed;
+  buildOtterRound();
+  otEl.style.display = 'flex';
+  if (!otEl.querySelector('.mg-exit')) makeExitButton(otEl);
+  otFinger.style.display = 'none';
+}
+function closeOtterGame() { otEl.style.display = 'none'; otFinger.style.display = 'none'; }
+function celebrateOtter() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_otter', '1'); bumpWin('otter');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/otter_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(OTTER_POS.x, 1.5, OTTER_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintOtterBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  ot.slow = 8;
+  const btn = document.getElementById('hintOtterBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
 function celebrateBeaver() {
   gameState = 'celebrate';
   dropsCount++;
@@ -3893,6 +4359,7 @@ let pendingFire = false;
 let pendingBeaver = false;
 let pendingFrog2 = false;
 let pendingPortalDef = null;
+let pendingHeron = false, pendingDuck = false, pendingOtter = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -4037,6 +4504,27 @@ window.addEventListener('pointerup', (e) => {
     const dx = FROG2_POS.x - hero.position.x, dz = FROG2_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.4) startFrog2Dialog();
     else { pendingFrog2 = true; givePath(FROG2_APPR.x, FROG2_APPR.z); }
+    return;
+  }
+  // тап по Цапле (Локация 2)
+  if (curLoc === 1 && rc.intersectObject(heron, true).length) {
+    const dx = HERON_POS.x - hero.position.x, dz = HERON_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startHeronDialog();
+    else { pendingHeron = true; givePath(HERON_APPR.x, HERON_APPR.z); }
+    return;
+  }
+  // тап по Утке (Локация 2)
+  if (curLoc === 1 && rc.intersectObject(duck, true).length) {
+    const dx = DUCK_POS.x - hero.position.x, dz = DUCK_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startDuckDialog();
+    else { pendingDuck = true; givePath(DUCK_APPR.x, DUCK_APPR.z); }
+    return;
+  }
+  // тап по Выдре (Локация 2)
+  if (curLoc === 1 && rc.intersectObject(otter, true).length) {
+    const dx = OTTER_POS.x - hero.position.x, dz = OTTER_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.4) startOtterDialog();
+    else { pendingOtter = true; givePath(OTTER_APPR.x, OTTER_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -4559,6 +5047,7 @@ const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
 let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0;
+let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -4729,7 +5218,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingPortalDef || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -4779,6 +5268,21 @@ function animate() {
         pendingFrog2 = false;
         const d = Math.hypot(FROG2_POS.x - hero.position.x, FROG2_POS.z - hero.position.z);
         if (d < 3.6) startFrog2Dialog();
+      }
+      if (pendingHeron) {
+        pendingHeron = false;
+        const d = Math.hypot(HERON_POS.x - hero.position.x, HERON_POS.z - hero.position.z);
+        if (d < 3.6) startHeronDialog();
+      }
+      if (pendingDuck) {
+        pendingDuck = false;
+        const d = Math.hypot(DUCK_POS.x - hero.position.x, DUCK_POS.z - hero.position.z);
+        if (d < 3.6) startDuckDialog();
+      }
+      if (pendingOtter) {
+        pendingOtter = false;
+        const d = Math.hypot(OTTER_POS.x - hero.position.x, OTTER_POS.z - hero.position.z);
+        if (d < 3.6) startOtterDialog();
       }
       if (pendingPortalDef) {
         const def = pendingPortalDef;
@@ -4961,6 +5465,35 @@ function animate() {
     beaver.userData.body.scale.y = 0.94 + bHop * 0.06;
     beaver.userData.tail.rotation.x = Math.sin(elapsed * 1.1) * 0.12;
     beaverBubble.position.y = 2.35 + Math.sin(elapsed * 2.2) * 0.08;
+    // Цапля: степенно покачивается, моргает; Утка: хвостиком виляет; Выдра: хвост-руль
+    heron.userData.body.position.y = Math.sin(elapsed * 1.1) * 0.03;
+    heron.userData.body.rotation.y = Math.sin(elapsed * 0.5) * 0.08;
+    heronBlinkT -= dt;
+    if (heronBlinkT < 0) heronBlinkT = 2.5 + Math.random() * 3;
+    const hbl = heronBlinkT < 0.12 ? 0.15 : 1;
+    heron.userData.eyes[0].scale.y += (hbl - heron.userData.eyes[0].scale.y) * 0.6;
+    heron.userData.eyes[1].scale.y = heron.userData.eyes[0].scale.y;
+    heron.userData.glints.forEach(gl => gl.visible = hbl > 0.5);
+    heronBubble.position.y = 2.7 + Math.sin(elapsed * 2.1) * 0.08;
+    const dh = Math.abs(Math.sin(elapsed * 2.8));
+    duck.userData.body.position.y = dh * 0.05;
+    duck.userData.tail.rotation.x = Math.sin(elapsed * 3.2) * 0.18;
+    duckBlinkT -= dt;
+    if (duckBlinkT < 0) duckBlinkT = 1.8 + Math.random() * 3;
+    const dbl = duckBlinkT < 0.12 ? 0.15 : 1;
+    duck.userData.eyes[0].scale.y += (dbl - duck.userData.eyes[0].scale.y) * 0.6;
+    duck.userData.eyes[1].scale.y = duck.userData.eyes[0].scale.y;
+    duck.userData.glints.forEach(gl => gl.visible = dbl > 0.5);
+    duckBubble.position.y = 2.2 + Math.sin(elapsed * 2.3) * 0.08;
+    otter.userData.body.position.y = Math.abs(Math.sin(elapsed * 2.2)) * 0.04;
+    otter.userData.tail.rotation.x = Math.sin(elapsed * 2.6) * 0.2;
+    otterBlinkT -= dt;
+    if (otterBlinkT < 0) otterBlinkT = 2.6 + Math.random() * 3.5;
+    const obl = otterBlinkT < 0.12 ? 0.15 : 1;
+    otter.userData.eyes[0].scale.y += (obl - otter.userData.eyes[0].scale.y) * 0.6;
+    otter.userData.eyes[1].scale.y = otter.userData.eyes[0].scale.y;
+    otter.userData.glints.forEach(gl => gl.visible = obl > 0.5);
+    otterBubble.position.y = 2.2 + Math.sin(elapsed * 2.2 + 0.8) * 0.08;
   }
   // огоньки в Лесной чаще — ночью разгораются ярче
   for (const gl of thicketGlows) { if (gl.material) gl.material.opacity = 0.3 + nightness * 0.65; }
@@ -5194,6 +5727,55 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «РЫБКИ ПО РОСТУ» (Цапля) ---
+  if (gameState === 'herongame') {
+    const idle = elapsed - hg.lastAction;
+    const next = [...hgPool.querySelectorAll('.hg-fish')].find(f =>
+      !f.dataset.done && parseInt((f.className.match(/s(\d)/) || [])[1], 10) === hg.next);
+    if (next && idle > 20) next.classList.add('glow');
+    if (next && idle > 28 && !hg.fingerShown) {
+      hg.fingerShown = true;
+      const r = next.getBoundingClientRect();
+      hgFinger.style.left = (r.left + r.width / 2 - 14) + 'px';
+      hgFinger.style.top = (r.top - 64) + 'px';
+      hgFinger.style.display = 'block';
+    }
+  }
+  // --- ПОДСКАЗКИ В ИГРЕ «НАЙДИ ОТЛИЧИЯ» (Утка) ---
+  if (gameState === 'duckgame') {
+    const idle = elapsed - dk.lastAction;
+    const un = dk.diffs.find(d => !d.found);
+    if (un && idle > 20) {
+      dkRight.querySelectorAll('.dk-glow').forEach(e => e.remove());
+      const g = document.createElement('span');
+      g.className = 'dk-glow';
+      g.style.left = un.x + '%';
+      g.style.top = un.y + '%';
+      dkRight.appendChild(g);
+    }
+    if (un && idle > 28 && !dk.fingerShown) {
+      dk.fingerShown = true;
+      const rect = dkRight.getBoundingClientRect();
+      dkFinger.style.left = (rect.left + rect.width * un.x / 100) + 'px';
+      dkFinger.style.top = (rect.top + rect.height * un.y / 100 - 60) + 'px';
+      dkFinger.style.display = 'block';
+    }
+  }
+  // --- ПОДСКАЗКИ В ИГРЕ «ЧЬИ СЛЕДЫ?» (Выдра) ---
+  if (gameState === 'ottergame' && !ot.answered) {
+    const idle = elapsed - ot.lastAction;
+    const rightBtn = [...otAnswers.querySelectorAll('.ot-btn')].find(b =>
+      b.innerHTML.indexOf(OT_TRACKS[ot.rightKey]) === 0);
+    if (rightBtn && idle > 20) rightBtn.classList.add('glow');
+    if (rightBtn && idle > 28 && !ot.fingerShown) {
+      ot.fingerShown = true;
+      const r = rightBtn.getBoundingClientRect();
+      otFinger.style.left = (r.left + r.width * 0.35) + 'px';
+      otFinger.style.top = (r.top - 64) + 'px';
+      otFinger.style.display = 'block';
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
@@ -5424,6 +6006,9 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'sq') openSqGame();
       else if (kind === 'fire') openStoneGame();
       else if (kind === 'beaver') openBeaverGame();
+      else if (kind === 'heron') openHeronGame();
+      else if (kind === 'duck') openDuckGame();
+      else if (kind === 'otter') openOtterGame();
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);
@@ -5551,9 +6136,12 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'sq') { subj = sq; dist = 2.3; lookY = 0.6; }
       else if (name === 'fire') { subj = firefly; dist = 1.55; lookY = 0.62; }
       else if (name === 'beaver') { subj = beaver; dist = 2.6; lookY = 0.6; }
+      else if (name === 'heron') { subj = heron; dist = 2.9; lookY = 1.15; }
+      else if (name === 'duck') { subj = duck; dist = 2.5; lookY = 0.55; }
+      else if (name === 'otter') { subj = otter; dist = 2.6; lookY = 0.5; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
