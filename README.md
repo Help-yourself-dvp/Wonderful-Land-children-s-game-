@@ -47,13 +47,14 @@
 мягкий таймер отдыха (полянка засыпает вместе с малышом), сброс прогресса.
 Всё локально, без сети и рекламы.
 Готово: **Локация 1 на 100% — БЕТА** ✔ **Локация 2 ≈ 90%** (арка, Бобр, речная Лягушка) ✔ **Авто-сложность по возрасту** ✔ **Сюжетный gate Крота** ✔ Дальше — полировка речной Лягушки и узоров, затем Локация 3 «Лесная чаща».
-Скачать v0.21.0: [wonder-meadow-0.21.0.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.21.0/wonder-meadow-0.21.0.apk) ·
+В работе: сказочные фоны остальных мини-игр — у Крота уже есть (добрый крот в каске у грядок), на очереди Белка, Светлячок, Бобр.
+Скачать v0.22.1: [wonder-meadow-0.22.1.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.22.1/wonder-meadow-0.22.1.apk) ·
 [Все Releases](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases) ·
 Проверки для тестеров: [ЧЕКЛИСТ_ТЕСТОВ.md](ЧЕКЛИСТ_ТЕСТОВ.md)
 
 ### Проверено перед публикацией v0.22.1
 
-> ⚠️ APK v0.22.1 пока не опубликован — в GitHub Actions отключены права на запись (Settings → Actions → Workflow permissions: стояло «Read only»). После переключения на «Read and write permissions» нужно перезапустить последний прогон или опубликовать релиз вручную. Последний доступный APK — v0.21.0 по ссылке выше.
+> ✅ APK v0.22.1 опубликован (18.08.2026). Инцидент с правами Actions закрыт: ручной запуск workflow с `publish_release=true` создал релиз, а отпечаток подписи в теле релиза совпал с эталоном.
 
 
 
