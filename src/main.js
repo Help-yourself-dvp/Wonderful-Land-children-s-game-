@@ -5818,6 +5818,9 @@ function openParent() {
     statRow('🐸 Лягушка — побед', wins('frog')) +
     statRow('🦫 Бобр-строитель — побед', wins('beaver')) +
     statRow('🌺 Речная Лягушка — побед', wins('frog2')) +
+    statRow('🦩 Цапля — побед', wins('heron')) +
+    statRow('🦆 Утка — побед', wins('duck')) +
+    statRow('🦦 Выдра — побед', wins('otter')) +
     statRow('🐾 Крот — побед', wins('mole')) +
     statRow('🐿️ Белка — побед', wins('sq')) +
     statRow('✨ Светлячок — побед', wins('fire')) +
@@ -5937,6 +5940,10 @@ function chapterStates() {
   const ch2 = starLit;
   const ch3 = localStorage.getItem('wm_portal_seen') === '1' || localStorage.getItem('wm_visit_l2') === '1';
   const ch3done = localStorage.getItem('wm_met_beaver') === '1' && localStorage.getItem('wm_met_frog2') === '1';
+  // Глава 4 — Лесная чаща: открыта, когда знакомы хотя бы с одним жителем чащи
+  const L3_KEYS = ['wm_met_moose', 'wm_met_raccoon', 'wm_met_magpie', 'wm_met_mouse', 'wm_met_badger'];
+  const ch4 = L3_KEYS.some(k => localStorage.getItem(k) === '1');
+  const ch4done = L3_KEYS.every(k => localStorage.getItem(k) === '1');
   return [
     { num: 'Глава 1', emoji: '🥕', name: 'Корешок-ручеёк', state: ch1 ? 'done' : 'open',
       voice: 'voice/story1.mp3', text: 'Тише… слышишь? Древо Желаний шепчет: каждая добрая помощь делает его сильнее! А Крот прокопал к нему корешок-ручеёк.' },
@@ -5944,6 +5951,8 @@ function chapterStates() {
       voice: 'voice/story2_narr.mp3', text: 'Ты помог всем шестерым друзьям — и звезда засияла для всей полянки! Её свет — как маяк: по нему мы найдём новые земли.' },
     { num: 'Глава 3', emoji: '🦫', name: 'Речной берег', state: ch3done ? 'done' : (ch3 ? 'open' : 'locked'),
       voice: 'voice/portal_hint.mp3', text: 'За волшебной аркой — Речной берег! Там живёт Бобр-строитель. Помоги ему собрать мостик из дощечек!' },
+    { num: 'Глава 4', emoji: '🌲', name: 'Лесная чаща', state: ch4done ? 'done' : (ch4 || ch3done ? 'open' : 'locked'),
+      voice: 'voice/story4_l3.mp3', text: 'За второй волшебной аркой — Лесная чаща! Там живут Лось, Енот, Сорока, Мышка и Барсук. У каждого — своя игра. Пойдём знакомиться!' },
   ];
 }
 function openChapMap() {
