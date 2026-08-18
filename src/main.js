@@ -709,7 +709,8 @@ scene.add(moleBubble);
 function makeSquirrel() {
   const g = new THREE.Group();
   const bodyG = new THREE.Group();
-  const fur = L(0xe08840), cream = L(0xfff0dd), dark = L(0x8a4f22);
+  // v0.23: палитра из арта её мини-игры (squirrel-hide-and-seek.webp)
+  const fur = L(0xda944e), furLight = L(0xedc87e), furDark = L(0xaf491a), cream = L(0xfff0dd), dark = L(0x78411f);
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 18), fur);
   body.position.y = 0.34; body.scale.set(0.92, 1.15, 0.85); body.castShadow = true;
   const belly = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 14), cream);
@@ -718,12 +719,25 @@ function makeSquirrel() {
   head.position.set(0, 0.78, 0.08); head.castShadow = true;
   const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), cream);
   muzzle.position.set(0, 0.72, 0.28); muzzle.scale.set(1, 0.8, 0.9);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), L(0x4a3325));
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), dark);
   nose.position.set(0, 0.76, 0.37);
-  const eyeGeo = new THREE.SphereGeometry(0.05, 10, 10);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.12, 0.83, 0.27);
-  const eyeR = eyeL.clone(); eyeR.position.x = 0.12;
+  // крупные добрые глаза с белыми бликами (моргают — см. animate)
+  const eyeGeo = new THREE.SphereGeometry(0.06, 10, 10);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: dark });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.11, 0.845, 0.30);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.11;
+  const glGeo = new THREE.SphereGeometry(0.02, 8, 8);
+  const glMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.09, 0.875, 0.335);
+  const glR = glL.clone(); glR.position.x = 0.09;
+  // румянец на щёчках
+  const blushGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const blushMat = L(0xe8a08a);
+  const blushL = new THREE.Mesh(blushGeo, blushMat); blushL.position.set(-0.19, 0.745, 0.25); blushL.scale.set(1, 0.6, 0.4);
+  const blushR = blushL.clone(); blushR.position.x = 0.19;
+  // улыбка
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.011, 6, 14, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: dark }));
+  smile.position.set(0, 0.66, 0.36); smile.rotation.set(Math.PI / 2, 0, 0);
   // ушки с тёмными кисточками
   const earGeo = new THREE.ConeGeometry(0.075, 0.22, 8);
   const eL = new THREE.Mesh(earGeo, fur); eL.position.set(-0.14, 1.02, 0.02); eL.rotation.z = 0.18;
@@ -731,20 +745,21 @@ function makeSquirrel() {
   const tuftGeo = new THREE.ConeGeometry(0.038, 0.1, 6);
   const tL = new THREE.Mesh(tuftGeo, dark); tL.position.set(-0.165, 1.13, 0.02); tL.rotation.z = 0.18;
   const tR = new THREE.Mesh(tuftGeo, dark); tR.position.set(0.165, 1.13, 0.02); tR.rotation.z = -0.18;
-  // большой пушистый хвост — вопросительным знаком за спиной
-  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 16), fur);
+  // большой пушистый хвост — вопросительным знаком за спиной, со светлым кончиком
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 16), furDark);
   tail.position.set(0, 0.72, -0.3); tail.scale.set(0.85, 1.7, 0.55); tail.castShadow = true;
-  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), cream);
-  tailTip.position.set(0, 1.12, -0.34); tailTip.scale.set(0.8, 1, 0.5);
+  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), furLight);
+  tailTip.position.set(0, 1.13, -0.34); tailTip.scale.set(0.8, 1, 0.5);
   const pawGeo = new THREE.SphereGeometry(0.08, 10, 10);
   const pawL = new THREE.Mesh(pawGeo, fur); pawL.position.set(-0.15, 0.5, 0.26);
   const pawR = pawL.clone(); pawR.position.x = 0.15;
   // орешек в лапках
   const nut = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), L(0x9c6b3d));
   nut.position.set(0, 0.52, 0.3);
-  bodyG.add(body, belly, head, muzzle, nose, eyeL, eyeR, eL, eR, tL, tR, tail, tailTip, pawL, pawR, nut);
+  bodyG.add(body, belly, head, muzzle, nose, eyeL, eyeR, glL, glR, blushL, blushR, smile,
+    eL, eR, tL, tR, tail, tailTip, pawL, pawR, nut);
   g.add(bodyG);
-  g.userData = { body: bodyG, tail, tailTip };
+  g.userData = { body: bodyG, tail, tailTip, eyes: [eyeL, eyeR], glints: [glL, glR] };
   return g;
 }
 const SQRL_POS = { x: -7.4, z: 5.6 }; // у дерева на западной опушке
@@ -4408,7 +4423,7 @@ let portraitCam = null; // только для скрытого режима п�
 const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
-let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5;
+let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -4786,10 +4801,16 @@ function animate() {
     mole.userData.glints.forEach(gl => gl.visible = mblink > 0.5);
     mole.userData.lamp.material.color.setHex(nightness > 0.3 ? 0xffe27a : 0xfff3b0);
     moleBubble.position.y = 2.1 + Math.sin(elapsed * 2.2) * 0.08;
-    // Белка: подпрыгивает, виляет большим хвостом
+    // Белка: подпрыгивает, виляет большим хвостом, глаза добро моргают
     sq.userData.body.position.y = Math.abs(Math.sin(elapsed * 2.4)) * 0.06;
     sq.userData.tail.rotation.x = Math.sin(elapsed * 3) * 0.16;
     sq.userData.tailTip.rotation.x = Math.sin(elapsed * 3) * 0.2;
+    sqBlinkT -= dt;
+    if (sqBlinkT < 0) sqBlinkT = 2 + Math.random() * 3.5;
+    const sblink = sqBlinkT < 0.12 ? 0.15 : 1;
+    sq.userData.eyes[0].scale.y += (sblink - sq.userData.eyes[0].scale.y) * 0.6;
+    sq.userData.eyes[1].scale.y = sq.userData.eyes[0].scale.y;
+    sq.userData.glints.forEach(gl => gl.visible = sblink > 0.5);
     // Светлячок: парит над камушками, быстро машет крылышками, ночью фонарик ярче
     firefly.userData.body.position.y = 0.12 + Math.sin(elapsed * 2.1) * 0.09;
     firefly.userData.wL.rotation.z = 0.9 + Math.sin(elapsed * 21) * 0.5;
