@@ -57,7 +57,7 @@
 
 ### Проверено перед публикацией v0.22.2
 
-> ℹ️ v0.22.2 готов и ждёт ручного запуска workflow (инструкция — у владельца). Пока релиз не создан, ссылка на APK выше заработает сразу после прогона. Последний опубликованный — v0.22.1: [wonder-meadow-0.22.1.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.22.1/wonder-meadow-0.22.1.apk).
+> ✅ **v0.22.2 опубликован (18.08.2026):** прогон Actions [32121455725](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/actions/runs/32121455725), тег на полном SHA `2fcfcbd…`, отпечаток подписи в теле релиза совпал с эталоном. APK: [wonder-meadow-0.22.2.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.22.2/wonder-meadow-0.22.2.apk) (8,7 МБ, ставится поверх v0.9.1+ с сохранением прогресса).
 >
 > - Production-сборка Vite и офлайн-превью собраны без ошибок (63 MP3 и 8 артов встроены локально).
 > - Playwright 1280×800 и 812×375: все мини-игры открываются, 0 ошибок `console`/`page`, нет overflow; второй этап Крота проверен геометрически (норы внутри поля, нырок — в центр норы).
