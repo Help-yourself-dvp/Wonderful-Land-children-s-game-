@@ -1818,6 +1818,58 @@ magpie.scale.setScalar(1.15);
 const magpieBubble = makeBubbleSprite('🔍', 0.85);
 magpieBubble.position.set(MAGPIE_POS.x, 2.2, MAGPIE_POS.z);
 scene.add(magpieBubble);
+
+// ============ МЫШКА (Локация 3: «Весёлые весы») ============
+// v0.24: четвёртый житель чащи. Серая, большие круглые ушки, длинный хвост.
+function makeMouse() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const fur = L(0x8e8e93), pink = L(0xe8a0a0), dark = L(0x3a3a40);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), fur);
+  body.position.y = 0.32; body.scale.set(0.95, 1.05, 0.9); body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), fur);
+  head.position.set(0, 0.56, 0.14);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), pink);
+  nose.position.set(0, 0.54, 0.29);
+  // большие круглые ушки с розовой серединкой
+  const earOutGeo = new THREE.SphereGeometry(0.11, 10, 10);
+  const earOutL = new THREE.Mesh(earOutGeo, fur); earOutL.position.set(-0.12, 0.72, 0.06); earOutL.scale.set(1, 1, 0.5);
+  const earOutR = earOutL.clone(); earOutR.position.x = 0.12;
+  const earInGeo = new THREE.SphereGeometry(0.06, 8, 8);
+  const earInL = new THREE.Mesh(earInGeo, pink); earInL.position.set(-0.12, 0.72, 0.12);
+  const earInR = earInL.clone(); earInR.position.x = 0.12;
+  const eyeGeo = new THREE.SphereGeometry(0.032, 8, 8);
+  const eyeM = new THREE.MeshBasicMaterial({ color: dark });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.06, 0.6, 0.24);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.06;
+  const glGeo = new THREE.SphereGeometry(0.011, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.045, 0.62, 0.275);
+  const glR = glL.clone(); glR.position.x = 0.045;
+  // длинный хвост из трёх сегментов
+  const tailSegs = [];
+  for (let i = 0; i < 3; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.035 - i * 0.004, 8, 8), pink);
+    s.position.set(0, 0.28, -0.2 - i * 0.11);
+    s.scale.set(0.8, 0.8, 1.4);
+    tailSegs.push(s);
+  }
+  bodyG.add(body, head, nose, earOutL, earOutR, earInL, earInR, eyeL, eyeR, glL, glR, ...tailSegs);
+  g.add(bodyG);
+  g.userData = { body: bodyG, tailSegs, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const MOUSE_POS = { x: LOC3.x - 2.0, z: LOC3.z - 6.2 };
+const MOUSE_APPR = { x: LOC3.x - 0.8, z: LOC3.z - 5.2 };
+const mouse = makeMouse();
+mouse.position.set(MOUSE_POS.x, 0, MOUSE_POS.z);
+mouse.rotation.y = Math.atan2(LOC3.x - MOUSE_POS.x, LOC3.z - MOUSE_POS.z);
+scene.add(mouse);
+obstacles.push({ x: MOUSE_POS.x, z: MOUSE_POS.z, r: 0.45 });
+mouse.scale.setScalar(1.25);
+const mouseBubble = makeBubbleSprite('⚖️', 0.85);
+mouseBubble.position.set(MOUSE_POS.x, 1.9, MOUSE_POS.z);
+scene.add(mouseBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -2199,6 +2251,7 @@ function clearPendings() {
   pendingMoose = false;
   pendingRaccoon = false;
   pendingMagpie = false;
+  pendingMouse = false;
   pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
@@ -2848,7 +2901,7 @@ function exitMinigame() {
   stopVoice();
   const closers = [closeMinigame, closeCountGame, closeBridgeGame,
                   closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
-                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame, closeMagpieGame];
+                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame, closeMagpieGame, closeMouseGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
   // УРОК (живой тест v0.23.0): closers не сбрасывают gameState — без этой строки
   // после ✕ герой замирал на полянке (мир анимировался, а движение было выключено).
@@ -4579,6 +4632,132 @@ document.getElementById('hintMagpieBtn').addEventListener('click', (e) => {
   setTimeout(() => btn.classList.remove('glow'), 8000);
 });
 
+// ============ МЫШКА: «ВЕСЁЛЫЕ ВЕСЫ» (Локация 3) ============
+// Сравнение масс: 3–4 года — два предмета на чашах (тяжелее), 5–6 — три карточки (самый тяжёлый).
+const mwEl = document.getElementById('mousegame');
+const mwMsg = document.getElementById('mwMsg');
+const mwBoard = document.getElementById('mwBoard');
+const mwFinger = document.getElementById('mwFinger');
+// пары [лёгкий, тяжёлый] — тяжёлый всегда вторым
+const MW_PAIRS = [['🪶', '🎃'], ['🍎', '🍉'], ['🌰', '🍉'], ['🐭', '🐻'], ['🍓', '🍍'], ['🦋', '🦆']];
+// тройки [.., .., самый тяжёлый] — тяжёлый всегда третьим
+const MW_TRIPLES = [['🍎', '🍌', '🍉'], ['🍒', '🍓', '🍍'], ['🐹', '🐰', '🐻'], ['🐝', '🐦', '🦆']];
+const mw = { round: 0, heavyIdx: 0, lastSet: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
+function mwRounds() { return ageLevel() ? 3 : 2; }
+function startMouseDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_mouse') === '1' ? 'voice/mouse_again.mp3' : 'voice/mouse_hello.mp3');
+  speak('voice/mouse_ask.mp3', { after: true });
+  const dx = MOUSE_POS.x - hero.position.x, dz = MOUSE_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMouseGame(); }, 2600);
+}
+function buildMouseRound() {
+  mwBoard.innerHTML = '';
+  mwBoard.classList.remove('triple');
+  mw.answered = false;
+  let items, heavyIdx;
+  if (ageLevel()) {
+    let set = MW_TRIPLES[Math.floor(rand() * MW_TRIPLES.length)];
+    if (mw.lastSet && set[2] === mw.lastSet[2]) set = MW_TRIPLES[(MW_TRIPLES.indexOf(set) + 1) % MW_TRIPLES.length];
+    mw.lastSet = set;
+    items = [...set]; heavyIdx = 2;
+    const order = [0, 1, 2].sort(() => rand() - 0.5);
+    mw.heavyIdx = order.indexOf(2);
+    const shown = order.map(i => items[i]);
+    mwBoard.classList.add('triple');
+    shown.forEach((em, pos) => {
+      const c = document.createElement('button');
+      c.type = 'button';
+      c.className = 'mw-card' + (pos === mw.heavyIdx ? ' heavy' : '');
+      c.setAttribute('aria-label', 'предмет');
+      c.textContent = em;
+      c.dataset.heavy = pos === mw.heavyIdx ? '1' : '0';
+      c.addEventListener('pointerdown', (e) => { e.stopPropagation(); mouseTap(c, pos === mw.heavyIdx); });
+      mwBoard.appendChild(c);
+    });
+  } else {
+    let pair = MW_PAIRS[Math.floor(rand() * MW_PAIRS.length)];
+    if (mw.lastSet && pair[1] === mw.lastSet[1]) pair = MW_PAIRS[(MW_PAIRS.indexOf(pair) + 1) % MW_PAIRS.length];
+    mw.lastSet = pair;
+    items = pair; heavyIdx = 1;
+    // тяжёлый предмет — случайно на левой или правой чаше
+    const swap = rand() > 0.5;
+    mw.heavyIdx = swap ? 0 : 1;
+    [0, 1].forEach((i) => {
+      const pan = document.createElement('button');
+      pan.type = 'button';
+      pan.className = 'mw-pan' + (i === mw.heavyIdx ? ' heavy' : '');
+      pan.setAttribute('aria-label', 'чаша весов');
+      const em = items[swap ? 1 - i : i];
+      pan.textContent = em;
+      pan.dataset.heavy = i === mw.heavyIdx ? '1' : '0';
+      pan.addEventListener('pointerdown', (e) => { e.stopPropagation(); mouseTap(pan, i === mw.heavyIdx); });
+      mwBoard.appendChild(pan);
+    });
+  }
+  mwMsg.textContent = '⚖️ Весы ' + (mw.round + 1) + ' из ' + mwRounds();
+}
+function mouseTap(el, isHeavy) {
+  if (gameState !== 'mousegame' || mw.answered) return;
+  mw.lastAction = elapsed; mw.fingerShown = false; mwFinger.style.display = 'none';
+  if (isHeavy) {
+    mw.answered = true;
+    play('good');
+    el.classList.add('right');
+    setTimeout(() => {
+      mw.answered = false;
+      mw.round++;
+      if (mw.round >= mwRounds()) {
+        closeMouseGame();
+        celebrateMouse();
+      } else {
+        buildMouseRound();
+      }
+    }, 800);
+  } else {
+    play('bad');
+    el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 420);
+  }
+}
+function openMouseGame() {
+  gameState = 'mousegame';
+  mw.round = 0; mw.lastSet = null; mw.answered = false;
+  mw.slow = 0; mw.fingerShown = false;
+  mw.lastAction = elapsed;
+  buildMouseRound();
+  mwEl.style.display = 'flex';
+  if (!mwEl.querySelector('.mg-exit')) makeExitButton(mwEl);
+  mwFinger.style.display = 'none';
+}
+function closeMouseGame() { mwEl.style.display = 'none'; mwFinger.style.display = 'none'; }
+function celebrateMouse() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_mouse', '1'); bumpWin('mouse');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/mouse_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(MOUSE_POS.x, 1.4, MOUSE_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintMouseBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  mw.slow = 8;
+  const btn = document.getElementById('hintMouseBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
 function celebrateBeaver() {
   gameState = 'celebrate';
   dropsCount++;
@@ -4961,6 +5140,7 @@ let pendingHeron = false, pendingDuck = false, pendingOtter = false;
 let pendingMoose = false;
 let pendingRaccoon = false;
 let pendingMagpie = false;
+let pendingMouse = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -5147,6 +5327,13 @@ window.addEventListener('pointerup', (e) => {
     const dx = MAGPIE_POS.x - hero.position.x, dz = MAGPIE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.6) startMagpieDialog();
     else { pendingMagpie = true; givePath(MAGPIE_APPR.x, MAGPIE_APPR.z); }
+    return;
+  }
+  // тап по Мышке (Локация 3)
+  if (curLoc === 2 && rc.intersectObject(mouse, true).length) {
+    const dx = MOUSE_POS.x - hero.position.x, dz = MOUSE_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.6) startMouseDialog();
+    else { pendingMouse = true; givePath(MOUSE_APPR.x, MOUSE_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -5439,6 +5626,7 @@ function openParent() {
     statRow('🦌 Лось — побед', wins('moose')) +
     statRow('🦝 Енот — побед', wins('raccoon')) +
     statRow('🐦 Сорока — побед', wins('magpie')) +
+    statRow('🐭 Мышка — побед', wins('mouse')) +
     statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
@@ -5716,6 +5904,7 @@ let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
 let mooseBlinkT = 3.1;
 let raccoonBlinkT = 2.6;
 let magpieBlinkT = 2.9;
+let mouseBlinkT = 2.3;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -5886,7 +6075,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingMagpie || pendingPortalDef || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingMagpie || pendingMouse || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -5966,6 +6155,11 @@ function animate() {
         pendingMagpie = false;
         const d = Math.hypot(MAGPIE_POS.x - hero.position.x, MAGPIE_POS.z - hero.position.z);
         if (d < 3.6) startMagpieDialog();
+      }
+      if (pendingMouse) {
+        pendingMouse = false;
+        const d = Math.hypot(MOUSE_POS.x - hero.position.x, MOUSE_POS.z - hero.position.z);
+        if (d < 3.6) startMouseDialog();
       }
       if (pendingPortalDef) {
         const def = pendingPortalDef;
@@ -6214,6 +6408,15 @@ function animate() {
   magpie.userData.eyes[1].scale.y = magpie.userData.eyes[0].scale.y;
   magpie.userData.glints.forEach(gl => gl.visible = gpbl > 0.5);
   magpieBubble.position.y = 2.2 + Math.sin(elapsed * 2.3 + 1.1) * 0.08;
+  // Мышка: хвостик подрагивает, моргает
+  mouse.userData.tailSegs.forEach((s, i) => { s.rotation.x = Math.sin(elapsed * 3.2 + i * 0.7) * 0.18; });
+  mouseBlinkT -= dt;
+  if (mouseBlinkT < 0) mouseBlinkT = 1.9 + Math.random() * 3.2;
+  const msbl = mouseBlinkT < 0.12 ? 0.15 : 1;
+  mouse.userData.eyes[0].scale.y += (msbl - mouse.userData.eyes[0].scale.y) * 0.6;
+  mouse.userData.eyes[1].scale.y = mouse.userData.eyes[0].scale.y;
+  mouse.userData.glints.forEach(gl => gl.visible = msbl > 0.5);
+  mouseBubble.position.y = 1.9 + Math.sin(elapsed * 2.4 + 0.4) * 0.07;
 
   // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
   for (const p of [portalL1, portalL2, portalL3, portalL3b]) {
@@ -6533,6 +6736,20 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «ВЕСЁЛЫЕ ВЕСЫ» (Мышка) ---
+  if (gameState === 'mousegame' && !mw.answered) {
+    const idle = elapsed - mw.lastAction;
+    const heavyEl = mwBoard.querySelector('[data-heavy="1"]');
+    if (heavyEl && idle > 20) heavyEl.classList.add('glow');
+    if (heavyEl && idle > 28 && !mw.fingerShown) {
+      mw.fingerShown = true;
+      const r = heavyEl.getBoundingClientRect();
+      mwFinger.style.left = (r.left + r.width * 0.35) + 'px';
+      mwFinger.style.top = (r.top - 64) + 'px';
+      mwFinger.style.display = 'block';
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
@@ -6768,6 +6985,7 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'moose') openMooseGame();
       else if (kind === 'raccoon') openRaccoonGame();
       else if (kind === 'magpie') openMagpieGame();
+      else if (kind === 'mouse') openMouseGame();
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);
@@ -6901,9 +7119,10 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'moose') { subj = moose; dist = 3.4; lookY = 1.1; }
       else if (name === 'raccoon') { subj = raccoon; dist = 2.5; lookY = 0.55; }
       else if (name === 'magpie') { subj = magpie; dist = 2.5; lookY = 0.75; }
+      else if (name === 'mouse') { subj = mouse; dist = 2.2; lookY = 0.4; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble], [magpie, magpieBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble], [magpie, magpieBubble], [mouse, mouseBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
