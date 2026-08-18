@@ -1870,6 +1870,53 @@ mouse.scale.setScalar(1.25);
 const mouseBubble = makeBubbleSprite('⚖️', 0.85);
 mouseBubble.position.set(MOUSE_POS.x, 1.9, MOUSE_POS.z);
 scene.add(mouseBubble);
+
+// ============ БАРСУК (Локация 3: «Сложи картинку») ============
+// v0.24: пятый житель чащи. Серое тело, чёрно-белая полосатая мордочка.
+function makeBadger() {
+  const g = new THREE.Group();
+  const bodyG = new THREE.Group();
+  const grey = L(0x7a7a80), dark = L(0x3a3a40), white = L(0xf2f0ea);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), grey);
+  body.position.y = 0.48; body.scale.set(1.05, 0.95, 0.95); body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), white);
+  head.position.set(0, 0.86, 0.18);
+  // две чёрные полосы через глаза — фирменная маска барсука
+  const stripeGeo = new THREE.SphereGeometry(0.09, 10, 10);
+  const stripeL = new THREE.Mesh(stripeGeo, dark); stripeL.position.set(-0.09, 0.9, 0.34); stripeL.scale.set(1.1, 0.9, 0.55);
+  const stripeR = stripeL.clone(); stripeR.position.x = 0.09;
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), dark);
+  nose.position.set(0, 0.8, 0.4);
+  const eyeGeo = new THREE.SphereGeometry(0.042, 10, 10);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x1c1c1c });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.1, 0.9, 0.36);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.1;
+  const glGeo = new THREE.SphereGeometry(0.015, 6, 6);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.08, 0.92, 0.4);
+  const glR = glL.clone(); glR.position.x = 0.08;
+  const earGeo = new THREE.SphereGeometry(0.07, 8, 8);
+  const earL = new THREE.Mesh(earGeo, dark); earL.position.set(-0.18, 1.04, 0.08);
+  const earR = earL.clone(); earR.position.x = 0.18;
+  const pawGeo = new THREE.SphereGeometry(0.11, 10, 10);
+  const pawL = new THREE.Mesh(pawGeo, dark); pawL.position.set(-0.22, 0.2, 0.28);
+  const pawR = pawL.clone(); pawR.position.x = 0.22;
+  bodyG.add(body, head, stripeL, stripeR, nose, eyeL, eyeR, glL, glR, earL, earR, pawL, pawR);
+  g.add(bodyG);
+  g.userData = { body: bodyG, eyes: [eyeL, eyeR], glints: [glL, glR] };
+  return g;
+}
+const BADGER_POS = { x: LOC3.x + 4.5, z: LOC3.z - 7.2 };
+const BADGER_APPR = { x: LOC3.x + 3.2, z: LOC3.z - 6.0 };
+const badger = makeBadger();
+badger.position.set(BADGER_POS.x, 0, BADGER_POS.z);
+badger.rotation.y = Math.atan2(LOC3.x - BADGER_POS.x, LOC3.z - BADGER_POS.z);
+scene.add(badger);
+obstacles.push({ x: BADGER_POS.x, z: BADGER_POS.z, r: 0.55 });
+badger.scale.setScalar(1.15);
+const badgerBubble = makeBubbleSprite('🧩', 0.9);
+badgerBubble.position.set(BADGER_POS.x, 2.0, BADGER_POS.z);
+scene.add(badgerBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -2252,6 +2299,7 @@ function clearPendings() {
   pendingRaccoon = false;
   pendingMagpie = false;
   pendingMouse = false;
+  pendingBadger = false;
   pendingPortalDef = null;
   path = null; pathTarget = null; finalTarget = null;
 }
@@ -2901,7 +2949,7 @@ function exitMinigame() {
   stopVoice();
   const closers = [closeMinigame, closeCountGame, closeBridgeGame,
                   closeMoleGame, closeSqGame, closeStoneGame, closeBeaverGame,
-                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame, closeMagpieGame, closeMouseGame];
+                  closeHeronGame, closeDuckGame, closeOtterGame, closeMooseGame, closeRaccoonGame, closeMagpieGame, closeMouseGame, closeBadgerGame];
   closers.forEach(fn => { try { fn(); } catch (e) {} });
   // УРОК (живой тест v0.23.0): closers не сбрасывают gameState — без этой строки
   // после ✕ герой замирал на полянке (мир анимировался, а движение было выключено).
@@ -4758,6 +4806,148 @@ document.getElementById('hintMouseBtn').addEventListener('click', (e) => {
   setTimeout(() => btn.classList.remove('glow'), 8000);
 });
 
+// ============ БАРСУК: «СЛОЖИ КАРТИНКУ» (Локация 3, пазл) ============
+// СПЕК ВЛАДЕЛЬЦА: 3–4 года — 4 и 6 кусочков; 5–6 лет — 6 и 8. Тап по кусочку → тап по месту.
+const bdEl = document.getElementById('badgergame');
+const bdMsg = document.getElementById('bdMsg');
+const bdBoard = document.getElementById('bdBoard');
+const bdTray = document.getElementById('bdTray');
+const bdFinger = document.getElementById('bdFinger');
+const BD_IMGS = ['art/puzzle-mushroom.webp', 'art/puzzle-daisy.webp'];
+const bd = { round: 0, n: 4, cols: 2, rows: 2, img: 0, selected: null, done: 0, lastAction: 0, slow: 0, fingerShown: false };
+function bdSizes() { return ageLevel() ? [6, 8] : [4, 6]; }
+function bdRounds() { return 2; }
+function bdPieceCss(idx) {
+  // позиция кусочка в сетке cols×rows (картинка — в CSS-классе .bd-img-N)
+  const col = idx % bd.cols, row = Math.floor(idx / bd.cols);
+  const sx = bd.cols === 1 ? 0 : (col / (bd.cols - 1)) * 100;
+  const sy = bd.rows === 1 ? 0 : (row / (bd.rows - 1)) * 100;
+  return {
+    size: `${bd.cols * 100}% ${bd.rows * 100}%`,
+    pos: `${sx}% ${sy}%`,
+  };
+}
+function startBadgerDialog() {
+  gameState = 'dialog';
+  const my = ++dialogToken;
+  clearPendings();
+  play('pop');
+  stopVoice();
+  speak(localStorage.getItem('wm_met_badger') === '1' ? 'voice/badger_again.mp3' : 'voice/badger_hello.mp3');
+  speak('voice/badger_ask.mp3', { after: true });
+  const dx = BADGER_POS.x - hero.position.x, dz = BADGER_POS.z - hero.position.z;
+  hero.rotation.y = Math.atan2(dx, dz);
+  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBadgerGame(); }, 2600);
+}
+function buildBadgerRound() {
+  bdBoard.innerHTML = '';
+  bdTray.innerHTML = '';
+  bd.selected = null;
+  bd.done = 0;
+  bd.n = bdSizes()[bd.round];
+  bd.cols = bd.n === 4 ? 2 : bd.n === 6 ? 3 : 4;
+  bd.rows = bd.n / bd.cols;
+  bd.img = bd.round % BD_IMGS.length;
+  bdBoard.style.gridTemplateColumns = `repeat(${bd.cols}, 1fr)`;
+  bdBoard.style.gridTemplateRows = `repeat(${bd.rows}, 1fr)`;
+  // пустые места (рамки)
+  for (let i = 0; i < bd.n; i++) {
+    const s = document.createElement('div');
+    s.className = 'bd-slot';
+    s.dataset.idx = i;
+    s.addEventListener('pointerdown', (e) => { e.stopPropagation(); badgerSlotTap(s, i); });
+    bdBoard.appendChild(s);
+  }
+  // перемешанные кусочки в лотке
+  const order = Array.from({ length: bd.n }, (_, i) => i).sort(() => rand() - 0.5);
+  order.forEach((idx) => {
+    const p = document.createElement('button');
+    p.type = 'button';
+    p.className = 'bd-piece bd-img-' + bd.img;
+    p.dataset.idx = idx;
+    p.setAttribute('aria-label', 'кусочек');
+    const css = bdPieceCss(idx);
+    p.style.backgroundSize = css.size;
+    p.style.backgroundPosition = css.pos;
+    p.addEventListener('pointerdown', (e) => { e.stopPropagation(); badgerPieceTap(p, idx); });
+    bdTray.appendChild(p);
+  });
+  bdMsg.textContent = '🧩 Картинка ' + (bd.round + 1) + ' из ' + bdRounds();
+}
+function badgerPieceTap(piece, idx) {
+  if (gameState !== 'badgergame' || piece.classList.contains('gone')) return;
+  bd.lastAction = elapsed; bd.fingerShown = false; bdFinger.style.display = 'none';
+  if (bd.selected) bd.selected.classList.remove('sel');
+  if (bd.selected === piece) { bd.selected = null; return; }
+  bd.selected = piece;
+  piece.classList.add('sel');
+  play('pickup');
+}
+function badgerSlotTap(slot, idx) {
+  if (gameState !== 'badgergame' || slot.dataset.done === '1') return;
+  bd.lastAction = elapsed; bd.fingerShown = false; bdFinger.style.display = 'none';
+  if (!bd.selected) { play('bad'); return; }
+  const pIdx = parseInt(bd.selected.dataset.idx, 10);
+  if (pIdx === idx) {
+    // ВЕРНО: кусочек встаёт на место
+    play('good');
+    const css = bdPieceCss(pIdx);
+    slot.classList.add('bd-img-' + bd.img);
+    slot.style.backgroundSize = css.size;
+    slot.style.backgroundPosition = css.pos;
+    slot.dataset.done = '1';
+    slot.classList.add('filled');
+    bd.selected.classList.add('gone');
+    bd.selected.classList.remove('sel');
+    bd.selected = null;
+    bd.done++;
+    if (bd.done >= bd.n) {
+      bd.round++;
+      if (bd.round >= bdRounds()) {
+        setTimeout(() => { if (gameState === 'badgergame') { closeBadgerGame(); celebrateBadger(); } }, 750);
+      } else {
+        setTimeout(() => { if (gameState === 'badgergame') buildBadgerRound(); }, 1000);
+      }
+    }
+  } else {
+    // не то место: мягкий плинг, кусочек остаётся в руке — пробуем ещё
+    play('bad');
+    slot.classList.add('shake');
+    setTimeout(() => slot.classList.remove('shake'), 420);
+  }
+}
+function openBadgerGame() {
+  gameState = 'badgergame';
+  bd.round = 0; bd.slow = 0; bd.fingerShown = false;
+  bd.lastAction = elapsed;
+  buildBadgerRound();
+  bdEl.style.display = 'flex';
+  if (!bdEl.querySelector('.mg-exit')) makeExitButton(bdEl);
+  bdFinger.style.display = 'none';
+}
+function closeBadgerGame() { bdEl.style.display = 'none'; bdFinger.style.display = 'none'; }
+function celebrateBadger() {
+  gameState = 'celebrate';
+  dropsCount++;
+  refreshDrops(true);
+  onTaskDone();
+  stopVoice();
+  play('fanfare');
+  localStorage.setItem('wm_met_badger', '1'); bumpWin('badger');
+  setTimeout(() => play('drop'), 450);
+  setTimeout(() => speak('voice/badger_win.mp3'), 600);
+  spawnBurst(new THREE.Vector3(BADGER_POS.x, 1.5, BADGER_POS.z), 14);
+  setTimeout(() => { gameState = 'explore'; checkStory(); }, 4200);
+}
+document.getElementById('hintBadgerBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  play('hintGlow');
+  bd.slow = 8;
+  const btn = document.getElementById('hintBadgerBtn');
+  btn.classList.add('glow');
+  setTimeout(() => btn.classList.remove('glow'), 8000);
+});
+
 function celebrateBeaver() {
   gameState = 'celebrate';
   dropsCount++;
@@ -5141,6 +5331,7 @@ let pendingMoose = false;
 let pendingRaccoon = false;
 let pendingMagpie = false;
 let pendingMouse = false;
+let pendingBadger = false;
 let pendingHouse = false;
 let finalTarget = null;
 let repathCount = 0;
@@ -5334,6 +5525,13 @@ window.addEventListener('pointerup', (e) => {
     const dx = MOUSE_POS.x - hero.position.x, dz = MOUSE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.6) startMouseDialog();
     else { pendingMouse = true; givePath(MOUSE_APPR.x, MOUSE_APPR.z); }
+    return;
+  }
+  // тап по Барсуку (Локация 3)
+  if (curLoc === 2 && rc.intersectObject(badger, true).length) {
+    const dx = BADGER_POS.x - hero.position.x, dz = BADGER_POS.z - hero.position.z;
+    if (Math.hypot(dx, dz) < 3.6) startBadgerDialog();
+    else { pendingBadger = true; givePath(BADGER_APPR.x, BADGER_APPR.z); }
     return;
   }
   // тап по Древу Желаний
@@ -5627,6 +5825,7 @@ function openParent() {
     statRow('🦝 Енот — побед', wins('raccoon')) +
     statRow('🐦 Сорока — побед', wins('magpie')) +
     statRow('🐭 Мышка — побед', wins('mouse')) +
+    statRow('🦡 Барсук — побед', wins('badger')) +
     statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
@@ -5905,6 +6104,7 @@ let mooseBlinkT = 3.1;
 let raccoonBlinkT = 2.6;
 let magpieBlinkT = 2.9;
 let mouseBlinkT = 2.3;
+let badgerBlinkT = 2.7;
 
 function applyCamFraming() {
   const a = window.innerWidth / window.innerHeight;
@@ -6075,7 +6275,7 @@ function animate() {
       }
     }
 
-    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingMagpie || pendingMouse || pendingPortalDef || pendingHouse)) {
+    if (gameState === 'explore' && !path && (pendingHedge || pendingTree || pendingOwl || pendingFrog || pendingMole || pendingSq || pendingFire || pendingBeaver || pendingFrog2 || pendingHeron || pendingDuck || pendingOtter || pendingMoose || pendingRaccoon || pendingMagpie || pendingMouse || pendingBadger || pendingPortalDef || pendingHouse)) {
       if (pendingHedge) {
         pendingHedge = false;
         const d = Math.hypot(HEDGE_POS.x - hero.position.x, HEDGE_POS.z - hero.position.z);
@@ -6160,6 +6360,11 @@ function animate() {
         pendingMouse = false;
         const d = Math.hypot(MOUSE_POS.x - hero.position.x, MOUSE_POS.z - hero.position.z);
         if (d < 3.6) startMouseDialog();
+      }
+      if (pendingBadger) {
+        pendingBadger = false;
+        const d = Math.hypot(BADGER_POS.x - hero.position.x, BADGER_POS.z - hero.position.z);
+        if (d < 3.6) startBadgerDialog();
       }
       if (pendingPortalDef) {
         const def = pendingPortalDef;
@@ -6417,6 +6622,15 @@ function animate() {
   mouse.userData.eyes[1].scale.y = mouse.userData.eyes[0].scale.y;
   mouse.userData.glints.forEach(gl => gl.visible = msbl > 0.5);
   mouseBubble.position.y = 1.9 + Math.sin(elapsed * 2.4 + 0.4) * 0.07;
+  // Барсук: слегка покачивается, моргает
+  badger.userData.body.position.y = Math.sin(elapsed * 1.4) * 0.03;
+  badgerBlinkT -= dt;
+  if (badgerBlinkT < 0) badgerBlinkT = 2.3 + Math.random() * 3.5;
+  const bdbl = badgerBlinkT < 0.12 ? 0.15 : 1;
+  badger.userData.eyes[0].scale.y += (bdbl - badger.userData.eyes[0].scale.y) * 0.6;
+  badger.userData.eyes[1].scale.y = badger.userData.eyes[0].scale.y;
+  badger.userData.glints.forEach(gl => gl.visible = bdbl > 0.5);
+  badgerBubble.position.y = 2.0 + Math.sin(elapsed * 2.2 + 1.3) * 0.07;
 
   // --- ВОЛШЕБНЫЕ АРКИ: закрутка светлячков + мерцание плёнки ---
   for (const p of [portalL1, portalL2, portalL3, portalL3b]) {
@@ -6750,6 +6964,24 @@ function animate() {
     }
   }
 
+  // --- ПОДСКАЗКИ В ИГРЕ «СЛОЖИ КАРТИНКУ» (Барсук) ---
+  if (gameState === 'badgergame') {
+    const idle = elapsed - bd.lastAction;
+    const empty = bdBoard.querySelector('.bd-slot:not([data-done="1"])');
+    if (empty) {
+      const needIdx = empty.dataset.idx;
+      const piece = bdTray.querySelector(`.bd-piece[data-idx="${needIdx}"]:not(.gone)`);
+      if (idle > 20) { if (empty) empty.classList.add('glow'); if (piece) piece.classList.add('glow'); }
+      if (idle > 28 && !bd.fingerShown && piece) {
+        bd.fingerShown = true;
+        const r = piece.getBoundingClientRect();
+        bdFinger.style.left = (r.left + r.width * 0.35) + 'px';
+        bdFinger.style.top = (r.top - 64) + 'px';
+        bdFinger.style.display = 'block';
+      }
+    }
+  }
+
   // --- ПОДСКАЗКИ В ИГРЕ «ПРЯТКИ-НОРКИ» ---
   if (gameState === 'sqgame' && sg.canTap && !sg.answered) {
     const idle = elapsed - sg.lastAction;
@@ -6986,6 +7218,7 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'raccoon') openRaccoonGame();
       else if (kind === 'magpie') openMagpieGame();
       else if (kind === 'mouse') openMouseGame();
+      else if (kind === 'badger') openBadgerGame();
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
         starLit = true; applyStarLit(); revealPortal(false);
@@ -7120,9 +7353,10 @@ if (location.hash.indexOf('#solo') === 0) {
       else if (name === 'raccoon') { subj = raccoon; dist = 2.5; lookY = 0.55; }
       else if (name === 'magpie') { subj = magpie; dist = 2.5; lookY = 0.75; }
       else if (name === 'mouse') { subj = mouse; dist = 2.2; lookY = 0.4; }
+      else if (name === 'badger') { subj = badger; dist = 2.5; lookY = 0.5; }
       if (subj) {
         // остальных жителей и их облачка прячем — чистое сравнение скинов
-        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble], [magpie, magpieBubble], [mouse, mouseBubble]]
+        [[hedgehog, hedgeBubble], [owl, owlBubble], [frog, frogBubble], [mole, moleBubble], [sq, sqBubble], [firefly, svetBubble], [beaver, beaverBubble], [frog2, frog2Bubble], [heron, heronBubble], [duck, duckBubble], [otter, otterBubble], [moose, mooseBubble], [raccoon, raccoonBubble], [magpie, magpieBubble], [mouse, mouseBubble], [badger, badgerBubble]]
           .forEach(([npc, bub]) => { if (npc !== subj) npc.visible = false; if (bub) bub.visible = false; });
         if (subj !== firefly) fireStones.forEach(s => { s.visible = false; });
         subj.position.x = 0; subj.position.z = 12.4; // y не трогаем: у крота «норка», у совы насест
