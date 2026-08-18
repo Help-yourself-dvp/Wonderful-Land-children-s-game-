@@ -47,11 +47,15 @@
 мягкий таймер отдыха (полянка засыпает вместе с малышом), сброс прогресса.
 Всё локально, без сети и рекламы.
 Готово: **Локация 1 на 100% — БЕТА** ✔ **Локация 2 ≈ 90%** (арка, Бобр, речная Лягушка) ✔ **Авто-сложность по возрасту** ✔ **Сюжетный gate Крота** ✔ Дальше — полировка речной Лягушки и узоров, затем Локация 3 «Лесная чаща».
-Скачать v0.21.0: [wonder-meadow-0.21.0.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.22.1/wonder-meadow-0.22.1.apk) ·
+Скачать v0.21.0: [wonder-meadow-0.21.0.apk](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases/download/v0.21.0/wonder-meadow-0.21.0.apk) ·
 [Все Releases](https://github.com/Help-yourself-dvp/Wonderful-Land-children-s-game-/releases) ·
 Проверки для тестеров: [ЧЕКЛИСТ_ТЕСТОВ.md](ЧЕКЛИСТ_ТЕСТОВ.md)
 
 ### Проверено перед публикацией v0.22.1
+
+> ⚠️ APK v0.22.1 пока не опубликован — в GitHub Actions отключены права на запись (Settings → Actions → Workflow permissions: стояло «Read only»). После переключения на «Read and write permissions» нужно перезапустить последний прогон или опубликовать релиз вручную. Последний доступный APK — v0.21.0 по ссылке выше.
+
+
 
 - Production-сборка Vite и автономное офлайн-превью успешны; все ресурсы, включая новый
   WebP-фон и 62 MP3, встроены локально.
