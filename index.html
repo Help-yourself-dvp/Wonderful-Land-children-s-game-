@@ -161,6 +161,15 @@
       -webkit-tap-highlight-color: transparent; animation: hintPulse 2s ease-in-out infinite;
     }
     #skipIntro:active { transform: scale(.9); }
+    /* v0.25.2: бэдж «новая глава» на кнопке карты */
+    #mapBadge {
+      position: absolute; right: -7px; top: -8px; min-width: 22px; height: 22px; padding: 0 4px;
+      border-radius: 12px; background: #ff7c54; color: #fff; border: 3px solid #fff;
+      display: none; align-items: center; justify-content: center; font-size: 13px; line-height: 1;
+      font-weight: 900; box-shadow: 0 3px 8px rgba(95,46,30,.32); box-sizing: content-box;
+      animation: badgePop .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes badgePop { from { transform: scale(0); } to { transform: scale(1); } }
     #verTag {
       position: absolute; left: 14px; bottom: calc(10px + env(safe-area-inset-bottom));
       color: rgba(61,92,68,0.55); font-size: 13px; font-weight: 600;
@@ -226,6 +235,8 @@
       font-size: clamp(36px,5.4vw,52px); z-index: 2; line-height: 1;
     }
     .album-slot.locked { font-size: clamp(17px,2.7vw,26px); color: #789080; background: rgba(255,255,255,.36); border: 3px dotted rgba(89,108,88,.46); }
+    /* v0.25.2: собственные SVG-значки наклеек */
+    .album-slot svg, .album-sticker svg, .reward-sticker svg { width: 80%; height: 80%; display: block; }
     .album-slot.ready { cursor: pointer; color: transparent; text-shadow: 0 0 0 rgba(255,255,255,.82); filter: grayscale(1); opacity: .68; background: rgba(255,255,255,.44); border: 3px dashed rgba(255,255,255,.92); box-shadow: 0 2px 8px rgba(66,97,68,.18); }
     /* приклеенная наклейка — ЯРКАЯ, с золотым колечком (живой тест: раньше выглядела как пустой макет) */
     .album-slot.placed { filter: none; opacity: 1; background: #fffdf0; border: 3px solid #ffd166; box-shadow: 0 0 0 4px rgba(255,209,102,.55), 0 4px 14px rgba(90,60,20,.3); animation: stickerPop .34s ease-out; }
@@ -1408,7 +1419,7 @@
     <span class="reward-sticker" id="rewardSticker">✨</span>
     <span class="reward-words">Новая наклейка!<small>Она ждёт в альбоме 📖</small></span>
   </div>
-  <button id="mapBtn" aria-label="карта сказки">🗺️</button>
+  <button id="mapBtn" aria-label="карта сказки">🗺️<span id="mapBadge" aria-hidden="true"></span></button>
   <button id="skipIntro" aria-label="пропустить">⏭</button>
   <!-- v0.25.1 (живой тест): счётчик найденных друзей Полянки — видно, кого ещё не нашли -->
   <div id="friendCount" class="friend-count">🐾 Друзья: 0 из 6</div>

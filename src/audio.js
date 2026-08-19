@@ -126,6 +126,11 @@ const SFX = {
   tickle:   () => { for (let i = 0; i < 6; i++) tone(900 + (i % 2) * 200, 0.06, { vol: 0.14, delay: i * 0.07, type: 'square' }); },
   whoosh:   () => noise(0.5, { vol: 0.1, from: 500, to: 120 }),
   hintGlow: () => tone(1180, 0.12, { vol: 0.08, type: 'sine' }),
+  // v0.25.2: мягкий «топ-топ» шагов героя — лёгкий синтез без файлов
+  step: () => {
+    tone(170, 0.05, { vol: 0.045, slideTo: 120, type: 'sine' });
+    tone(380, 0.028, { vol: 0.03, delay: 0.015, type: 'triangle' });
+  },
 };
 
 export function play(name) {

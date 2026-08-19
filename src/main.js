@@ -2440,32 +2440,60 @@ function waterTree() {
 // а не за каждые три задания. Старые свободные позиции остаются в wm_album как резервная
 // копия; при первом запуске их ключи бережно превращаются в уже приклеенные наклейки.
 let tasksDone = parseInt(localStorage.getItem('wm_tasks') || '0', 10);
+// v0.25.2: СВОИ рисованные значки альбома (SVG) вместо системных эмодзи —
+// на всех Android выглядят одинаково. Каждый — простые формы 64×64.
+const STICKER_ICONS = {
+  drop: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 C32 8 14 32 14 43 a18 18 0 0 0 36 0 C50 32 32 8 32 8 Z" fill="#5ec8f2"/><circle cx="25" cy="42" r="4" fill="#dff3ff"/></svg>',
+  sprout: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 56 V26" stroke="#5a9e3e" stroke-width="5" stroke-linecap="round"/><path d="M32 42 C24 36 14 40 12 30 C22 30 28 36 32 42 Z" fill="#7ecb5f"/><path d="M32 34 C40 28 50 32 52 22 C42 22 36 28 32 34 Z" fill="#8fd07a"/></svg>',
+  apple: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 22 C28 20 27 16 29 12" stroke="#7a5230" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M46 34 a14 16 0 0 1 -28 0 a14 16 0 0 1 28 0 Z" fill="#e8563f"/><path d="M50 26 a14 16 0 0 1 -28 0 a14 16 0 0 1 28 0 Z" fill="#f2765f"/><circle cx="27" cy="32" r="4" fill="#ffd9c9"/></svg>',
+  hedgehog: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M22 36 L14 24 L22 20 L18 12 L30 14 L32 4 L38 16 L48 10 L44 22 L54 26 L44 34 L50 40 L40 42 L38 50 L30 44 L24 50 Z" fill="#a5763f"/><ellipse cx="31" cy="38" rx="9" ry="7" fill="#f2dfc0"/><circle cx="28" cy="36" r="1.8" fill="#3a2c1c"/><circle cx="35" cy="36" r="1.8" fill="#3a2c1c"/></svg>',
+  tree: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="28" y="42" width="8" height="16" rx="3" fill="#9a6b4f"/><circle cx="32" cy="34" r="14" fill="#6cbf6f"/><circle cx="24" cy="38" r="8" fill="#7ecb7f"/><circle cx="40" cy="38" r="8" fill="#5fb565"/><circle cx="32" cy="30" r="3" fill="#ffd166"/></svg>',
+  owl: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 34 a18 22 0 0 1 36 0 a18 22 0 0 1 -36 0 Z" fill="#a87f4e"/><circle cx="22" cy="30" r="7" fill="#fff"/><circle cx="42" cy="30" r="7" fill="#fff"/><circle cx="22" cy="30" r="3" fill="#2b2b2b"/><circle cx="42" cy="30" r="3" fill="#2b2b2b"/><path d="M32 38 L28 44 L36 44 Z" fill="#f2994c"/></svg>',
+  frog: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="36" r="17" fill="#5cb84a"/><circle cx="24" cy="24" r="6" fill="#5cb84a"/><circle cx="40" cy="24" r="6" fill="#5cb84a"/><circle cx="24" cy="24" r="4" fill="#fff"/><circle cx="40" cy="24" r="4" fill="#fff"/><circle cx="24" cy="24" r="2" fill="#2b2b2b"/><circle cx="40" cy="24" r="2" fill="#2b2b2b"/><path d="M24 40 Q32 46 40 40" stroke="#3f7a2e" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+  carrot: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 52 L18 34 L46 34 Z" fill="#f2944c"/><path d="M32 34 C28 24 26 18 30 10" stroke="#6fbf5f" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M36 34 C36 24 40 18 38 8" stroke="#7ecb5f" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M21 36 L24 31 M27 36 L30 31 M33 36 L36 31 M39 36 L42 31" stroke="#d97a2e" stroke-width="2"/></svg>',
+  squirrel: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="28" cy="38" rx="12" ry="14" fill="#d9904a"/><path d="M38 34 C52 26 54 12 44 10 C40 22 34 28 30 32 Z" fill="#b96a2e"/><circle cx="26" cy="24" r="9" fill="#d9904a"/><circle cx="23" cy="23" r="2" fill="#3a2c1c"/><circle cx="29" cy="23" r="2" fill="#3a2c1c"/><circle cx="26" cy="28" r="1.6" fill="#3a2c1c"/><path d="M18 18 L12 8 L22 12 Z" fill="#d9904a"/></svg>',
+  firefly: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="16" fill="#ffe08a" opacity=".45"/><ellipse cx="32" cy="38" rx="10" ry="13" fill="#8a5a3b"/><path d="M22 32 C14 26 12 18 16 12 C22 20 26 26 24 34 Z" fill="#bfe3ff" opacity=".8"/><path d="M42 32 C50 26 52 18 48 12 C42 20 38 26 40 34 Z" fill="#bfe3ff" opacity=".8"/><circle cx="32" cy="24" r="7" fill="#6f452c"/><circle cx="29" cy="23" r="1.8" fill="#fff"/><circle cx="35" cy="23" r="1.8" fill="#fff"/></svg>',
+  star: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 L39 25 L59 25 L43 37 L49 57 L32 45 L15 57 L21 37 L5 25 L25 25 Z" fill="#ffd166"/></svg>',
+  rainbow: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 44 a24 24 0 0 1 48 0" stroke="#f28ba8" stroke-width="6" fill="none"/><path d="M13 44 a19 19 0 0 1 38 0" stroke="#f5b45e" stroke-width="6" fill="none"/><path d="M18 44 a14 14 0 0 1 28 0" stroke="#8fd694" stroke-width="6" fill="none"/><path d="M23 44 a9 9 0 0 1 18 0" stroke="#8fc3f0" stroke-width="6" fill="none"/></svg>',
+  note: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="22" cy="44" r="6" fill="#7d68a8"/><rect x="26" y="12" width="6" height="32" fill="#7d68a8"/><path d="M26 16 L46 10 L46 38" stroke="#7d68a8" stroke-width="5" fill="none"/><circle cx="40" cy="44" r="6" fill="#7d68a8"/></svg>',
+  brightstar: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 L37 24 L54 24 L40 34 L45 51 L32 40 L19 51 L24 34 L10 24 L27 24 Z" fill="#ffe08a"/><path d="M32 8 L33 2 M37 24 L46 18 M54 24 L60 25 M40 34 L48 38 M45 51 L50 58" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M42 8 a24 24 0 1 0 16 38 A20 20 0 0 1 42 8 Z" fill="#f2d9a0"/><circle cx="50" cy="16" r="2.5" fill="#ffe9c4"/><circle cx="44" cy="28" r="1.8" fill="#ffe9c4"/></svg>',
+  song: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="16" cy="46" r="6" fill="#e26d8c"/><rect x="20" y="14" width="6" height="32" fill="#e26d8c"/><circle cx="42" cy="46" r="6" fill="#e26d8c"/><rect x="46" y="18" width="6" height="28" fill="#e26d8c"/><path d="M23 18 L46 22 M49 22 L23 18" stroke="#e26d8c" stroke-width="4" fill="none"/></svg>',
+  bell: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 30 L44 30 L42 44 A10 8 0 0 1 22 44 Z" fill="#f2c94c"/><rect x="18" y="28" width="28" height="6" rx="3" fill="#d9ad3a"/><circle cx="32" cy="52" r="5" fill="#d9ad3a"/><path d="M32 8 L34 14" stroke="#d9ad3a" stroke-width="4" stroke-linecap="round"/></svg>',
+  spark: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 C34 22 42 30 56 32 C42 34 34 42 32 56 C30 42 22 34 8 32 C22 30 30 22 32 8 Z" fill="#ffe9a8"/></svg>',
+  arch: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 52 V30 a18 18 0 0 1 36 0 V52" stroke="#8a5a3b" stroke-width="6" fill="none"/><path d="M14 52 V34 a18 18 0 0 1 36 0 V52" stroke="#7ba05a" stroke-width="3" fill="none"/><circle cx="32" cy="38" r="5" fill="#aef2ff" opacity=".8"/></svg>',
+  twig: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 56 C30 40 34 26 46 12" stroke="#8a6a4a" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="46" cy="14" rx="9" ry="5" fill="#7ecb5f" transform="rotate(-40 46 14)"/><ellipse cx="38" cy="26" rx="8" ry="4.5" fill="#8fd07a" transform="rotate(-40 38 26)"/><ellipse cx="28" cy="38" rx="7" ry="4" fill="#6fbf5f" transform="rotate(-40 28 38)"/></svg>',
+  lily: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="40" rx="20" ry="10" fill="#5fbf7a"/><path d="M32 40 L24 22 C28 20 36 20 40 22 Z" fill="#f28bb4"/><path d="M32 40 L14 32 C16 27 22 25 27 27 Z" fill="#f7a8c4"/><path d="M32 40 L50 32 C48 27 42 25 37 27 Z" fill="#f7a8c4"/><circle cx="32" cy="36" r="4" fill="#ffd166"/></svg>',
+  beaver: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="30" cy="36" rx="13" ry="15" fill="#8a5a3b"/><circle cx="28" cy="20" r="10" fill="#8a5a3b"/><rect x="25" y="28" width="3" height="6" fill="#fff"/><rect x="31" y="28" width="3" height="6" fill="#fff"/><circle cx="24" cy="18" r="1.8" fill="#2b2118"/><circle cx="32" cy="18" r="1.8" fill="#2b2118"/><ellipse cx="42" cy="46" rx="10" ry="6" fill="#6f452c" transform="rotate(30 42 46)"/></svg>',
+  log: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="32" rx="24" ry="14" fill="#b07b4f"/><ellipse cx="24" cy="32" rx="3" ry="13" fill="#8a5a3b"/><ellipse cx="38" cy="32" rx="3" ry="13" fill="#8a5a3b"/><ellipse cx="24" cy="32" rx="6" ry="10" fill="#d8a566"/><ellipse cx="24" cy="32" rx="3" ry="6" fill="#b07b4f"/></svg>',
+  stone: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="30" cy="38" rx="18" ry="13" fill="#9aa28c"/><ellipse cx="24" cy="34" rx="6" ry="4" fill="#c2c9b8" opacity=".8"/><ellipse cx="46" cy="46" rx="10" ry="8" fill="#7d8572"/></svg>',
+};
 const STICKERS = [
-  { emoji: '💧', name: 'капелька', x: 17, y: 23 },
-  { emoji: '🌱', name: 'росток', x: 34, y: 77 },
-  { emoji: '🍎', name: 'яблоко', x: 36, y: 48 },
-  { emoji: '🦔', name: 'ёжик', x: 16, y: 73 },
-  { emoji: '🌳', name: 'Древо', x: 50, y: 60 },
-  { emoji: '🦉', name: 'сова', x: 48, y: 27 },
-  { emoji: '🐸', name: 'лягушка', x: 70, y: 75 },
-  { emoji: '🥕', name: 'морковка', x: 88, y: 73 },
-  { emoji: '🐿️', name: 'белочка', x: 63, y: 49 },
-  { emoji: '✨', name: 'светлячок', x: 74, y: 30 },
-  { emoji: '⭐', name: 'звезда', x: 87, y: 16 },
-  { emoji: '🌈', name: 'радуга', x: 48, y: 10 },
+  { icon: 'drop', name: 'капелька' },
+  { icon: 'sprout', name: 'росток' },
+  { icon: 'apple', name: 'яблоко' },
+  { icon: 'hedgehog', name: 'ёжик' },
+  { icon: 'tree', name: 'Древо' },
+  { icon: 'owl', name: 'сова' },
+  { icon: 'frog', name: 'лягушка' },
+  { icon: 'carrot', name: 'морковка' },
+  { icon: 'squirrel', name: 'белочка' },
+  { icon: 'firefly', name: 'светлячок' },
+  { icon: 'star', name: 'звезда' },
+  { icon: 'rainbow', name: 'радуга' },
   // Глава 2: после обязательной истории остаётся целая необязательная страница.
-  { emoji: '🎵', name: 'нотка', x: 17, y: 23 },
-  { emoji: '🌟', name: 'сияющая звезда', x: 48, y: 10 },
-  { emoji: '🌙', name: 'луна', x: 87, y: 16 },
-  { emoji: '🎶', name: 'песенка', x: 74, y: 30 },
-  { emoji: '🎼', name: 'мелодия', x: 48, y: 27 },
-  { emoji: '💫', name: 'огонёк', x: 63, y: 49 },
-  { emoji: '🌉', name: 'волшебная арка', x: 50, y: 60 },
-  { emoji: '🌿', name: 'веточка', x: 34, y: 77 },
-  { emoji: '🪷', name: 'кувшинка', x: 70, y: 75 },
-  { emoji: '🦫', name: 'бобр', x: 88, y: 73 },
-  { emoji: '🪵', name: 'брёвнышко', x: 36, y: 48 },
-  { emoji: '💎', name: 'речной камушек', x: 16, y: 73 },
+  { icon: 'note', name: 'нотка' },
+  { icon: 'brightstar', name: 'сияющая звезда' },
+  { icon: 'moon', name: 'луна' },
+  { icon: 'song', name: 'песенка' },
+  { icon: 'bell', name: 'колокольчик' },
+  { icon: 'spark', name: 'огонёк' },
+  { icon: 'arch', name: 'волшебная арка' },
+  { icon: 'twig', name: 'веточка' },
+  { icon: 'lily', name: 'кувшинка' },
+  { icon: 'beaver', name: 'бобр' },
+  { icon: 'log', name: 'брёвнышко' },
+  { icon: 'stone', name: 'речной камушек' },
 ];
 // v0.25.1 (живой тест): 4 страницы по 6 наклеек — значки крупнее, внимание не расплывается
 const ALBUM_PAGES = [
@@ -2612,7 +2640,7 @@ function renderAlbum(message = '') {
       slot.disabled = true;
       slot.setAttribute('aria-label', 'закрытое место');
     } else {
-      slot.textContent = sticker.emoji;
+      slot.innerHTML = STICKER_ICONS[sticker.icon];
       slot.setAttribute('aria-label', albumPlaced.has(i) ? sticker.name + ' приклеена' : 'место: ' + sticker.name);
       if (albumPlaced.has(i)) {
         slot.classList.add('placed');
@@ -2635,7 +2663,7 @@ function renderAlbum(message = '') {
       token.disabled = true;
       token.setAttribute('aria-label', 'наклейка ещё закрыта');
     } else {
-      token.textContent = sticker.emoji;
+      token.innerHTML = STICKER_ICONS[sticker.icon];
       token.setAttribute('aria-label', 'наклейка ' + sticker.name);
       if (albumPlaced.has(i)) {
         token.classList.add('used');
@@ -2677,7 +2705,7 @@ function tryPlaceSticker(i, slot) {
   selectedSticker = null;
   saveAlbumProgress();
   play('good');
-  renderAlbum(`${sticker.emoji} Наклейка на своём месте!`);
+  renderAlbum('Наклейка на своём месте!');
 }
 function openAlbum() {
   selectedSticker = null;
@@ -2693,7 +2721,7 @@ function closeAlbum() {
 }
 function showStickerReward(i) {
   if (!stickerReward || !rewardSticker) return;
-  rewardSticker.textContent = STICKERS[i].emoji;
+  rewardSticker.innerHTML = STICKER_ICONS[STICKERS[i].icon];
   stickerReward.classList.remove('show'); void stickerReward.offsetWidth; stickerReward.classList.add('show');
   albumBtn.classList.remove('rewardPulse'); void albumBtn.offsetWidth; albumBtn.classList.add('rewardPulse');
   clearTimeout(rewardTimer);
@@ -2718,6 +2746,8 @@ document.getElementById('albumClose').addEventListener('click', closeAlbum);
 function onTaskDone() {
   tasksDone++;
   localStorage.setItem('wm_tasks', String(tasksDone));
+  // v0.25.2: мягкая вибрация на победе (без разрешений Android; в вебе просто игнорируется)
+  try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
 }
 // счётчики побед у каждого жителя — для «Как малыш растёт» в Родительском уголке
 function bumpWin(k) {
@@ -2737,6 +2767,14 @@ function haveMetAllMeadowFriends() {
 // ненайденного зверька (раньше Светлячка было очень легко не заметить).
 const friendCountEl = document.getElementById('friendCount');
 let lastFriendSec = -1;
+// v0.25.2: бэдж на кнопке карты — когда открылась НОВАЯ глава сказки (ребёнок не пропустит)
+const mapBadgeEl = document.getElementById('mapBadge');
+function refreshMapBadge() {
+  if (!mapBadgeEl) return;
+  const unseen = chapterStates().filter((c, i) => c.state === 'open' && localStorage.getItem('wm_map_seen_' + i) !== '1').length;
+  mapBadgeEl.textContent = String(unseen);
+  mapBadgeEl.style.display = unseen > 0 ? 'flex' : 'none';
+}
 function updateFriendCount() {
   if (!friendCountEl) return;
   const met = MEADOW_FRIEND_KEYS.filter(k => localStorage.getItem(k) === '1').length;
@@ -3376,10 +3414,18 @@ function buildBridgeRound() {
       else { shown = [A, B, C, A, B]; answer = C; }              // А-Б-В-А-Б-?
     }
   } else {
-    // берег: длиннее и чуть хитрее (расширение «Волшебного мостика», темп тот же комфортный)
-    if (bg.round === 1) { shown = [A, A, B, A, A]; answer = B; }         // А-А-Б-А-А-?
-    else if (bg.round === 2) { shown = [A, B, B, A, B, B]; answer = A; } // А-Б-Б-А-Б-Б-?
-    else { shown = [A, B, C, A, B, C]; answer = A; }                     // А-Б-В-А-Б-В-?
+    // берег: длиннее и разнообразнее (v0.25.2 — шесть разных узоров по кругу)
+    const SHORE_PATS = [
+      { shown: [A, A, B, A, A], answer: B },        // А-А-Б-А-А-?
+      { shown: [A, B, B, A, B, B], answer: A },     // А-Б-Б-А-Б-Б-?
+      { shown: [A, B, C, A, B, C], answer: A },     // А-Б-В-А-Б-В-?
+      { shown: [A, B, A, B, A, B], answer: A },     // А-Б-А-Б-А-Б-?
+      { shown: [A, A, B, B, A, A], answer: B },     // А-А-Б-Б-А-А-?
+      { shown: [B, B, A, B, B, A], answer: B },     // Б-Б-А-Б-Б-А-?
+    ];
+    const sp = SHORE_PATS[(bg.round - 1) % SHORE_PATS.length];
+    shown = sp.shown;
+    answer = sp.answer;
   }
   bg.answer = answer;
 
@@ -6160,6 +6206,11 @@ function openChapMap() {
 document.getElementById('mapBtn').addEventListener('click', () => {
   initAudio();
   if (gameState !== 'explore') return;
+  // v0.25.2: открыли карту — все видимые главы считаются «просмотренными», бэдж гаснет
+  chapterStates().forEach((c, i) => {
+    if (c.state === 'open') localStorage.setItem('wm_map_seen_' + i, '1');
+  });
+  refreshMapBadge();
   openChapMap();
 });
 document.getElementById('mapClose').addEventListener('click', () => {
@@ -6286,6 +6337,7 @@ const lookTarget = new THREE.Vector3(1, 0, 2);
 camera.position.set(1 + camOffset.x, camOffset.y, 2 + camOffset.z);
 camera.lookAt(lookTarget);
 let blinkT = 2.5, squashT = 0, moleBlinkT = 2.5, sqBlinkT = 3.0, hedgeBlinkT = 2.4;
+let stepT = 0; // v0.25.2: таймер шагов героя
 let heronBlinkT = 2.8, duckBlinkT = 2.2, otterBlinkT = 3.4;
 let mooseBlinkT = 3.1;
 let raccoonBlinkT = 2.6;
@@ -6448,6 +6500,11 @@ function animate() {
           while (dyy < -Math.PI) dyy += Math.PI * 2;
           if (Math.abs(dyy) > 0.045) hero.rotation.y += dyy * 0.2;
         }
+        // v0.25.2: мягкий «топ-топ» шагов, пока герой реально идёт
+        if (moved > Math.max(0.0025, step * 0.3)) {
+          stepT -= dt;
+          if (stepT <= 0) { stepT = 0.3; play('step'); }
+        }
         charData.ears.forEach(e => e.rotation.x = -hero.position.y * flop);
         if (charData.inners) charData.inners.forEach(e => e.rotation.x = -hero.position.y * flop);
       }
@@ -6578,8 +6635,8 @@ function animate() {
 
     // --- ВОЛКИ ---
     const inMinigame = gameState !== 'explore' && gameState !== 'intro' && gameState !== 'travel' && gameState !== 'loading';
-    // счётчик друзей обновляем раз в игровую секунду (дёшево)
-    if (Math.floor(elapsed) !== lastFriendSec) { lastFriendSec = Math.floor(elapsed); updateFriendCount(); }
+    // счётчик друзей и бэдж карты обновляем раз в игровую секунду (дёшево)
+    if (Math.floor(elapsed) !== lastFriendSec) { lastFriendSec = Math.floor(elapsed); updateFriendCount(); refreshMapBadge(); }
   if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && !inMinigame && curLoc === 0 && Math.random() < dt * 0.15) spawnWolf();
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
