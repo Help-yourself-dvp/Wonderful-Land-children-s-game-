@@ -39,6 +39,9 @@ scene.add(sun, sun.target);
 const L = (c) => new THREE.MeshLambertMaterial({ color: c });
 const swayList = [];
 const obstacles = [];
+// v0.26: кустики, на которые можно тапать (вылетают бабочки); массив объявлен
+// ДО создания кустов — блоки мира идут раньше блока эффектов
+const interactBushes = [];
 
 // ============ ОСТРОВ ============
 const ISLAND_R = 15;
@@ -113,6 +116,7 @@ for (const [bx, bz, br] of [[0.9, -4.3, 0.66], [1.75, -4.7, 0.5]]) {
   const bush = new THREE.Mesh(new THREE.SphereGeometry(br, 16, 12), L(0x6fbf5f));
   bush.position.set(bx, br * 0.72, bz); bush.scale.y = 0.85; bush.castShadow = true;
   scene.add(bush);
+  interactBushes.push(bush);
   obstacles.push({ x: bx, z: bz, r: br * 0.8 });
 }
 // Грядки Ёжика — он и правда «ждёт у грядок», как говорит рассказчица (север-запад)
@@ -230,6 +234,7 @@ for (const [x, z, r] of [[-3.5, 6, 0.8], [-9, -2, 0.9], [5.5, 7, 0.6], [2, -6, 0
   const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 2), L(0x74c476));
   bush.position.set(x, r * 0.55, z); bush.castShadow = true;
   scene.add(bush);
+  interactBushes.push(bush);
   obstacles.push({ x, z, r: r * 0.9 });
 }
 
@@ -927,6 +932,7 @@ let treeWaters = parseInt(localStorage.getItem('wm_tree_waters') || '0', 10);
 const TREE_STAGE_AT = { 2: 2, 3: 5 };
 
 const treeStages = [null, null, null, null];
+const treeFlowers = []; // v0.26: волшебные цветы взрослого Древа (покачиваются в animate)
 function buildTreeStage(s) {
   const g = new THREE.Group();
   if (s === 1) {
@@ -955,6 +961,17 @@ function buildTreeStage(s) {
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.9, 12), L(0x9a6b4f));
     trunk.position.y = 0.95; trunk.castShadow = true;
     g.add(trunk);
+    // v0.26: волшебные цветы на взрослом Древе — награда видна в мире
+    const flowerColors = [0xf7a8c4, 0xffd166, 0xe2a0f0];
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + 0.6;
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), L(flowerColors[i]));
+      fl.position.set(Math.cos(a) * 0.9, 2.35 + (i % 2) * 0.25, Math.sin(a) * 0.9);
+      fl.scale.set(1, 0.7, 1);
+      fl.userData = { ph: i * 2.1, baseY: 2.35 + (i % 2) * 0.25 };
+      g.add(fl);
+      treeFlowers.push(fl);
+    }
     const crownMat = L(0x74c98f);
     for (const [dx, dy, dz, r] of [[0, 2.5, 0, 1.05], [0.7, 2.1, 0.3, 0.65], [-0.65, 2.15, -0.25, 0.6], [0.15, 1.9, -0.5, 0.5]]) {
       const c = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 2), crownMat);
@@ -2049,6 +2066,27 @@ obstacles.push({ x: FROG2_POS.x, z: FROG2_POS.z, r: 0.5 });
 const frog2Bubble = makeBubbleSprite('🌺', 1.05);
 frog2Bubble.position.set(FROG2_POS.x, 2.2, FROG2_POS.z);
 scene.add(frog2Bubble);
+
+// v0.26: увеличенные «зоны тапа» вокруг NPC (невидимые сферы внутри групп) —
+// детям проще попадать пальцем; raycast находит их через intersectObject(npc, true).
+// СТАВИТСЯ ПОСЛЕ создания ВСЕХ жителей (frog2 создаётся позже бобра и Л3-жителей!).
+{
+  const HIT_PADS = [
+    [hedgehog, 0.95, 0.7], [owl, 0.95, 0.9], [frog, 0.9, 0.5], [mole, 1.0, 0.8],
+    [sq, 0.9, 0.6], [firefly, 1.0, 0.7], [beaver, 1.0, 0.7], [frog2, 0.9, 0.5],
+    [heron, 0.95, 1.1], [duck, 0.9, 0.55], [otter, 0.95, 0.55], [moose, 1.15, 1.1],
+    [raccoon, 0.95, 0.55], [magpie, 0.9, 0.75], [mouse, 0.9, 0.4], [badger, 0.95, 0.55],
+  ];
+  for (const [npc, r, y] of HIT_PADS) {
+    const pad = new THREE.Mesh(
+      new THREE.SphereGeometry(r, 8, 8),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+    );
+    pad.position.y = y;
+    pad.userData.hitPad = true;
+    npc.add(pad);
+  }
+}
 const frog2BubTex = {
   puzzle: frog2Bubble.material.map,
   star: makeBubbleSprite('⭐', 1).material.map,
@@ -2150,13 +2188,20 @@ function makeChar(type) {
     bodyG.add(body, head, muzzle, nose, eL, eR, tL, tR, eyeL, eyeR, gLm, gRm, chest, tail, tailTip, pawL, pawR);
     g.userData = { eyes: [eyeL, eyeR], glints: [gLm, gRm], ears, inners: [], tail };
   } else {
-    const fur = L(0xa9746e), muzzleC = L(0xe8c9a8);
+    // v0.26: мишка светлее + светлый животик и мягкий шарфик (не теряется ночью)
+    const fur = L(0xb08a68), muzzleC = L(0xeed3ae), scarfC = L(0xffe08a);
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 24), fur);
     body.position.y = 0.58; body.scale.set(1, 1.0, 0.95); body.castShadow = true;
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.44, 24, 24), fur);
     head.position.set(0, 1.25, 0.08); head.castShadow = true;
     const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), muzzleC);
     muzzle.position.set(0, 1.15, 0.4); muzzle.scale.set(1, 0.75, 0.9);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), muzzleC);
+    chest.position.set(0, 0.72, 0.4); chest.scale.set(0.85, 1, 0.6);
+    const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.08, 10, 18), scarfC);
+    scarf.position.set(0, 0.98, 0.1); scarf.rotation.x = Math.PI / 2;
+    const scarfKnot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), L(0xf2c94c));
+    scarfKnot.position.set(0, 0.92, 0.44); scarfKnot.scale.set(1.25, 0.9, 0.9);
     const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), L(0x4a3b32));
     nose.position.set(0, 1.22, 0.55);
     const earGeo = new THREE.SphereGeometry(0.15, 14, 14);
@@ -2177,7 +2222,7 @@ function makeChar(type) {
     const glintGeo = new THREE.SphereGeometry(0.022, 8, 8);
     const gLm = new THREE.Mesh(glintGeo, glintMat); gLm.position.set(-0.155, 1.375, 0.47);
     const gRm = new THREE.Mesh(glintGeo, glintMat); gRm.position.set(0.185, 1.375, 0.47);
-    bodyG.add(body, head, muzzle, nose, eL, eR, iL, iR, eyeL, eyeR, gLm, gRm, tail, pawL, pawR);
+    bodyG.add(body, head, muzzle, chest, scarf, scarfKnot, nose, eL, eR, iL, iR, eyeL, eyeR, gLm, gRm, tail, pawL, pawR);
     g.userData = { eyes: [eyeL, eyeR], glints: [gLm, gRm], ears, inners };
   }
   g.add(bodyG);
@@ -2348,6 +2393,88 @@ function spawnBurst(pos, n = 10) {
   }
 }
 
+// ============ v0.26: ИНТЕРАКТИВ МИРА (пруд, куст, дерево) ============
+// Ребёнок может «пожамкать» полянку: тап по пруду — круги и рыбка, по кусту —
+// бабочки, по Дереву — листики. Все эффекты дешёвые и офлайн.
+const fxRipples = [], fxButters = [], fxLeaves = [];
+function spawnRipples(x, z) {
+  for (let i = 0; i < 3; i++) {
+    const r = new THREE.Mesh(new THREE.RingGeometry(0.3 + i * 0.03, 0.38 + i * 0.03, 24),
+      new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.65, depthWrite: false }));
+    r.rotation.x = -Math.PI / 2;
+    r.position.set(x, 0.07 + i * 0.001, z);
+    r.userData = { t: 0 };
+    scene.add(r);
+    fxRipples.push(r);
+  }
+  const fish = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex(), color: 0xffb057, transparent: true, depthWrite: false }));
+  fish.position.set(x + (Math.random() - 0.5) * 0.6, 0.25, z + (Math.random() - 0.5) * 0.6);
+  fish.scale.setScalar(0.26);
+  fish.userData = { t: 0, vy: 1.5 };
+  scene.add(fish);
+  fxRipples.push(fish);
+}
+function spawnButterflies(x, z) {
+  const cols = [0xf7a8c4, 0xffd166, 0x8fc3f0];
+  for (let i = 0; i < 3; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex(), color: cols[i], transparent: true, depthWrite: false }));
+    s.position.set(x + (Math.random() - 0.5) * 0.6, 0.6 + Math.random() * 0.3, z + (Math.random() - 0.5) * 0.6);
+    s.scale.setScalar(0.2);
+    s.userData = { t: 0, ph: Math.random() * 6, vx: (Math.random() - 0.5) * 1.2 };
+    scene.add(s);
+    fxButters.push(s);
+  }
+}
+function spawnLeaves(x, z) {
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex(), color: i % 2 ? 0x7ecb5f : 0x8fd07a, transparent: true, depthWrite: false }));
+    s.position.set(x + (Math.random() - 0.5) * 1.3, 2.1 + Math.random() * 0.9, z + (Math.random() - 0.5) * 1.3);
+    s.scale.setScalar(0.15);
+    s.userData = { t: 0, ph: Math.random() * 6, vx: (Math.random() - 0.5) * 0.8 };
+    scene.add(s);
+    fxLeaves.push(s);
+  }
+}
+// Капля-награда летит из мира к счётчику 💧 (экранные координаты)
+function flyDropToCounter(worldPos) {
+  if (!hero) return;
+  const v = worldPos.clone().project(camera);
+  const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+  if (x < -200 || x > window.innerWidth + 200 || y < -200 || y > window.innerHeight + 200) return;
+  const el = document.createElement('div');
+  el.className = 'fly-drop';
+  el.textContent = '💧';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.body.appendChild(el);
+  const dr = dropsEl.getBoundingClientRect();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.transform = `translate(${dr.left + dr.width / 2 - x}px, ${dr.top + dr.height / 2 - y}px) scale(.45)`;
+    el.style.opacity = '.25';
+  }));
+  setTimeout(() => el.remove(), 1300);
+}
+// Конфетти при приклеивании наклейки (DOM-частицы вокруг места)
+function stickerConfetti(slotEl) {
+  const r = slotEl.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const colors = ['#ffd166', '#f7a8c4', '#8fd694', '#8fc3f0', '#e2a0f0'];
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('i');
+    p.className = 'st-conf';
+    p.style.left = cx + 'px';
+    p.style.top = cy + 'px';
+    const a = (i / 12) * Math.PI * 2;
+    const d = 46 + Math.random() * 50;
+    p.style.setProperty('--dx', Math.cos(a) * d + 'px');
+    p.style.setProperty('--dy', Math.sin(a) * d + 'px');
+    p.style.background = colors[i % colors.length];
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 900);
+  }
+}
+
 // ============ СОСТОЯНИЕ ============
 let gameState = 'loading'; // loading | intro | explore | dialog | minigame | countgame | bridgegame | molegame | sqgame | stonegame | beavergame | celebrate | story | ceremony | travel
 let dialogToken = 0;
@@ -2387,6 +2514,13 @@ function clearPendings() {
 let dropsCount = parseInt(localStorage.getItem('wm_drops') || '0', 10);
 const dropsEl = document.getElementById('drops');
 const dropsNum = document.getElementById('dropsNum');
+// v0.26: визуальные точки прогресса вместо текста «Раунд X из Y» (дети 3–4 не читают)
+function dotsHTML(total, done) {
+  let s = '<span class="rdots">';
+  for (let i = 0; i < total; i++) s += '<i class="' + (i < done ? 'on' : '') + '"></i>';
+  return s + '</span>';
+}
+
 function refreshDrops(pop = false) {
   if (dropsCount > 0) dropsEl.style.display = 'flex';
   dropsNum.textContent = dropsCount;
@@ -2706,6 +2840,7 @@ function tryPlaceSticker(i, slot) {
   saveAlbumProgress();
   play('good');
   renderAlbum('Наклейка на своём месте!');
+  stickerConfetti(slot); // v0.26: праздничное конфетти при приклеивании
 }
 function openAlbum() {
   selectedSticker = null;
@@ -2748,6 +2883,8 @@ function onTaskDone() {
   localStorage.setItem('wm_tasks', String(tasksDone));
   // v0.25.2: мягкая вибрация на победе (без разрешений Android; в вебе просто игнорируется)
   try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
+  // v0.26: волшебная капля летит к счётчику 💧
+  if (hero) flyDropToCounter(hero.position.clone().add(new THREE.Vector3(0, 1.3, 0)));
 }
 // счётчики побед у каждого жителя — для «Как малыш растёт» в Родительском уголке
 function bumpWin(k) {
@@ -2916,7 +3053,7 @@ function buildMinigameRound() {
   const base = ageLevel() ? 8 : 6;
   mgDom.total = Math.min(base + Math.min(visits, 2) * 2, 10);
   const rd = document.getElementById('mgRound');
-  rd.textContent = 'Раунд ' + (mgDom.round + 1) + ' из ' + mgDom.rounds;
+  rd.innerHTML = dotsHTML(mgDom.rounds, mgDom.round);
   const ruleFruitA = document.getElementById('mgEmojiA');
   const ruleFruitB = document.getElementById('mgEmojiB');
   ruleFruitA.className = `mg-fruit-icon mg-fruit-shape mg-fruit--${mgDom.pair.sa}`;
@@ -2980,6 +3117,11 @@ function appleDown(e, a) {
   a.el.classList.add('dragging');
   a.el.setPointerCapture(e.pointerId);
   a.sx = e.clientX; a.sy = e.clientY;
+  // v0.26: целевая корзина мягко пульсирует, когда ребёнок взял плод
+  const targetBasket = basketEls[a.color];
+  targetBasket.classList.remove('pulse');
+  void targetBasket.offsetWidth;
+  targetBasket.classList.add('pulse');
   const r = mgField.getBoundingClientRect();
   a.startL = parseFloat(a.el.style.left);
   a.startT = parseFloat(a.el.style.top);
@@ -4204,7 +4346,7 @@ function buildHeronRound() {
     f.addEventListener('pointerdown', (e) => { e.stopPropagation(); heronTap(f); });
     hgPool.appendChild(f);
   });
-  hgMsg.textContent = '🐟 ' + (hg.round + 1) + ' из ' + hgRounds();
+  hgMsg.innerHTML = '🐟 Рыбки' + dotsHTML(hgRounds(), hg.round);
 }
 function heronTap(f) {
   if (gameState !== 'herongame' || f.dataset.done) return;
@@ -4323,7 +4465,7 @@ function buildDuckRound() {
   dk.diffs = idx.map(di => ({ x: DK_POOL[di].x, y: DK_POOL[di].y, found: false }));
   dkRenderPanel(dkLeft, leftV);
   dkRenderPanel(dkRight, rightV);
-  dkMsg.textContent = 'Найди ' + dkCount() + (dkCount() === 1 ? ' отличие' : ' отличия') + (dkRounds() > 1 ? ' · ' + (dk.round + 1) + ' из ' + dkRounds() : '');
+  dkMsg.innerHTML = '🦆 Найди отличия' + dotsHTML(dkRounds(), dk.round);
 }
 function duckTap(clientX, clientY) {
   const rect = dkRight.getBoundingClientRect();
@@ -4439,7 +4581,7 @@ function buildOtterRound() {
     b.addEventListener('pointerdown', (e) => { e.stopPropagation(); otterTap(b, key); });
     otAnswers.appendChild(b);
   });
-  otMsg.textContent = '🐾 ' + (ot.round + 1) + ' из ' + otRounds();
+  otMsg.innerHTML = '🐾 Следы' + dotsHTML(otRounds(), ot.round);
 }
 function otterTap(btn, key) {
   if (gameState !== 'ottergame' || ot.answered) return;
@@ -4545,7 +4687,7 @@ function buildMooseRound() {
   msGrid.innerHTML = '';
   ms.path = msMakePath();
   ms.idx = 0;
-  msMsg.textContent = '🦌 Тропинка ' + (ms.round + 1) + ' из ' + msRounds();
+  msMsg.innerHTML = '🦌 Тропинка' + dotsHTML(msRounds(), ms.round);
   for (let r = 0; r < MS_ROWS; r++) {
     for (let c = 0; c < MS_COLS; c++) {
       const cell = document.createElement('button');
@@ -4679,7 +4821,7 @@ function buildRaccoonRound() {
     b.addEventListener('pointerdown', (e) => { e.stopPropagation(); raccoonTap(b, i); });
     rcAnswers.appendChild(b);
   });
-  rcMsg.textContent = '🌑 Тень ' + (rc.round + 1) + ' из ' + rcRounds();
+  rcMsg.innerHTML = '🌑 Тени' + dotsHTML(rcRounds(), rc.round);
 }
 function raccoonTap(btn, i) {
   if (gameState !== 'raccoongame' || rc.answered) return;
@@ -4791,7 +4933,7 @@ function buildMagpieRound() {
     b.addEventListener('pointerdown', (e) => { e.stopPropagation(); magpieTap(b, itemIdx === 3); });
     mpCards.appendChild(b);
   });
-  mpMsg.textContent = '🔍 Найди лишнее ' + (mp.round + 1) + ' из ' + mpRounds();
+  mpMsg.innerHTML = '🔍 Лишнее' + dotsHTML(mpRounds(), mp.round);
 }
 function magpieTap(btn, isOdd) {
   if (gameState !== 'magpiegame' || mp.answered) return;
@@ -4917,7 +5059,7 @@ function buildMouseRound() {
       mwBoard.appendChild(pan);
     });
   }
-  mwMsg.textContent = '⚖️ Весы ' + (mw.round + 1) + ' из ' + mwRounds();
+  mwMsg.innerHTML = '⚖️ Весы' + dotsHTML(mwRounds(), mw.round);
 }
 function mouseTap(el, isHeavy) {
   if (gameState !== 'mousegame' || mw.answered) return;
@@ -5042,7 +5184,7 @@ function buildBadgerRound() {
     p.addEventListener('pointerdown', (e) => { e.stopPropagation(); badgerPieceTap(p, idx); });
     bdTray.appendChild(p);
   });
-  bdMsg.textContent = '🧩 Картинка ' + (bd.round + 1) + ' из ' + bdRounds();
+  bdMsg.innerHTML = '🧩 Картинка' + dotsHTML(bdRounds(), bd.round);
 }
 function badgerPieceTap(piece, idx) {
   if (gameState !== 'badgergame' || piece.classList.contains('gone')) return;
@@ -5739,9 +5881,23 @@ window.addEventListener('pointerup', (e) => {
     else { pendingBadger = true; givePath(BADGER_APPR.x, BADGER_APPR.z); }
     return;
   }
+  // v0.26: интерактив полянки — пруд и кустики откликаются на тап
+  if (curLoc === 0 && rc.intersectObject(pond, false).length) {
+    spawnRipples(5, 4);
+    play('drop');
+    return;
+  }
+  for (const b of interactBushes) {
+    if (rc.intersectObject(b, false).length) {
+      spawnButterflies(b.position.x, b.position.z);
+      play('pop');
+      return;
+    }
+  }
   // тап по Древу Желаний
   const treeHits = rc.intersectObject(treeRoot, true);
   if (treeHits.length) {
+    spawnLeaves(TREE_POS.x, TREE_POS.z); // листики слетают при каждом тапе
     const dx = TREE_POS.x - hero.position.x, dz = TREE_POS.z - hero.position.z;
     if (Math.hypot(dx, dz) < 3.0) waterTree();
     else { pendingTree = true; givePath(TREE_POS.x - 1.4, TREE_POS.z - 1.1); }
@@ -7334,6 +7490,40 @@ function animate() {
       if (perp < c.radius + 0.8) targetOpacity = 0.3;
     }
     c.mat.opacity += (targetOpacity - c.mat.opacity) * 0.06;
+  }
+
+  // цветы на взрослом Древе мягко покачиваются
+  for (const f of treeFlowers) f.position.y = f.userData.baseY + Math.sin(elapsed * 2 + f.userData.ph) * 0.06;
+
+  // v0.26: обновление эффектов мира (круги на воде/рыбка, бабочки, листики)
+  for (let i = fxRipples.length - 1; i >= 0; i--) {
+    const f = fxRipples[i];
+    f.userData.t += dt;
+    if (f.userData.vy != null) {
+      f.position.y += f.userData.vy * dt;
+      f.userData.vy -= 4.2 * dt;
+      if (f.position.y < 0.2) { scene.remove(f); fxRipples.splice(i, 1); }
+    } else {
+      f.scale.setScalar(1 + f.userData.t * 1.7);
+      f.material.opacity = Math.max(0, 0.65 - f.userData.t * 0.8);
+      if (f.userData.t > 0.85) { scene.remove(f); fxRipples.splice(i, 1); }
+    }
+  }
+  for (let i = fxButters.length - 1; i >= 0; i--) {
+    const b = fxButters[i];
+    b.userData.t += dt;
+    b.position.y += dt * 0.55;
+    b.position.x += Math.sin(b.userData.t * 7 + b.userData.ph) * dt * 1.6;
+    b.material.opacity = Math.max(0, 1 - b.userData.t * 0.5);
+    if (b.userData.t > 2.2) { scene.remove(b); fxButters.splice(i, 1); }
+  }
+  for (let i = fxLeaves.length - 1; i >= 0; i--) {
+    const l = fxLeaves[i];
+    l.userData.t += dt;
+    l.position.y -= dt * 0.9;
+    l.position.x += Math.sin(l.userData.t * 5 + l.userData.ph) * dt;
+    l.material.opacity = Math.max(0, 1 - l.userData.t * 0.4);
+    if (l.position.y < 0.12 || l.userData.t > 3) { scene.remove(l); fxLeaves.splice(i, 1); }
   }
 
   for (const s of smokes) {

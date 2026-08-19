@@ -131,8 +131,11 @@
       background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
       font-size: 22px; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 14px rgba(61,92,68,0.18); cursor: pointer; -webkit-tap-highlight-color: transparent;
+      /* v0.26: кнопки мира чуть спокойнее — не отвлекают от сказки */
+      opacity: .82;
     }
     #muteBtn:active { transform: scale(.9); }
+    #pauseBtn { opacity: .82; }
 
     /* ================= АЛЬБОМ ================= */
     #albumBtn {
@@ -175,6 +178,20 @@
       color: rgba(61,92,68,0.55); font-size: 13px; font-weight: 600;
     }
     /* v0.25.1: счётчик найденных друзей (виден только на Полянке в режиме прогулки) */
+    /* v0.26: капля-награда летит к счётчику; конфетти наклейки */
+    .fly-drop {
+      position: fixed; z-index: 90; font-size: 30px; pointer-events: none;
+      transition: transform 1.05s cubic-bezier(.3,.7,.4,1), opacity 1.05s ease;
+      text-shadow: 0 3px 6px rgba(40,80,120,.35);
+    }
+    .st-conf {
+      position: fixed; z-index: 92; width: 9px; height: 9px; border-radius: 50%;
+      pointer-events: none; animation: stConf .85s ease-out forwards;
+    }
+    @keyframes stConf {
+      0% { transform: translate(0,0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(.4) rotate(220deg); opacity: 0; }
+    }
     .friend-count {
       position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
       background: rgba(255,255,255,.88); border: 2px solid #ffd166; border-radius: 99px;
@@ -628,6 +645,13 @@
       .mg-basket { border-width: 3px; }
     }
     .mg-basket.glow { animation: basketGlow .7s ease-in-out infinite alternate; }
+    /* v0.26: пульсация целевой корзины, когда ребёнок взял плод */
+    .mg-basket.pulse { animation: basketPulse 1.1s ease; }
+    @keyframes basketPulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,209,102,.85), 0 10px 14px rgba(76,43,20,.34); }
+      50% { box-shadow: 0 0 0 16px rgba(255,209,102,.35), 0 10px 14px rgba(76,43,20,.34); }
+      100% { box-shadow: 0 0 0 0 rgba(255,209,102,0), 0 10px 14px rgba(76,43,20,.34); }
+    }
     /* v0.24: бейдж «Раунд N из M» у Ёжика — видно, что впереди ещё задания */
     .mg-round {
       position: absolute; top: 8px; left: 10px; z-index: 6;
@@ -893,6 +917,11 @@
     .st-prog { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
     .st-prog i { width: 12px; height: 12px; border-radius: 50%; background: #cfc9e8; }
     .st-prog i.on { background: #ffd166; box-shadow: 0 0 8px #ffd166; }
+    /* v0.26: точки прогресса раундов (вместо текста «Раунд X из Y») */
+    .rdots { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; vertical-align: middle; }
+    .rdots i { width: 12px; height: 12px; border-radius: 50%; background: #cfc9e8; display: inline-block; }
+    .rdots i.on { background: #ffd166; box-shadow: 0 0 7px #ffd166; animation: dotPop .35s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes dotPop { from { transform: scale(0); } to { transform: scale(1); } }
 
     .mg-hint {
       position: absolute; top: 9px; right: 9px; z-index: 7;
