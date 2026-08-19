@@ -880,7 +880,15 @@ function makeFirefly() {
   const lamp = new THREE.PointLight(0xffe98a, 0.55, 5.5, 1.6);
   lamp.position.set(0, 1.0, 0.55); // светит вперёд-вниз: и мордочка, и камушки подсвечены
   g.add(lamp);
-  g.userData = { body: bodyG, bulb, bulbMat, lamp, wL, wR, eyes: [eL, eR], glints: [fgL, fgR] };
+  // v0.25.1: мягкое светящееся кольцо под Светлячком — его видно даже днём
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.34, 0.42, 20),
+    new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.05;
+  g.add(ring);
+  g.userData = { body: bodyG, bulb, bulbMat, lamp, wL, wR, eyes: [eL, eR], glints: [fgL, fgR], ring };
   return g;
 }
 const firefly = makeFirefly();
@@ -888,8 +896,8 @@ firefly.position.set(FIRE_POS.x, 0, FIRE_POS.z);
 firefly.rotation.y = Math.atan2(0 - FIRE_POS.x, -2 - FIRE_POS.z); // смотрит к центру поляны
 scene.add(firefly);
 obstacles.push({ x: FIRE_POS.x, z: FIRE_POS.z, r: 0.55 });
-firefly.scale.setScalar(1.18); // крупнее — читается и на телефоне
-const svetBubble = makeBubbleSprite('🎵', 0.95);
+firefly.scale.setScalar(1.32); // заметно крупнее — его легко было не заметить (живой тест)
+const svetBubble = makeBubbleSprite('🎵', 1.15); // крупнее — Светлячка не пропустить
 svetBubble.position.set(FIRE_POS.x, 2.1, FIRE_POS.z);
 scene.add(svetBubble);
 const svetBubTex = {
@@ -2724,6 +2732,34 @@ function bumpWin(k) {
 const MEADOW_FRIEND_KEYS = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met_mole', 'wm_met_sq', 'wm_met_fire'];
 function haveMetAllMeadowFriends() {
   return MEADOW_FRIEND_KEYS.every(k => localStorage.getItem(k) === '1');
+}
+// v0.25.1 (живой тест): счётчик «Друзья: X из 6» в углу + стрелка на последнего
+// ненайденного зверька (раньше Светлячка было очень легко не заметить).
+const friendCountEl = document.getElementById('friendCount');
+let lastFriendSec = -1;
+function updateFriendCount() {
+  if (!friendCountEl) return;
+  const met = MEADOW_FRIEND_KEYS.filter(k => localStorage.getItem(k) === '1').length;
+  friendCountEl.textContent = met >= 6 ? '⭐ Все друзья найдены!' : '🐾 Друзья: ' + met + ' из 6';
+  friendCountEl.style.display = (gameState === 'explore' && curLoc === 0) ? 'block' : 'none';
+}
+const LAST_FRIEND_ARROW = {
+  wm_met_hedge: { x: HEDGE_POS.x, y: 2.1, z: HEDGE_POS.z },
+  wm_met_owl: { x: OWL_POS.x, y: 2.6, z: OWL_POS.z },
+  wm_met_frog: { x: FROG_POS.x, y: 2.3, z: FROG_POS.z },
+  wm_met_mole: { x: MOLE_POS.x, y: 2.8, z: MOLE_POS.z },
+  wm_met_sq: { x: SQRL_POS.x, y: 2.4, z: SQRL_POS.z },
+  wm_met_fire: { x: FIRE_POS.x, y: 2.3, z: FIRE_POS.z },
+};
+function hintLastFriend() {
+  if (curLoc !== 0 || gameState !== 'explore') return;
+  if (localStorage.getItem('wm_lastfriend_hint') === '1') return;
+  const missing = MEADOW_FRIEND_KEYS.filter(k => localStorage.getItem(k) !== '1');
+  if (missing.length !== 1) return;
+  const p = LAST_FRIEND_ARROW[missing[0]];
+  if (!p) return;
+  localStorage.setItem('wm_lastfriend_hint', '1');
+  showGuideArrowAt(p.x, p.y, p.z, 'last-friend');
 }
 function isMoleSpecialReady() {
   return haveMetAllMeadowFriends()
@@ -5164,6 +5200,7 @@ document.getElementById('storyNext').addEventListener('click', () => {
 });
 function checkStory() {
   checkEnding(); // все 16 друзей собраны? → мягкий финал (один раз)
+  hintLastFriend(); // остался один ненайденный друг Полянки → золотая стрелка к нему
   for (const s of STORIES) {
     if (tasksDone >= s.at && localStorage.getItem(s.key) !== '1') {
       localStorage.setItem(s.key, '1');
@@ -6228,7 +6265,7 @@ function finishIntro(skipped) {
   showGuideArrow();
   // Проверяем незавершённый сюжетный шаг и у старых сохранений: если все друзья
   // уже встречены, Рассказчица напомнит про особое задание Крота.
-  setTimeout(() => { if (gameState === 'explore') checkStory(); }, 4200);
+  setTimeout(() => { if (gameState === 'explore') { checkStory(); hintLastFriend(); } }, 4200);
   // «ветеранам» (звезда уже сияет): ведём к волшебной арке или рассказываем о ней
   if (starLit) {
     if (localStorage.getItem('wm_portal_seen') !== '1') {
@@ -6541,6 +6578,8 @@ function animate() {
 
     // --- ВОЛКИ ---
     const inMinigame = gameState !== 'explore' && gameState !== 'intro' && gameState !== 'travel' && gameState !== 'loading';
+    // счётчик друзей обновляем раз в игровую секунду (дёшево)
+    if (Math.floor(elapsed) !== lastFriendSec) { lastFriendSec = Math.floor(elapsed); updateFriendCount(); }
   if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && !inMinigame && curLoc === 0 && Math.random() < dt * 0.15) spawnWolf();
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
@@ -6726,7 +6765,9 @@ function animate() {
     firefly.userData.body.position.y = 0.12 + Math.sin(elapsed * 2.1) * 0.09;
     firefly.userData.wL.rotation.z = 0.9 + Math.sin(elapsed * 21) * 0.5;
     firefly.userData.wR.rotation.z = -0.9 - Math.sin(elapsed * 21) * 0.5;
-    firefly.userData.lamp.intensity = 0.45 + nightness * 1.6 + Math.sin(elapsed * 3.2) * 0.12;
+    firefly.userData.lamp.intensity = 0.95 + nightness * 1.4 + Math.sin(elapsed * 3.2) * 0.12;
+    firefly.userData.ring.scale.setScalar(0.9 + Math.sin(elapsed * 3) * 0.12);
+    firefly.userData.ring.material.opacity = 0.35 + nightness * 0.4 + Math.sin(elapsed * 3) * 0.12;
     firefly.userData.bulbMat.color.setHex(nightness > 0.3 ? 0xffd95e : 0xfff3a0);
     fireBlinkT -= dt;
     if (fireBlinkT < 0) fireBlinkT = 1.8 + Math.random() * 3.0;

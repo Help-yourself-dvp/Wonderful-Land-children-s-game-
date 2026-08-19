@@ -165,6 +165,15 @@
       position: absolute; left: 14px; bottom: calc(10px + env(safe-area-inset-bottom));
       color: rgba(61,92,68,0.55); font-size: 13px; font-weight: 600;
     }
+    /* v0.25.1: счётчик найденных друзей (виден только на Полянке в режиме прогулки) */
+    .friend-count {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,.88); border: 2px solid #ffd166; border-radius: 99px;
+      padding: 4px 14px; font-weight: 800; color: #7a5a40;
+      font-size: clamp(13px, 2.4vh, 17px); z-index: 15; white-space: nowrap;
+      box-shadow: 0 3px 8px rgba(90,60,20,.18); display: none;
+      pointer-events: none; -webkit-tap-highlight-color: transparent;
+    }
     #stickerReward {
       position: fixed; z-index: 64; left: 50%; top: 16%;
       transform: translate(-50%,-18px) scale(.86); opacity: 0; pointer-events: none;
@@ -1401,6 +1410,8 @@
   </div>
   <button id="mapBtn" aria-label="карта сказки">🗺️</button>
   <button id="skipIntro" aria-label="пропустить">⏭</button>
+  <!-- v0.25.1 (живой тест): счётчик найденных друзей Полянки — видно, кого ещё не нашли -->
+  <div id="friendCount" class="friend-count">🐾 Друзья: 0 из 6</div>
 
   <div id="startGate">
     <div class="sg-logo">🌳 Волшебная полянка</div>
