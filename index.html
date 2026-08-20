@@ -244,12 +244,13 @@
     .album-hill.h1 { left: -10%; } .album-hill.h2 { right: -14%; width: 70%; background: #9bd47e; }
     .album-pond { position: absolute; right: 4%; bottom: 2%; width: 28%; height: 25%; border-radius: 50%; background: #80cce8; border: 3px solid rgba(255,255,255,.55); transform: rotate(-5deg); z-index: -1; }
     .album-path { position: absolute; left: 43%; bottom: -18%; width: 15%; height: 63%; border-radius: 50%; background: #ead7ad; transform: rotate(8deg); z-index: -1; }
-    /* v0.25.1: наклейки КРУПНЕЕ (4 страницы по 6), приклеенная — яркая */
+    /* v0.25.1: наклейки крупнее, НО в пределах поля: слоты 54px (проверено),
+       v0.26 откат — 76px вылезали за границы альбома */
     .album-slot {
-      position: absolute; left: var(--x); top: var(--y); width: clamp(54px,7.6vw,76px); height: clamp(54px,7.6vw,76px);
+      position: absolute; left: var(--x); top: var(--y); width: clamp(40px,5.5vw,54px); height: clamp(40px,5.5vw,54px);
       transform: translate(-50%,-50%); border-radius: 50%; display: flex; align-items: center; justify-content: center;
       user-select: none; touch-action: manipulation; transition: transform .16s, box-shadow .16s, background .16s;
-      font-size: clamp(36px,5.4vw,52px); z-index: 2; line-height: 1;
+      font-size: clamp(26px,4vw,40px); z-index: 2; line-height: 1;
     }
     .album-slot.locked { font-size: clamp(17px,2.7vw,26px); color: #789080; background: rgba(255,255,255,.36); border: 3px dotted rgba(89,108,88,.46); }
     /* v0.25.2: собственные SVG-значки наклеек */
@@ -262,9 +263,9 @@
     #albumHelp { text-align: center; color: #766149; font-size: clamp(11px,1.7vw,15px); font-weight: 800; min-height: 18px; padding: 2px 10px 0; line-height: 1.1; }
     #stickerTray { display: flex; gap: 7px; justify-content: center; flex-wrap: nowrap; padding: 5px 4px 4px; min-height: 48px; overflow-x: auto; scrollbar-width: thin; }
     .album-sticker {
-      position: relative; flex: 0 0 auto; width: clamp(48px,7vw,68px); height: clamp(48px,7vw,68px);
+      position: relative; flex: 0 0 auto; width: clamp(40px,5.4vw,50px); height: clamp(40px,5.4vw,50px);
       border-radius: 50%; border: 3px solid #e4c985; background: #fff; display: flex; align-items: center; justify-content: center;
-      font-size: clamp(30px,4.6vw,44px); cursor: pointer; box-shadow: 0 3px 0 #cab170; transition: .15s;
+      font-size: clamp(24px,3.5vw,30px); cursor: pointer; box-shadow: 0 3px 0 #cab170; transition: .15s;
       user-select: none; touch-action: manipulation; line-height: 1;
     }
     .album-sticker.selected { transform: translateY(-3px) scale(1.1); border-color: #59b6e8; box-shadow: 0 0 0 5px rgba(89,182,232,.25),0 4px 0 #3688b8; }
@@ -776,10 +777,10 @@
       /* v0.25.1: норки только справа — слева на арте Крот, норки на него не залезают */
       padding-left: 42%;
     }
-    /* приглушаем яркий фон, чтобы крот и морковки читались (живой тест v0.25.0) */
+    /* v0.26: вуаль на этапе 1 сильно ослаблена (не глушит игру) */
     .ml-field::after {
       content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-      background: linear-gradient(180deg, rgba(38,58,32,.30), rgba(38,58,32,.05) 55%, rgba(38,58,32,.28));
+      background: linear-gradient(180deg, rgba(38,58,32,.12), rgba(38,58,32,0) 55%, rgba(38,58,32,.18));
     }
     .ml-hole { position: relative; height: clamp(76px, 19vh, 128px); }
     .ml-mound {
@@ -813,7 +814,7 @@
       align-items: stretch; align-content: stretch; gap: 10px; padding: 14px 16px;
       background: #93cf7d url('./art/mole-garden-top.webp') center / cover no-repeat;
     }
-    .ml-field.big::after { background: linear-gradient(180deg, rgba(38,58,32,.34), rgba(38,58,32,.08) 55%, rgba(38,58,32,.30)); }
+    .ml-field.big::after { background: linear-gradient(180deg, rgba(38,58,32,.14), rgba(38,58,32,0) 55%, rgba(38,58,32,.20)); }
     .ml-field.big .ml-hole { height: auto; min-height: 0; }
     .ml-field.big .ml-spacer { display: block; visibility: hidden; }
     /* норка сверху: плоский тёплый эллипс с тёмным входом по центру ячейки */
@@ -821,9 +822,10 @@
       left: 50%; right: auto; bottom: auto; top: 50%; height: 74%; width: 88%; margin: 0;
       transform: translate(-50%, -54%);
       border-radius: 50%;
+      /* v0.26: норка мягче — тёмный «кратер» уменьшен и осветлён */
       background:
-        radial-gradient(ellipse at 50% 42%, #22150a 0 30%, #3a2617 44%, #6b4a30 60%, #8a684c 76%, #a8805c 100%);
-      box-shadow: inset 0 8px 16px rgba(0,0,0,.5), inset 0 -4px 10px rgba(255,236,200,.12), 0 6px 12px rgba(66,42,22,.28);
+        radial-gradient(ellipse at 50% 44%, #4a3018 0 22%, #6b4a30 40%, #8a684c 62%, #a8805c 84%, #b89068 100%);
+      box-shadow: inset 0 6px 12px rgba(0,0,0,.35), inset 0 -4px 10px rgba(255,236,200,.14), 0 6px 12px rgba(66,42,22,.24);
     }
     .ml-field.big .ml-mound::after { content: none; }
     /* крот целиком занимает овал норы: всплывает из центра и прячется туда же,
@@ -839,9 +841,9 @@
       transform: translate(-50%, -54%) scale(1);
       opacity: 1;
     }
-    /* крупнее крота на большом поле (живой тест) */
-    .ml-field.big .ml-mole { width: 94%; height: 80%; }
-    .ml-field.big .ml-carrot { font-size: clamp(30px, 6.5vh, 50px); top: -14%; left: 50%; }
+    /* v0.26: крот в игре КРУПНЕЕ — SVG растянут внутри кнопки */
+    .ml-field.big .ml-mole svg { transform: scale(1.22); }
+    .ml-field.big .ml-carrot { font-size: clamp(34px, 7vh, 54px); top: -14%; left: 50%; }
     /* подсказка-свечение обводит норку сверху */
     .ml-field.big .ml-hole.glow::before { left: 4%; right: 4%; top: 0; bottom: 14%; }
     .ml-mole.caught svg { animation: mlCatch .38s ease; filter: drop-shadow(0 0 10px #ffe27a); }
@@ -898,6 +900,8 @@
       border-radius: 20px;
       background: #bcc4e8 url('./art/firefly-stones-meadow.webp') center / cover no-repeat;
       overflow: hidden;
+      /* v0.26: камни в центрально-правой части — слева на арте Светлячок */
+      padding-left: 42%;
     }
     .st-stone {
       position: relative; flex: 1 1 0; max-width: 17%; aspect-ratio: 0.88; border: none; cursor: pointer;
@@ -1228,30 +1232,9 @@
       .bd-piece { border-width: 2px; border-radius: 8px; }
     }
 
-    /* ============ v0.25.1: ЕДИНЫЙ размер окон мини-игр ============
-       Живой тест: окна у разных зверей были разными, заголовки — в несколько строк.
-       Теперь одна ширина/высота поля для всех игр и компактные однострочные заголовки. */
-    #minigame .mg-card, #countgame .mg-card, #bridgegame .mg-card, #molegame .mg-card,
-    #sqgame .mg-card, #stonegame .mg-card, #beavergame .mg-card, #herongame .mg-card,
-    #duckgame .mg-card, #ottergame .mg-card, #moosegame .mg-card, #raccoongame .mg-card,
-    #magpiegame .mg-card, #mousegame .mg-card, #badgergame .mg-card {
-      width: min(96vw, 1060px); padding: 10px 12px 12px;
-    }
-    .cg-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hg-msg, .dk-msg, .ot-msg, .mp-msg, .mw-msg, .bd-msg, .ms-msg, .rc-msg,
-    .sq-msg, .st-msg, .ml-counter, .bv-label {
-      font-size: clamp(13px, 2.6vh, 17px); margin: 0 0 5px; min-height: 1.2em; line-height: 1.2;
-    }
-    .mg-field, .cg-field, .bg-field, .ml-field, .sq-field, .st-field, .bv-field,
-    .hg-field, .ot-field, .mp-field, .mw-field, .bd-field, .ms-field {
-      height: min(48vh, 400px); aspect-ratio: auto;
-    }
-    .dk-panel { height: min(40vh, 300px); aspect-ratio: auto; }
-    @media (max-height: 480px) {
-      .mg-field, .cg-field, .bg-field, .ml-field, .sq-field, .st-field, .bv-field,
-      .hg-field, .ot-field, .mp-field, .mw-field, .bd-field, .ms-field { height: min(52vh, 300px); }
-      .dk-panel { height: min(42vh, 240px); }
-    }
+    /* v0.25.1/v0.26 УРОК: общий блок «единых окон» ЛОМАЛ индивидуальные размеры полей
+       (Ёжик — узкое окно, Светлячок — шапка на пол-экрана). Размеры полей — СВОИ у каждой
+       игры, как проверено в v0.25.0. Общего блока больше нет. */
 
     #storyOv, #endingOv {
       position: fixed; inset: 0; z-index: 33; display: none;

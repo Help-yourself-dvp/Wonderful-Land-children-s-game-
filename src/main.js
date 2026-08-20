@@ -562,16 +562,16 @@ const owl = new THREE.Group();
   const wingL = new THREE.Mesh(wingGeo, wingMat);
   wingL.position.set(-0.36, 0.45, 0); wingL.scale.set(0.5, 0.9, 0.75); wingL.rotation.z = 0.3;
   const wingR = wingL.clone(); wingR.position.x = 0.36; wingR.rotation.z = -0.3;
-  // v0.25.1 (живой тест): глаза совы аккуратнее — не «выпученные»
-  const eyeWGeo = new THREE.SphereGeometry(0.11, 12, 12);
+  // v0.26 (повторный фидбек): глаза совы ЗАМЕТНО меньше и вдавлены — не «выпученные»
+  const eyeWGeo = new THREE.SphereGeometry(0.085, 12, 12);
   const eyeWM = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const eyeWL = new THREE.Mesh(eyeWGeo, eyeWM);
-  eyeWL.position.set(-0.15, 0.72, 0.27); eyeWL.scale.z = 0.45;
+  eyeWL.position.set(-0.15, 0.72, 0.24); eyeWL.scale.z = 0.38;
   const eyeWR = eyeWL.clone(); eyeWR.position.x = 0.15;
-  const pupilGeo = new THREE.SphereGeometry(0.052, 10, 10);
+  const pupilGeo = new THREE.SphereGeometry(0.042, 10, 10);
   const pupilM = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
   const pupilL = new THREE.Mesh(pupilGeo, pupilM);
-  pupilL.position.set(-0.15, 0.72, 0.35);
+  pupilL.position.set(-0.15, 0.72, 0.3);
   const pupilR = pupilL.clone(); pupilR.position.x = 0.15;
   // блики в глазах + добрая улыбка (v0.25)
   const ogGeo = new THREE.SphereGeometry(0.02, 8, 8);
@@ -703,14 +703,14 @@ function makeMole() {
   noseTip.position.set(0, 0.02, 0.63);
   const noseGlint = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   noseGlint.position.set(0.02, 0.045, 0.68);
-  // v0.25.1 (живой тест): глаза крота меньше и мягче — не «большие белые»
-  const eyeGeo = new THREE.SphereGeometry(0.066, 12, 12);
+  // v0.26 (повторный фидбек): глаза крота ещё меньше и мягче
+  const eyeGeo = new THREE.SphereGeometry(0.05, 12, 12);
   const eyeMat = new THREE.MeshBasicMaterial({ color: darkC });
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.19, 0.14, 0.44);
   const eyeR = eyeL.clone(); eyeR.position.x = 0.19;
-  const glGeo = new THREE.SphereGeometry(0.02, 8, 8);
+  const glGeo = new THREE.SphereGeometry(0.016, 8, 8);
   const glMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.16, 0.18, 0.5);
+  const glL = new THREE.Mesh(glGeo, glMat); glL.position.set(-0.16, 0.17, 0.49);
   const glR = glL.clone(); glR.position.x = 0.16;
   // румянец
   const blushGeo = new THREE.SphereGeometry(0.065, 8, 8);
@@ -2239,7 +2239,7 @@ const blob = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ color: 0x3f6b46, transparent: true, opacity: 0.16 })
 );
 blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02;
-const laughBubble = makeBubbleSprite('😂', 0.95);
+const laughBubble = makeBubbleSprite('😄', 0.95); // v0.26: добрый смех вместо 😂
 laughBubble.visible = false;
 scene.add(laughBubble);
 
@@ -2762,10 +2762,12 @@ function renderAlbum(message = '') {
     slot.type = 'button';
     slot.className = 'album-slot';
     slot.dataset.sticker = String(i);
-    // v0.25.1: раскладка 3×2 на страницу (6 наклеек), с лёгким живым разбросом
+    // v0.25.1: раскладка 3×2 на страницу (6 наклеек), с лёгким живым разбросом.
+    // v0.26.1 FIX: джиттер из детерминированного хэша индекса (раньше брался из
+    // удалённых sticker.x/y → NaN → все слоты падали в одну точку!)
     const xs = [24, 50, 76], ys = [30, 72];
     const col = pageOffset % 3, row = Math.floor(pageOffset / 3);
-    const jx = (sticker.x % 11) - 5, jy = (sticker.y % 11) - 5;
+    const jx = ((i * 7) % 11) - 5, jy = ((i * 13) % 11) - 5;
     slot.style.setProperty('--x', (xs[col] + jx) + '%');
     slot.style.setProperty('--y', (ys[row] + jy) + '%');
     if (i >= albumUnlocked) {
@@ -3667,8 +3669,8 @@ const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
   + '<path d="M20 45 A30 30 0 0 1 80 45 Z" fill="#daca64"/>'
   + '<ellipse cx="50" cy="46" rx="31" ry="4.5" fill="#c5b23f"/>'
   + '<circle cx="50" cy="26" r="6.5" fill="#fff3b0"/>'
-  + '<circle cx="38" cy="53" r="3.2" fill="#2b2118"/><circle cx="62" cy="53" r="3.2" fill="#2b2118"/>'
-  + '<circle cx="39.3" cy="51.7" r="1" fill="#ffffff"/><circle cx="63.3" cy="51.7" r="1" fill="#ffffff"/>'
+  + '<circle cx="38" cy="53" r="2.6" fill="#2b2118"/><circle cx="62" cy="53" r="2.6" fill="#2b2118"/>'
+  + '<circle cx="39" cy="51.9" r="0.8" fill="#ffffff"/><circle cx="63" cy="51.9" r="0.8" fill="#ffffff"/>'
   + '<ellipse cx="50" cy="65" rx="9.5" ry="7" fill="#e8c39a"/>'
   + '<circle cx="50" cy="62.2" r="3.2" fill="#7a4a30"/>'
   + '</svg>';
