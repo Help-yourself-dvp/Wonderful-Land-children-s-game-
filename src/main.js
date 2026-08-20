@@ -833,7 +833,7 @@ const ST_NOTES = [
   { f: 783.99, c: 0x8fd694 }, // соль — зелёный
   { f: 880.00, c: 0x8fc3f0 }, // ля — голубой
 ];
-const FIRE_POS = { x: 3.6, z: 5.8 }; // v0.26.2: ближе к центру полянки, у пруда — его видно сразу
+const FIRE_POS = { x: 4.9, z: 8.5 }; // v0.26.3: южный бережок пруда — на СУШЕ (до него можно дойти), виден с середины полянки
 function makeFirefly() {
   const g = new THREE.Group();
   const bodyG = new THREE.Group();
@@ -3293,7 +3293,7 @@ function startDialog() {
   speak(HEDGE_ASKS[mgDom.pair.id], { after: true });
   const dx = HEDGE_POS.x - hero.position.x, dz = HEDGE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMinigame(); }, 2400);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMinigame(); });
 }
 
 function celebrate() {
@@ -3339,7 +3339,7 @@ function startOwlDialog() {
   speak(localStorage.getItem('wm_met_owl') === '1' ? 'voice/sova_again.mp3' : 'voice/sova_hello.mp3');
   const dx = OWL_POS.x - hero.position.x, dz = OWL_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openCountGame(); }, 3000);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openCountGame(); });
 }
 
 function openCountGame() {
@@ -3502,7 +3502,7 @@ function startFrogDialog() {
   speak(localStorage.getItem('wm_met_frog') === '1' ? 'voice/frog_again.mp3' : 'voice/frog_hello.mp3');
   const dx = FROG_POS.x - hero.position.x, dz = FROG_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(); }, 3200);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(); });
 }
 
 function startFrog2Dialog() {
@@ -3515,7 +3515,7 @@ function startFrog2Dialog() {
   speak(localStorage.getItem('wm_met_frog2') === '1' ? 'voice/frog2_again.mp3' : 'voice/frog2_hello.mp3');
   const dx = FROG2_POS.x - hero.position.x, dz = FROG2_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(true); }, 3200);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openBridgeGame(true); });
 }
 
 function openBridgeGame(shore) {
@@ -3679,6 +3679,23 @@ const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
   + '<circle cx="50" cy="62.2" r="3.2" fill="#7a4a30"/>'
   + '</svg>';
 
+// v0.26.3: реплики на телефоне могут стартовать с задержкой (загрузка mp3),
+// поэтому таймеры «открыть игру через N мс» обрывали озвучку. Теперь игра/поле
+// ждут, пока голос договорит (с запасом: если звук выключен или не пошёл — откроется сразу).
+let waitVoiceToken = 0;
+function waitVoiceThen(fn, minMs = 700, maxMs = 9000) {
+  const my = ++waitVoiceToken;
+  const t0 = performance.now();
+  const step = () => {
+    if (my !== waitVoiceToken) return;
+    const waited = performance.now() - t0;
+    if (waited < minMs) { setTimeout(step, 120); return; }
+    if (voicePlaying() && waited < maxMs) { setTimeout(step, 120); return; }
+    fn();
+  };
+  setTimeout(step, 120);
+}
+
 function startMoleDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -3695,8 +3712,8 @@ function startMoleDialog() {
   }
   const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  const wait = moleSpecialRun ? 7600 : 2600;
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, wait);
+  // v0.26.3: открываем игру только когда Крот договорил (не по секундомеру)
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, moleSpecialRun ? 1500 : 800, moleSpecialRun ? 11000 : 9000);
 }
 function makeMoleHole() {
   const hole = document.createElement('div');
@@ -3717,19 +3734,19 @@ function makeMoleHole() {
 }
 function buildMoleField(big) {
   // big=false — ряд из 5 норок внизу (знакомый простой режим);
-  // big=true  — поле «крестики-нолики» 3×3 с шестью норками по всему экрану
+  // big=true  — v0.26.3: аккуратная «грядка» 3×2 (два ровных ряда по три норки)
+  //             + табличка «Найди морковку!» слева (норки не разбросаны по всему экрану)
   mlField.innerHTML = '';
   mlField.classList.toggle('big', big);
   ml.holes = [];
-  const cells = big ? [0, 2, 3, 5, 6, 8] : [0, 1, 2, 3, 4];
-  const total = big ? 9 : 5;
+  if (big) {
+    const deco = document.createElement('div');
+    deco.className = 'ml-deco';
+    deco.innerHTML = '<span class="ml-deco-sign">🥕</span><span class="ml-deco-cap">Найди морковку!</span>';
+    mlField.appendChild(deco);
+  }
+  const total = big ? 6 : 5;
   for (let c = 0; c < total; c++) {
-    if (cells.indexOf(c) < 0) {
-      const sp = document.createElement('div');
-      sp.className = 'ml-spacer';
-      mlField.appendChild(sp);
-      continue;
-    }
     const h = makeMoleHole();
     mlField.appendChild(h.hole);
     ml.holes.push(h);
@@ -3738,6 +3755,9 @@ function buildMoleField(big) {
 function openMoleGame() {
   gameState = 'molegame';
   ml.got = 0; ml.slow = 0; ml.fingerShown = false; ml.stage = 1;
+  // v0.26.3: сброс состояния «ждём реплику про большое поле» (иначе после выхода
+  // на середине реплики следующий заход замирал бы — крот не появлялся)
+  ml.waitingField = false; ml.fieldSaidAt = 0;
   ml.lastAction = elapsed; ml.timer = 0.7;
   mlCounter.textContent = '🥕 0 из ' + mlAll();
   buildMoleField(false);
@@ -3748,6 +3768,7 @@ function openMoleGame() {
 function closeMoleGame() {
   mlEl.style.display = 'none';
   mlFinger.style.display = 'none';
+  ml.waitingField = false; ml.fieldSaidAt = 0;
 }
 function moleDuck(h, fast) {
   h.up = false;
@@ -3774,15 +3795,17 @@ function moleTap(h) {
     if (ml.stage === 1 && ml.got >= ML_ROW) {
       if (ageLevel()) {
         // 5–6 лет: маленькая победа — и ВТОРОЙ этап: Крот сам приглашает на большое поле!
+        // v0.26.3 (живой тест): сначала Крот ГОВОРИТ про большое поле, и только когда
+        // договорит — поле появляется (раньше реплика могла прозвучать уже после этапа).
         ml.stage = 2;
-        ml.timer = 2.0;
+        ml.waitingField = true;
+        ml.timer = 99;
+        ml.fieldSaidAt = 0;
         setTimeout(() => {
           if (gameState !== 'molegame') return;
           speak('voice/mole_field.mp3');
-          buildMoleField(true);
-          ml.lastAction = elapsed;
-          ml.timer = 1.6;
-        }, 850);
+          ml.fieldSaidAt = performance.now();
+        }, 400);
       } else {
         // 3–4 года: ряд пройден — сразу праздник (без большого поля)
         setTimeout(() => { if (gameState === 'molegame') { closeMoleGame(); celebrateMole(); } }, 700);
@@ -3858,7 +3881,7 @@ function startSqDialog() {
   speak('voice/sq_ask.mp3', { after: true });
   const dx = SQRL_POS.x - hero.position.x, dz = SQRL_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openSqGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openSqGame(); });
 }
 function openSqGame() {
   gameState = 'sqgame';
@@ -4027,7 +4050,7 @@ function startSvetDialog() {
   speak(localStorage.getItem('wm_met_fire') === '1' ? 'voice/svet_again.mp3' : 'voice/svet_hello.mp3');
   const dx = FIRE_POS.x - hero.position.x, dz = FIRE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openStoneGame(); }, 2400);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openStoneGame(); });
 }
 function openStoneGame() {
   gameState = 'stonegame';
@@ -4221,7 +4244,7 @@ function startBeaverDialog() {
   speak(localStorage.getItem('wm_met_beaver') === '1' ? 'voice/bobr_again.mp3' : 'voice/bobr_hello.mp3');
   const dx = BEAVER_POS.x - hero.position.x, dz = BEAVER_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBeaverGame(); }, 3200);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openBeaverGame(); });
 }
 
 function openBeaverGame() {
@@ -4341,7 +4364,7 @@ function startHeronDialog() {
   speak('voice/heron_ask.mp3', { after: true });
   const dx = HERON_POS.x - hero.position.x, dz = HERON_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openHeronGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openHeronGame(); });
 }
 function buildHeronRound() {
   hgPool.innerHTML = '';
@@ -4460,7 +4483,7 @@ function startDuckDialog() {
   speak('voice/duck_ask.mp3', { after: true });
   const dx = DUCK_POS.x - hero.position.x, dz = DUCK_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openDuckGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openDuckGame(); });
 }
 function buildDuckRound() {
   dk.found = 0;
@@ -4576,7 +4599,7 @@ function startOtterDialog() {
   speak('voice/otter_ask.mp3', { after: true });
   const dx = OTTER_POS.x - hero.position.x, dz = OTTER_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openOtterGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openOtterGame(); });
 }
 function buildOtterRound() {
   otAnswers.innerHTML = '';
@@ -4695,7 +4718,7 @@ function startMooseDialog() {
   speak('voice/moose_ask.mp3', { after: true });
   const dx = MOOSE_POS.x - hero.position.x, dz = MOOSE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMooseGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMooseGame(); });
 }
 function buildMooseRound() {
   msGrid.innerHTML = '';
@@ -4814,7 +4837,7 @@ function startRaccoonDialog() {
   speak('voice/raccoon_ask.mp3', { after: true });
   const dx = RACCOON_POS.x - hero.position.x, dz = RACCOON_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openRaccoonGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openRaccoonGame(); });
 }
 function buildRaccoonRound() {
   rcAnswers.innerHTML = '';
@@ -4925,7 +4948,7 @@ function startMagpieDialog() {
   speak('voice/magpie_ask.mp3', { after: true });
   const dx = MAGPIE_POS.x - hero.position.x, dz = MAGPIE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMagpieGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMagpieGame(); });
 }
 function buildMagpieRound() {
   mpCards.innerHTML = '';
@@ -5027,7 +5050,7 @@ function startMouseDialog() {
   speak('voice/mouse_ask.mp3', { after: true });
   const dx = MOUSE_POS.x - hero.position.x, dz = MOUSE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openMouseGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMouseGame(); });
 }
 function buildMouseRound() {
   mwBoard.innerHTML = '';
@@ -5163,7 +5186,7 @@ function startBadgerDialog() {
   speak('voice/badger_ask.mp3', { after: true });
   const dx = BADGER_POS.x - hero.position.x, dz = BADGER_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
-  setTimeout(() => { if (gameState === 'dialog' && my === dialogToken) openBadgerGame(); }, 2600);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openBadgerGame(); });
 }
 function buildBadgerRound() {
   bdBoard.innerHTML = '';
@@ -5736,9 +5759,12 @@ function tapGround(clientX, clientY) {
 }
 
 // модификатор спауна волков: щекотуны живут только на Лесной полянке
-let downX = 0, downY = 0, downT = 0;
+let downX = 0, downY = 0, downT = 0, downOnUI = false;
 window.addEventListener('pointerdown', (e) => {
   initAudio();
+  // v0.26.3 (живой тест): тап по кнопкам интерфейса НЕ должен «проваливаться» в мир —
+  // иначе нажатие на значок звука/паузы заодно посылает героя гулять
+  downOnUI = !!(e.target && e.target.closest && e.target.closest('button'));
   // первое касание на экране выбора героя — рассказчица объясняет, что тут делать
   if (!selectSpoken && selectEl.style.display === 'flex') {
     selectSpoken = true;
@@ -5748,6 +5774,7 @@ window.addEventListener('pointerdown', (e) => {
   downX = e.clientX; downY = e.clientY; downT = performance.now();
 });
 window.addEventListener('pointerup', (e) => {
+  if (downOnUI) { downOnUI = false; return; } // кнопка — миру не передаём
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
   const dt = performance.now() - downT;
   if (!hero) return;
@@ -7301,12 +7328,22 @@ function animate() {
   // паузы между выглядываниями спокойные — игра посильна и 3-летнему, и взрослому не «пулемёт».
   if (gameState === 'molegame') {
     if (ml.slow > 0) ml.slow -= dt;
+    // v0.26.3: ждём конца реплики про большое поле — и только потом строим его
+    if (ml.waitingField) {
+      const said = ml.fieldSaidAt > 0 && (performance.now() - ml.fieldSaidAt) > 600;
+      if (!voicePlaying() && said) {
+        ml.waitingField = false;
+        buildMoleField(true);
+        ml.lastAction = elapsed;
+        ml.timer = 1.6;
+      }
+    }
     const upH = ml.holes.find(h => h.up);
     if (upH) {
       upH.t += dt;
       const limit = (upH.carrot ? 3.0 : 2.4) * (ml.slow > 0 ? 1.75 : 1);
       if (upH.t > limit) moleDuck(upH);
-    } else if (ml.got < mlAll()) {
+    } else if (!ml.waitingField && ml.got < mlAll()) {
       ml.timer -= dt;
       if (ml.timer <= 0) {
         const i = Math.floor(Math.random() * ml.holes.length);

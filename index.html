@@ -117,6 +117,7 @@
       position: fixed; z-index: 10;
       top: calc(12px + env(safe-area-inset-top)); right: 14px;
       display: none; align-items: center; gap: 6px;
+      pointer-events: none; /* v0.26.3: счётчик не кликабелен — тап сквозь него в мир */
       background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
       border-radius: 99px; padding: 8px 16px;
       color: #2e6f8e; font-size: 20px; font-weight: 700;
@@ -807,36 +808,48 @@
       transform: translateX(-50%); font-size: clamp(34px, 8vh, 56px); display: none;
       filter: drop-shadow(0 0 6px #fff7d0) drop-shadow(0 2px 2px rgba(0,0,0,.25)); animation: mlCarrBob .8s ease-in-out infinite alternate; }
     @keyframes mlCarrBob { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
-    /* большое поле 3×3 — второй этап игры Крота: норы сверху (вид «с птичьего полёта»),
-       крот выныривает из центра норки и прячется обратно В НОРУ (не падает вниз) */
+    /* большое поле — второй этап игры Крота: v0.26.3 ПЕРЕРАБОТКА.
+       Вместо норок «по всему экрану» — аккуратная грядка 3×2 в правой части поля,
+       слева — табличка с морковкой (зона арта остаётся цельной сценой огорода) */
     .ml-field.big {
-      grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-      align-items: stretch; align-content: stretch; gap: 10px; padding: 14px 16px;
+      grid-template-columns: 30% repeat(3, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr));
+      align-items: stretch; align-content: stretch; gap: 10px 12px; padding: 14px 16px;
       background: #93cf7d url('./art/mole-garden-top.webp') center / cover no-repeat;
     }
-    .ml-field.big::after { background: linear-gradient(180deg, rgba(38,58,32,.14), rgba(38,58,32,0) 55%, rgba(38,58,32,.20)); }
+    .ml-field.big::after { background: linear-gradient(180deg, rgba(38,58,32,.12), rgba(38,58,32,0) 55%, rgba(38,58,32,.16)); }
     .ml-field.big .ml-hole { height: auto; min-height: 0; }
     .ml-field.big .ml-spacer { display: block; visibility: hidden; }
-    /* норка сверху: плоский тёплый эллипс с тёмным входом по центру ячейки */
+    /* левая панель-табличка: «Найди морковку!» — подсказка встроена в сцену */
+    .ml-deco {
+      grid-row: 1 / span 2; grid-column: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; border-radius: 16px;
+      background: rgba(255,248,225,.88); border: 3px solid rgba(255,255,255,.9);
+      box-shadow: 0 6px 14px rgba(66,42,22,.20);
+    }
+    .ml-deco .ml-deco-sign { font-size: clamp(34px, 7vh, 56px); line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,.2)); }
+    .ml-deco .ml-deco-cap {
+      font-weight: 800; color: #7a5a40; text-align: center; line-height: 1.15;
+      font-size: clamp(13px, 2.6vh, 19px); padding: 0 8px;
+    }
+    /* норка сверху: тёплая лунка с травяным кантом и тёмным входом по центру */
     .ml-field.big .ml-mound {
-      left: 50%; right: auto; bottom: auto; top: 50%; height: 58%; width: 70%; margin: 0;
-      transform: translate(-50%, -54%);
+      left: 50%; right: auto; bottom: auto; top: 50%; height: 60%; width: 68%; margin: 0;
+      transform: translate(-50%, -50%);
       border-radius: 50%;
-      /* v0.26.2: норка-«лунка», а не кратер: тёплый грунт + травяной кант */
       background:
-        radial-gradient(ellipse at 50% 46%, #7a5636 0 26%, #8a684c 48%, #a8805c 72%, #b89068 100%);
+        radial-gradient(ellipse at 50% 44%, #412c19 0 13%, #6b4a2e 28%, #8a684c 50%, #a8805c 68%, rgba(140,190,110,.8) 82%, rgba(140,190,110,0) 90%);
       box-shadow:
-        inset 0 0 0 5px rgba(140,190,110,.55),
-        inset 0 5px 10px rgba(0,0,0,.22),
-        0 4px 8px rgba(66,42,22,.18);
+        inset 0 4px 8px rgba(0,0,0,.26),
+        0 5px 10px rgba(66,42,22,.20);
     }
     .ml-field.big .ml-mound::after {
       content: ''; position: absolute; left: 30%; right: 30%; top: 12%; height: 12%;
       border-radius: 50%; background: rgba(46,30,16,.22);
     }
-    /* крот крупнее — он главный герой своей норы */
+    /* крот — круглый, не растягивается в широких ячейках */
     .ml-field.big .ml-mole {
-      bottom: auto; left: 50%; top: 50%; width: 86%; height: 64%;
+      bottom: auto; left: 50%; top: 50%; width: 66%; height: auto; aspect-ratio: 1;
       transform: translate(-50%, -54%) scale(.1);
       opacity: 0; z-index: 2;
       transition: transform .26s cubic-bezier(.34,1.35,.64,1), opacity .2s ease;
@@ -846,8 +859,8 @@
       transform: translate(-50%, -54%) scale(1);
       opacity: 1;
     }
-    .ml-field.big .ml-mole svg { transform: scale(1.28); }
-    .ml-field.big .ml-carrot { font-size: clamp(34px, 7vh, 54px); top: -14%; left: 50%; }
+    .ml-field.big .ml-mole svg { transform: scale(1.16); }
+    .ml-field.big .ml-carrot { font-size: clamp(30px, 6.5vh, 52px); top: -16%; left: 50%; }
     /* подсказка-свечение обводит норку сверху */
     .ml-field.big .ml-hole.glow::before { left: 4%; right: 4%; top: 0; bottom: 14%; }
     .ml-mole.caught svg { animation: mlCatch .38s ease; filter: drop-shadow(0 0 10px #ffe27a); }
@@ -1427,43 +1440,47 @@
     /* ============ v0.26.2: ЕДИНЫЙ СТАНДАРТ окна мини-игры ============
        Одинаковые карточка, шапка и поле у ВСЕХ 16 игр (фидбек владельца).
        Поля используют %-позиционирование, поэтому фиксированная высота безопасна;
-       геометрия каждой игры проверена замерами (см. AI_GUIDE, А27). */
+    /* ============ v0.26.3: ЕДИНЫЙ стандарт окон — ПОЛЕ ЗАМЕТНО ВЫШЕ ============
+       Живой тест v0.26.2: поле занимало ~50% высоты, шапка ~15% — окно «висело»
+       посередине. Новые пропорции: поле ~72–74% высоты экрана, шапка ~4–5%.
+       Все 16 игр используют один блок; геометрия каждой проверяется замерами
+       (см. AI_GUIDE, А28). */
     #minigame .mg-card, #countgame .mg-card, #bridgegame .mg-card, #molegame .mg-card,
     #sqgame .mg-card, #stonegame .mg-card, #beavergame .mg-card, #herongame .mg-card,
     #duckgame .mg-card, #ottergame .mg-card, #moosegame .mg-card, #raccoongame .mg-card,
     #magpiegame .mg-card, #mousegame .mg-card, #badgergame .mg-card {
       width: min(96vw, 1080px);
       max-height: 96vh; overflow: hidden;
-      padding: 10px 12px 12px;
-      border-radius: 26px;
+      padding: 8px 12px 10px;
+      border-radius: 24px;
     }
     .cg-title {
-      height: clamp(24px, 3.8vh, 32px); margin: 0 0 4px; padding: 0;
+      height: clamp(20px, 4.4vh, 30px); margin: 0 0 4px; padding: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: clamp(18px, 3.4vh, 26px); white-space: nowrap; overflow: hidden;
+      font-size: clamp(16px, 3vh, 23px); white-space: nowrap; overflow: hidden;
     }
     .hg-msg, .dk-msg, .ot-msg, .mp-msg, .mw-msg, .bd-msg, .ms-msg, .rc-msg,
     .sq-msg, .st-msg, .ml-counter, .bv-label {
-      height: clamp(16px, 2.6vh, 22px); min-height: 0; margin: 0 0 6px;
-      line-height: 1.25; font-size: clamp(13px, 2.5vh, 17px);
+      height: clamp(14px, 2.4vh, 20px); min-height: 0; margin: 0 0 5px;
+      line-height: 1.25; font-size: clamp(12px, 2.3vh, 16px);
       white-space: nowrap; overflow: hidden;
     }
     .mg-field, .cg-field, .bg-field, .ml-field, .sq-field, .st-field, .bv-field,
     .hg-field, .ot-field, .mp-field, .mw-field, .bd-field, .ms-field, .rc-field {
-      width: 100%; height: min(52vh, 420px); aspect-ratio: auto;
+      width: 100%; height: min(74vh, 600px); aspect-ratio: auto;
     }
     /* Крот: поле с %-отступом под арт — границы считаются от внешнего размера */
     .ml-field { box-sizing: border-box; }
-    .dk-panel { height: min(52vh, 420px); aspect-ratio: auto; }
+    .dk-panel { height: min(74vh, 600px); aspect-ratio: auto; }
     @media (max-height: 480px) {
       .mg-field, .cg-field, .bg-field, .ml-field, .sq-field, .st-field, .bv-field,
-      .hg-field, .ot-field, .mp-field, .mw-field, .bd-field, .ms-field, .rc-field { height: min(54vh, 300px); }
+      .hg-field, .ot-field, .mp-field, .mw-field, .bd-field, .ms-field, .rc-field { height: min(72vh, 520px); }
       /* побеждаем старые phone-правила с height:auto (специфичность выше) */
-      #minigame .mg-field, #bridgegame .bg-field, #countgame .cg-field { height: min(54vh, 300px); }
-      .dk-panel { height: min(54vh, 300px); }
-      .cg-title { height: clamp(17px, 4.2vh, 24px); font-size: clamp(15px, 3.8vh, 20px); }
+      #minigame .mg-field, #bridgegame .bg-field, #countgame .cg-field { height: min(72vh, 520px); }
+      .dk-panel { height: min(72vh, 520px); }
+      .cg-title { height: clamp(16px, 4.6vh, 22px); font-size: clamp(14px, 4vh, 18px); }
       .hg-msg, .dk-msg, .ot-msg, .mp-msg, .mw-msg, .bd-msg, .ms-msg, .rc-msg,
-      .sq-msg, .st-msg, .ml-counter, .bv-label { height: clamp(13px, 3.6vh, 18px); font-size: clamp(11px, 3vh, 15px); }
+      .sq-msg, .st-msg, .ml-counter, .bv-label { height: clamp(12px, 3.4vh, 16px); font-size: clamp(10px, 2.8vh, 14px); }
     }
 
     /* v0.26.2: наклейки КРУПНЕЕ (читаются и взрослому), сетка 3×2 проверена */

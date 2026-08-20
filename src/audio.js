@@ -23,7 +23,9 @@ function ensureCtx() {
 // Вызывать из обработчика жеста пользователя (pointerdown)
 export function initAudio() {
   if (!ensureCtx()) return;
-  if (ctx.state === 'suspended') ctx.resume();
+  // v0.26.3: Android WebView уводит контекст в 'interrupted' (не только 'suspended') —
+  // без resume() эффекты/синтез молчат до перезапуска
+  if (ctx.state === 'suspended' || ctx.state === 'interrupted') ctx.resume();
 }
 
 export function isMuted() { return muted; }
@@ -155,7 +157,12 @@ const voiceCache = {};
 let lastVoice = null;
 let voiceGen = 0;
 export function speak(file, opts = {}) {
-  if (!ctx || muted || ctx.state !== 'running') return;
+  if (muted) return;
+  // v0.26.3: реплики — это HTMLAudio, им НЕ нужен работающий Web Audio-контекст.
+  // Раньше при ctx.state !== 'running' (телефон, 'interrupted'/'suspended')
+  // реплики молча выбрасывались — Крот/Белка «не разговаривали».
+  if (!ctx) ensureCtx();
+  else if (ctx.state === 'suspended' || ctx.state === 'interrupted') ctx.resume();
   try {
     let a = voiceCache[file];
     if (!a) { a = new Audio(file); voiceCache[file] = a; }

@@ -297,7 +297,9 @@ if (want('games')) {
     const { ctx, page, errs } = await newPage(1280, 800);
     await openShot(page, 'duck');
     await page.waitForFunction(() => document.querySelectorAll('#dkRight .dk-el').length > 0, null, { timeout: 30000 });
-    for (let i = 0; i < 8; i++) {
+    // v0.26.3: между раундами отличия перестраиваются через 900 мс — «diff не найден»
+    // означает «раунд только что закончен», а не конец игры: ждём и продолжаем кликать.
+    for (let i = 0, miss = 0; i < 16 && miss < 4; i++) {
       const spot = await page.evaluate(() => {
         // ключ с учётом ФОНА: отличие может быть «тот же кружок, другой цвет»
         const key = e => e.style.left + '|' + e.style.top + '|' + e.textContent + '|' + e.style.background;
@@ -314,7 +316,8 @@ if (want('games')) {
         const rect = document.getElementById('dkRight').getBoundingClientRect();
         return { x: rect.left + rect.width * x / 100, y: rect.top + rect.height * y / 100 };
       });
-      if (!spot) break;
+      if (!spot) { miss++; await page.waitForTimeout(500); continue; }
+      miss = 0;
       await page.mouse.click(spot.x, spot.y);
       await page.waitForTimeout(700);
       if (await page.evaluate(() => localStorage.getItem('wm_wins_duck') === '1')) break;
@@ -619,7 +622,10 @@ if (want('ui')) {
     });
     let closed = true;
     try {
-      await page.click('#albumClose', { force: true });
+      // v0.26.3: кнопки игры слушают pointerdown — кликать ТОЛЬКО мышью по координатам
+      // (page.click на закрытие альбома давал ложный FAIL: force-клик не пробивался к кнопке)
+      const bb = await page.locator('#albumClose').boundingBox();
+      await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
       await page.waitForTimeout(400);
       closed = await page.evaluate(() => getComputedStyle(document.getElementById('album')).display === 'none');
     } catch (e) { closed = false; }
