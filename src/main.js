@@ -833,7 +833,7 @@ const ST_NOTES = [
   { f: 783.99, c: 0x8fd694 }, // соль — зелёный
   { f: 880.00, c: 0x8fc3f0 }, // ля — голубой
 ];
-const FIRE_POS = { x: 7.9, z: 8.7 }; // у северо-восточного бережка пруда
+const FIRE_POS = { x: 3.6, z: 5.8 }; // v0.26.2: ближе к центру полянки, у пруда — его видно сразу
 function makeFirefly() {
   const g = new THREE.Group();
   const bodyG = new THREE.Group();
@@ -887,8 +887,8 @@ function makeFirefly() {
   g.add(lamp);
   // v0.25.1: мягкое светящееся кольцо под Светлячком — его видно даже днём
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.34, 0.42, 20),
-    new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+    new THREE.RingGeometry(0.5, 0.6, 20),
+    new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
   );
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.05;
@@ -901,7 +901,7 @@ firefly.position.set(FIRE_POS.x, 0, FIRE_POS.z);
 firefly.rotation.y = Math.atan2(0 - FIRE_POS.x, -2 - FIRE_POS.z); // смотрит к центру поляны
 scene.add(firefly);
 obstacles.push({ x: FIRE_POS.x, z: FIRE_POS.z, r: 0.55 });
-firefly.scale.setScalar(1.32); // заметно крупнее — его легко было не заметить (живой тест)
+firefly.scale.setScalar(1.65); // v0.26.2: заметно крупнее — его видно с любого ракурса
 const svetBubble = makeBubbleSprite('🎵', 1.15); // крупнее — Светлячка не пропустить
 svetBubble.position.set(FIRE_POS.x, 2.1, FIRE_POS.z);
 scene.add(svetBubble);
@@ -2850,11 +2850,15 @@ function openAlbum() {
   if (firstWaiting >= 0) activeAlbumPage = ALBUM_PAGES.findIndex(p => firstWaiting >= p.from && firstWaiting < p.to);
   renderAlbum();
   albumEl.style.display = 'block';
+  // v0.26.2 (живой тест): альбом полностью ставит мир и звук на паузу
+  stopVoice();
+  setGamePaused(true);
   play('pop');
 }
 function closeAlbum() {
   selectedSticker = null;
   albumEl.style.display = 'none';
+  setGamePaused(false);
 }
 function showStickerReward(i) {
   if (!stickerReward || !rewardSticker) return;
@@ -4071,10 +4075,13 @@ function buildStRound() {
   stMsg.textContent = 'Слушай песенку…';
   st.timers.push(setTimeout(() => stPlaySeq(1, () => {
     if (gameState !== 'stonegame') return;
-    stMsg.textContent = 'Твоя очередь!';
+    stMsg.textContent = '🔁 Повтори за мной!';
     st.stones.forEach(s => { s.disabled = false; });
     st.canTap = true;
     st.lastAction = elapsed;
+    // v0.26.2: подсвечиваем ПЕРВЫЙ камень очереди — понятно, что нажимать
+    const next = st.stones[st.seq[st.input]];
+    if (next) next.classList.add('next');
   }), 650));
 }
 // Светлячок играет песенку: камушки подсвечиваются и звенят по очереди
@@ -4110,11 +4117,16 @@ function stTap(i) {
   if (i === st.seq[st.input]) {
     playNote(ST_NOTES[i].f, { dur: 0.42 });
     st.input++;
+    // v0.26.2: переносим подсветку «следующий» на следующий камень очереди
+    st.stones.forEach(s => s.classList.remove('next'));
+    const next = st.stones[st.seq[st.input]];
+    if (next) next.classList.add('next');
     if (st.input >= st.seq.length) {
       st.canTap = false;
       st.stones.forEach(s => { s.disabled = true; });
       play('good');
       stMsg.textContent = 'Ура! Песенка получилась! 🎉';
+      st.stones.forEach(s => s.classList.remove('next'));
       stProg.innerHTML = st.rounds.map((_, k) => `<i class="${k <= st.round ? 'on' : ''}"></i>`).join('');
       st.timers.push(setTimeout(() => {
         if (gameState !== 'stonegame') return;
@@ -6522,7 +6534,16 @@ checkRotate();
 
 function animate() {
   requestAnimationFrame(animate);
-  if (paused) { renderer.render(scene, camera); return; }
+  // v0.26.2: мир полностью замирает под ВСЕМИ оверлеями (пауза, альбом, карта,
+  // стартовая кнопка, родительский уголок, «взрослая дверка», отдых, свёрнутое окно)
+  const uiFrozen = document.hidden
+    || (albumEl && albumEl.style.display === 'block')
+    || (chapMapEl && chapMapEl.style.display === 'flex')
+    || (startGateEl && startGateEl.style.display === 'flex')
+    || (parentOv && parentOv.style.display === 'flex')
+    || (gateOv && gateOv.style.display === 'flex')
+    || (breakOv && breakOv.style.display === 'flex');
+  if (paused || uiFrozen) { renderer.render(scene, camera); return; }
   // Скрытые целевые сценарии Крота ускорены: программный SwiftShader рисует
   // заметно реже 60 кадров/с, поэтому без этого E2E-проверка ждала бы минуты.
   const dt = location.hash.indexOf('#shot-mole') === 0 ? 1 / 10 : 1 / 60;
@@ -6530,7 +6551,8 @@ function animate() {
 
   // --- ИГРОВОЕ ВРЕМЯ идёт ТОЛЬКО на экране игры: альбом, карта сказки, родительский уголок,
   // стартовая кнопка, карточка отдыха и свёрнутое приложение — всё это ставит мир на паузу
-  const uiFrozen = document.hidden
+  // (полная заморозка уже выполнена выше; здесь — только учёт времени и день/ночь)
+  const uiFrozen2 = document.hidden
     || (albumEl && albumEl.style.display === 'block')
     || (chapMapEl && chapMapEl.style.display === 'flex')
     || (startGateEl && startGateEl.style.display === 'flex')
@@ -6539,7 +6561,7 @@ function animate() {
     || (breakOv && breakOv.style.display === 'flex');
 
   // --- РОДИТЕЛЬСКИЙ УЧЁТ: общее время игры + мягкое напоминание об отдыхе ---
-  if (!uiFrozen) {
+  if (!uiFrozen2) {
     sessSec += dt;
     playSecUnsaved += dt;
     if (playSecUnsaved >= 30) {
@@ -6550,7 +6572,7 @@ function animate() {
   }
 
   // --- ДЕНЬ/НОЧЬ (во сне в домике ночь пролетает быстро; под открытыми меню — не течёт) ---
-  if (!uiFrozen) dayT = (dayT + (dt * (hiding ? 22 : 1)) / DAY_LEN) % 1;
+  if (!uiFrozen2) dayT = (dayT + (dt * (hiding ? 22 : 1)) / DAY_LEN) % 1;
   nightness = smoothstep(0.36, 0.5, dayT) - smoothstep(0.86, 1.0, dayT);
   setNight(nightness);
   tmpColor.copy(skyDay).lerp(skyNight, nightness);
