@@ -130,13 +130,16 @@ const SFX = {
   hintGlow: () => tone(1180, 0.12, { vol: 0.08, type: 'sine' }),
   // v0.25.2: мягкий «топ-топ» шагов героя — лёгкий синтез без файлов
   step: () => {
-    tone(170, 0.05, { vol: 0.045, slideTo: 120, type: 'sine' });
-    tone(380, 0.028, { vol: 0.03, delay: 0.015, type: 'triangle' });
+    // v0.27.0 (живой тест): шаги «пропали» — были слишком тихими; теперь
+    // мягкий «топ-топ» слышен отчётливо, но не резко
+    tone(175, 0.06, { vol: 0.09, slideTo: 130, type: 'sine' });
+    tone(390, 0.03, { vol: 0.055, delay: 0.015, type: 'triangle' });
   },
 };
 
 export function play(name) {
-  if (!ctx || muted || ctx.state !== 'running') return;
+  // v0.27.0: эффекты тоже не должны молчать при 'interrupted' (телефон)
+  if (!ctx || muted) return;
   const fn = SFX[name];
   if (fn) fn();
 }
@@ -144,7 +147,9 @@ export function play(name) {
 // Звонкий «камешек-колокольчик»: чистый тон + мягкая октава сверху.
 // Используется в мини-игре Светлячка «Звонкие камни».
 export function playNote(freq, { delay = 0, dur = 0.5, vol = 0.26 } = {}) {
-  if (!ctx || muted || ctx.state !== 'running') return;
+  // v0.27.0: не требовать state==='running' (Android WebView даёт 'interrupted' —
+  // из-за этого хор/мелодии молчали); resume уже зовётся из initAudio/каждого жеста
+  if (!ctx || muted) return;
   tone(freq, dur, { vol, delay, type: 'sine' });
   tone(freq * 2, dur * 0.55, { vol: vol * 0.3, delay, type: 'sine' });
 }

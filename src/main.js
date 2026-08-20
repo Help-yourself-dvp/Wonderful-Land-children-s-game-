@@ -1372,19 +1372,31 @@ const PORTAL_DEFS = [
 ];
 LOC_EXIT.push({ x: LOC3.x - 4.0, z: LOC3.z - 11.4, ry: Math.atan2(4.0, 11.4) });
 function revealPortal(withFx) {
+  // v0.27.0: эта арка (Л1 ↔ Л2) открывается светом звезды после главы 2
   if (portalL1.visible) return;
   portalL1.visible = true;
   portalL2.visible = true;
-  portalL3.visible = true;
-  portalL3b.visible = true;
   if (!withFx) return;
   spawnBurst(new THREE.Vector3(12.4, 1.6, 0.2), 16);
   play('drop');
 }
+// v0.27.0 (живой тест): арка Л2 ↔ Л3 — только после знакомства со ВСЕМИ жителями
+// Речного берега (раньше можно было уйти на третью локацию, не пройдя вторую)
+function revealPortalL3(withFx) {
+  if (portalL3.visible) return;
+  portalL3.visible = true;
+  portalL3b.visible = true;
+  if (!withFx) return;
+  spawnBurst(new THREE.Vector3(portalL3.position.x, 1.6, portalL3.position.z), 16);
+  play('drop');
+}
 portalL1.visible = starLit;
 portalL2.visible = starLit;
-portalL3.visible = starLit;
-portalL3b.visible = starLit;
+{
+  const shoreDone = ['beaver', 'frog2', 'heron', 'duck', 'otter'].every(k => localStorage.getItem('wm_met_' + k) === '1');
+  portalL3.visible = starLit && shoreDone;
+  portalL3b.visible = starLit && shoreDone;
+}
 
 // ----- ЛЕСНАЯ ЧАЩА (Локация 3): остров густого леса с ёлками, пеньками и грибами -----
 const thicketGlows = []; // огоньки-светлячки чаще (ночью ярче — в animate)
@@ -1481,10 +1493,12 @@ const thicketGlows = []; // огоньки-светлячки чаще (ночь
     scene.add(f);
   }
   // мягкие огоньки-светлячки в чаще (видны всегда, ночью «горят» ярче — см. animate)
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex(), color: 0xd9ffb0, transparent: true, depthWrite: false }));
-    s.position.set(LOC3.x + (r3() - 0.5) * 16, 0.8 + r3() * 1.2, LOC3.z + (r3() - 0.5) * 16);
+    const bx = LOC3.x + (r3() - 0.5) * 16, by = 0.8 + r3() * 1.2, bz = LOC3.z + (r3() - 0.5) * 16;
+    s.position.set(bx, by, bz);
     s.scale.setScalar(0.5 + r3() * 0.4);
+    s.userData = { bx, by, bz, ph: i * 1.3, s0: 0.5 + r3() * 0.4 };
     scene.add(s);
     thicketGlows.push(s);
   }
@@ -1790,7 +1804,7 @@ moose.position.set(MOOSE_POS.x, 0, MOOSE_POS.z);
 moose.rotation.y = Math.atan2(LOC3.x - MOOSE_POS.x, LOC3.z - MOOSE_POS.z);
 scene.add(moose);
 obstacles.push({ x: MOOSE_POS.x, z: MOOSE_POS.z, r: 0.7 });
-moose.scale.setScalar(1.05);
+moose.scale.setScalar(1.3); // v0.27.0: крупнее (живой тест — зверята Л3 были мелкими)
 const mooseBubble = makeBubbleSprite('🫐', 0.95);
 mooseBubble.position.set(MOOSE_POS.x, 3.2, MOOSE_POS.z);
 scene.add(mooseBubble);
@@ -1849,7 +1863,7 @@ raccoon.position.set(RACCOON_POS.x, 0, RACCOON_POS.z);
 raccoon.rotation.y = Math.atan2(LOC3.x - RACCOON_POS.x, LOC3.z - RACCOON_POS.z);
 scene.add(raccoon);
 obstacles.push({ x: RACCOON_POS.x, z: RACCOON_POS.z, r: 0.6 });
-raccoon.scale.setScalar(1.08);
+raccoon.scale.setScalar(1.3);
 const raccoonBubble = makeBubbleSprite('🌑', 0.9);
 raccoonBubble.position.set(RACCOON_POS.x, 2.3, RACCOON_POS.z);
 scene.add(raccoonBubble);
@@ -1910,7 +1924,7 @@ magpie.position.set(MAGPIE_POS.x, 0, MAGPIE_POS.z);
 magpie.rotation.y = Math.atan2(LOC3.x - MAGPIE_POS.x, LOC3.z - MAGPIE_POS.z);
 scene.add(magpie);
 obstacles.push({ x: MAGPIE_POS.x, z: MAGPIE_POS.z, r: 0.5 });
-magpie.scale.setScalar(1.15);
+magpie.scale.setScalar(1.3);
 const magpieBubble = makeBubbleSprite('🔍', 0.85);
 magpieBubble.position.set(MAGPIE_POS.x, 2.2, MAGPIE_POS.z);
 scene.add(magpieBubble);
@@ -1962,7 +1976,7 @@ mouse.position.set(MOUSE_POS.x, 0, MOUSE_POS.z);
 mouse.rotation.y = Math.atan2(LOC3.x - MOUSE_POS.x, LOC3.z - MOUSE_POS.z);
 scene.add(mouse);
 obstacles.push({ x: MOUSE_POS.x, z: MOUSE_POS.z, r: 0.45 });
-mouse.scale.setScalar(1.25);
+mouse.scale.setScalar(1.35);
 const mouseBubble = makeBubbleSprite('⚖️', 0.85);
 mouseBubble.position.set(MOUSE_POS.x, 1.9, MOUSE_POS.z);
 scene.add(mouseBubble);
@@ -1970,34 +1984,47 @@ scene.add(mouseBubble);
 // ============ БАРСУК (Локация 3: «Сложи картинку») ============
 // v0.24: пятый житель чащи. Серое тело, чёрно-белая полосатая мордочка.
 function makeBadger() {
+  // v0.27.0 (живой тест): «барсук на барсука не похож» — пересобран по-настоящему:
+  // приземистое тело, широкая белая голова с двумя ЧЁРНЫМИ полосами через глаза,
+  // чёрные лапки, полосатая спинка.
   const g = new THREE.Group();
   const bodyG = new THREE.Group();
-  const grey = L(0x7a7a80), dark = L(0x3a3a40), white = L(0xf2f0ea);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), grey);
-  body.position.y = 0.48; body.scale.set(1.05, 0.95, 0.95); body.castShadow = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), white);
-  head.position.set(0, 0.86, 0.18);
-  // две чёрные полосы через глаза — фирменная маска барсука
-  const stripeGeo = new THREE.SphereGeometry(0.09, 10, 10);
-  const stripeL = new THREE.Mesh(stripeGeo, dark); stripeL.position.set(-0.09, 0.9, 0.34); stripeL.scale.set(1.1, 0.9, 0.55);
-  const stripeR = stripeL.clone(); stripeR.position.x = 0.09;
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), dark);
-  nose.position.set(0, 0.8, 0.4);
-  const eyeGeo = new THREE.SphereGeometry(0.042, 10, 10);
-  const eyeM = new THREE.MeshBasicMaterial({ color: 0x1c1c1c });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.1, 0.9, 0.36);
-  const eyeR = eyeL.clone(); eyeR.position.x = 0.1;
-  const glGeo = new THREE.SphereGeometry(0.015, 6, 6);
+  const grey = L(0x8a8a92), dark = L(0x2e2e34), white = L(0xf2f0ea);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 16), grey);
+  body.position.y = 0.42; body.scale.set(1.25, 0.85, 0.9); body.castShadow = true;
+  const backStripe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.78), white);
+  backStripe.position.set(0, 0.72, -0.08);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 14), white);
+  head.position.set(0.3, 0.66, 0.12); head.scale.set(1.05, 0.9, 1.15);
+  // две широкие чёрные полосы: от носа через глаза к ушам
+  const stripeGeo = new THREE.BoxGeometry(0.1, 0.055, 0.5);
+  const stripeL = new THREE.Mesh(stripeGeo, dark);
+  stripeL.position.set(0.34, 0.74, 0.2); stripeL.rotation.x = -0.42;
+  const stripeR = stripeL.clone(); stripeR.position.x = 0.46; stripeR.position.y = 0.74; stripeR.position.z = 0.2;
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.24), dark);
+  crown.position.set(0.4, 0.9, 0.02); crown.rotation.x = -0.15;
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), dark);
+  nose.position.set(0.46, 0.6, 0.42);
+  const eyeGeo = new THREE.SphereGeometry(0.045, 10, 10);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x141414 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(0.34, 0.74, 0.34);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.46;
+  const glGeo = new THREE.SphereGeometry(0.016, 6, 6);
   const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.08, 0.92, 0.4);
-  const glR = glL.clone(); glR.position.x = 0.08;
-  const earGeo = new THREE.SphereGeometry(0.07, 8, 8);
-  const earL = new THREE.Mesh(earGeo, dark); earL.position.set(-0.18, 1.04, 0.08);
-  const earR = earL.clone(); earR.position.x = 0.18;
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(0.36, 0.755, 0.375);
+  const glR = glL.clone(); glR.position.x = 0.44;
+  const earGeo = new THREE.SphereGeometry(0.075, 10, 8);
+  const earL = new THREE.Mesh(earGeo, dark); earL.position.set(0.3, 0.92, 0.02);
+  const earR = earL.clone(); earR.position.x = 0.5;
+  const earTipL = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), white);
+  earTipL.position.set(0.31, 0.945, 0.02);
+  const earTipR = earTipL.clone(); earTipR.position.x = 0.49;
   const pawGeo = new THREE.SphereGeometry(0.11, 10, 10);
-  const pawL = new THREE.Mesh(pawGeo, dark); pawL.position.set(-0.22, 0.2, 0.28);
-  const pawR = pawL.clone(); pawR.position.x = 0.22;
-  bodyG.add(body, head, stripeL, stripeR, nose, eyeL, eyeR, glL, glR, earL, earR, pawL, pawR);
+  const pawL = new THREE.Mesh(pawGeo, dark); pawL.position.set(0.12, 0.14, 0.3);
+  const pawR = pawL.clone(); pawR.position.x = 0.44;
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.22, 4, 8), grey);
+  tail.position.set(-0.52, 0.5, 0); tail.rotation.z = 0.5;
+  bodyG.add(body, backStripe, head, stripeL, stripeR, crown, nose, eyeL, eyeR, glL, glR, earL, earR, earTipL, earTipR, pawL, pawR, tail);
   g.add(bodyG);
   g.userData = { body: bodyG, eyes: [eyeL, eyeR], glints: [glL, glR] };
   return g;
@@ -2009,7 +2036,7 @@ badger.position.set(BADGER_POS.x, 0, BADGER_POS.z);
 badger.rotation.y = Math.atan2(LOC3.x - BADGER_POS.x, LOC3.z - BADGER_POS.z);
 scene.add(badger);
 obstacles.push({ x: BADGER_POS.x, z: BADGER_POS.z, r: 0.55 });
-badger.scale.setScalar(1.15);
+badger.scale.setScalar(1.4);
 const badgerBubble = makeBubbleSprite('🧩', 0.9);
 badgerBubble.position.set(BADGER_POS.x, 2.0, BADGER_POS.z);
 scene.add(badgerBubble);
@@ -2066,6 +2093,112 @@ obstacles.push({ x: FROG2_POS.x, z: FROG2_POS.z, r: 0.5 });
 const frog2Bubble = makeBubbleSprite('🌺', 1.05);
 frog2Bubble.position.set(FROG2_POS.x, 2.2, FROG2_POS.z);
 scene.add(frog2Bubble);
+
+// ============ v0.27.0: «СВОЁ МЕСТО» У КАЖДОГО ЖИТЕЛЯ Л2 И Л3 ============
+// Живой тест: зверята стояли «накиданными» на пустой поляне. Теперь у каждого —
+// своя декорация-домик (как грядки у Ёжика и огородик у Крота на Л1).
+{
+  const mk = (x, z, build) => { build(x, z); };
+  // — Локация 2: Речной берег —
+  // Хатка Бобра (за спиной у Бобра): цилиндр + конус-крыша + вход
+  mk(BEAVER_POS.x + 1.7, BEAVER_POS.z + 1.4, (x, z) => {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 1.0, 0.9, 12), L(0xa4703f));
+    base.position.y = 0.45; base.castShadow = true;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.0, 12), L(0x8a5a3b));
+    roof.position.y = 1.35; roof.castShadow = true;
+    const door = new THREE.Mesh(new THREE.CircleGeometry(0.26, 10), L(0x4a2f1c));
+    door.position.set(0.0, 0.42, 0.95); door.rotation.x = 0.18;
+    g.add(base, roof, door);
+    g.position.set(x, 0, z);
+    scene.add(g);
+    obstacles.push({ x, z, r: 1.05 });
+  });
+  // Тростник Цапли — высокие камыши у её заводи
+  for (const [ox, oz] of [[-1.6, -0.4], [-1.2, -1.2], [1.4, 0.6], [1.0, 1.4]]) {
+    mk(HERON_POS.x + ox, HERON_POS.z + oz, (x, z) => {
+      const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 1.9, 8), L(0x5aa860));
+      reed.position.set(x, 0.95, z);
+      const tip = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.42, 4, 8), L(0x8a5a3b));
+      tip.position.set(x, 1.95, z);
+      scene.add(reed, tip);
+    });
+  }
+  // Камыши Утки + тёплая кочка
+  for (const [ox, oz] of [[1.3, -0.6], [1.8, 0.2], [0.9, 0.9]]) {
+    mk(DUCK_POS.x + ox, DUCK_POS.z + oz, (x, z) => {
+      const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.085, 1.7, 8), L(0x5aa860));
+      reed.position.set(x, 0.85, z);
+      const tip = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.36, 4, 8), L(0x8a5a3b));
+      tip.position.set(x, 1.75, z);
+      scene.add(reed, tip);
+    });
+  }
+  // Плоский камень-«причал» Выдры
+  mk(OTTER_POS.x + 1.2, OTTER_POS.z - 1.2, (x, z) => {
+    const rock = new THREE.Mesh(new THREE.SphereGeometry(0.75, 14, 10), L(0x9aa28c));
+    rock.position.set(x, 0.12, z); rock.scale.set(1.5, 0.42, 1.1); rock.castShadow = true;
+    scene.add(rock);
+    obstacles.push({ x, z, r: 0.85 });
+  });
+
+  // — Локация 3: Лесная чаща —
+  // Ягодный куст Лося (черника)
+  mk(MOOSE_POS.x + 1.6, MOOSE_POS.z - 0.8, (x, z) => {
+    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), L(0x4f8a4a));
+    bush.position.set(x, 0.4, z); bush.scale.set(1.3, 0.9, 1.15); bush.castShadow = true;
+    scene.add(bush);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.4;
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), L(0x4a4a9a));
+      b.position.set(x + Math.cos(a) * 0.55, 0.55 + (i % 3) * 0.14, z + Math.sin(a) * 0.55);
+      scene.add(b);
+    }
+    obstacles.push({ x, z, r: 0.7 });
+  });
+  // Пенёк с дуплом Енота
+  mk(RACCOON_POS.x - 1.5, RACCOON_POS.z - 0.7, (x, z) => {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.48, 1.15, 12), L(0x8a5a3b));
+    trunk.position.set(x, 0.57, z); trunk.castShadow = true;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.06, 12), L(0xd8a566));
+    top.position.set(x, 1.17, z);
+    const hollow = new THREE.Mesh(new THREE.CircleGeometry(0.18, 10), L(0x3a2415));
+    hollow.position.set(x + 0.34, 0.95, z); hollow.rotation.y = -Math.PI / 2;
+    scene.add(trunk, top, hollow);
+    obstacles.push({ x, z, r: 0.55 });
+  });
+  // Гнездо Сороки на ветвистой подставке
+  mk(MAGPIE_POS.x - 1.3, MAGPIE_POS.z + 0.9, (x, z) => {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.7, 10), L(0x6f452c));
+    trunk.position.set(x, 0.85, z); trunk.castShadow = true;
+    const nest = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), L(0xb98a5a));
+    nest.position.set(x, 1.72, z); nest.scale.set(1, 0.55, 1);
+    const eggs = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), L(0xd7eaf2));
+    eggs.position.set(x, 1.82, z); eggs.scale.set(1.3, 1, 1.3);
+    scene.add(trunk, nest, eggs);
+    obstacles.push({ x, z, r: 0.4 });
+  });
+  // Норка Мышки — холмик с дверкой-аркой
+  mk(MOUSE_POS.x + 1.0, MOUSE_POS.z + 1.1, (x, z) => {
+    const hill = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), L(0x8ed081));
+    hill.position.set(x, 0.24, z); hill.scale.set(1.2, 0.75, 1.1); hill.castShadow = true;
+    const door = new THREE.Mesh(new THREE.CircleGeometry(0.2, 10), L(0x4a2f1c));
+    door.position.set(x + 0.36, 0.32, z); door.rotation.y = -Math.PI / 2;
+    scene.add(hill, door);
+    obstacles.push({ x, z, r: 0.65 });
+  });
+  // Берлога Барсука — большой холм с тёмным входом
+  mk(BADGER_POS.x - 1.6, BADGER_POS.z + 0.9, (x, z) => {
+    const hill = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 10), L(0x7a5a40));
+    hill.position.set(x, 0.34, z); hill.scale.set(1.25, 0.8, 1.1); hill.castShadow = true;
+    const door = new THREE.Mesh(new THREE.CircleGeometry(0.3, 12), L(0x2e1c10));
+    door.position.set(x + 0.62, 0.42, z); door.rotation.y = -Math.PI / 2;
+    const grass = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), L(0x6fbf5f));
+    grass.position.set(x - 0.3, 0.62, z + 0.4); grass.scale.set(1.2, 0.7, 1);
+    scene.add(hill, door, grass);
+    obstacles.push({ x, z, r: 1.0 });
+  });
+}
 
 // v0.26: увеличенные «зоны тапа» вокруг NPC (невидимые сферы внутри групп) —
 // детям проще попадать пальцем; raycast находит их через intersectObject(npc, true).
@@ -2272,17 +2405,20 @@ function exitHouse() {
   play('pop');
 }
 
-// ============ ВОЛКИ / СЕРДЕЧКИ ============
+// ============ ЩЕКОТУНЫ (волчата на полянке, выдрята на берегу, лисята в чаще) ============
 const wolves = [];
 let wolfWarned = false;
-function makeWolf() {
+// v0.27.0 (живой тест): на Л2 и Л3 свои добрые «щекотуны» — ночью догоняют и щекочут,
+// как волчата на первой полянке. Одна общая механика, разные зверята.
+function makeCritter(kind) {
   const g = new THREE.Group();
-  const fur = L(0x7a7f8a);
+  const fur = L(kind === 'wolf' ? 0x7a7f8a : kind === 'otterling' ? 0x8a6a4f : 0xd98a4a);
+  const tummy = L(kind === 'foxling' ? 0xffe8c8 : 0xc9b49a);
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 18), fur);
   body.position.y = 0.5; body.scale.set(1.3, 0.9, 0.9); body.castShadow = true;
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 18), fur);
   head.position.set(0.55, 0.78, 0);
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), L(0x9aa0ab));
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), tummy);
   muzzle.position.set(0.82, 0.7, 0);
   const earGeo = new THREE.ConeGeometry(0.1, 0.28, 8);
   const eL = new THREE.Mesh(earGeo, fur); eL.position.set(0.45, 1.08, 0.14);
@@ -2294,23 +2430,29 @@ function makeWolf() {
   const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.4, 4, 8), fur);
   tail.position.set(-0.65, 0.55, 0); tail.rotation.z = 0.8;
   g.add(body, head, muzzle, eL, eR, eyeL, eyeR, tail);
+  // у лисят — белый кончик хвоста и рыжая грудка, у выдрят — тёмные «лапки»
+  if (kind === 'foxling') {
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), L(0xfff4e0));
+    tip.position.set(-0.88, 0.58, 0); g.add(tip);
+  }
   return g;
 }
-function spawnWolf() {
+function spawnCritter(kind, loc) {
   play('whoosh');
-  if (!wolfWarned) { wolfWarned = true; speak('voice/wolf_warn.mp3'); }
-  // ищем точку появления, свободную от деревьев и построек — волк не «вылезает» из кустов
+  if (kind === 'wolf' && !wolfWarned) { wolfWarned = true; speak('voice/wolf_warn.mp3'); }
+  const cx = LOCS[loc].x, cz = LOCS[loc].z;
+  // ищем точку появления, свободную от препятствий — зверёк не «вылезает» из кустов
   let sx = 0, sz = 0, tries = 0;
   do {
     const a = rand() * Math.PI * 2;
-    sx = Math.cos(a) * (ISLAND_R - 2);
-    sz = Math.sin(a) * (ISLAND_R - 2);
+    sx = cx + Math.cos(a) * (ISLAND_R - 2);
+    sz = cz + Math.sin(a) * (ISLAND_R - 2);
     tries++;
   } while (tries < 12 && obstacles.some(ob => Math.hypot(sx - ob.x, sz - ob.z) < ob.r + 1.0));
-  const g = makeWolf();
+  const g = makeCritter(kind);
   g.position.set(sx, 0, sz);
   scene.add(g);
-  wolves.push({ g, mode: 'hunt', cooldown: 0, fadeT: 0, stuckT: 0, avoidT: 0, avoidSign: 1 });
+  wolves.push({ g, kind, loc, mode: 'hunt', cooldown: 0, fadeT: 0, stuckT: 0, avoidT: 0, avoidSign: 1 });
 }
 
 // Мягкие облачка «пуф!» — эффектное исчезновение без «треугольников» прозрачности
@@ -2678,6 +2820,18 @@ function loadAlbumProgress() {
     localStorage.setItem('wm_album_schema', ALBUM_SCHEMA);
   }
   albumUnlocked = Math.max(0, Math.min(STICKERS.length, Number.isFinite(albumUnlocked) ? albumUnlocked : 0));
+  // v0.27.0: миграция «добора» — наклейки теперь за первую победу у каждого из 16
+  // жителей + поливы Древа + хор + финал + первое путешествие. Игрокам, прошедшим
+  // зверей до этого обновления, открываем заработанное автоматически.
+  {
+    const FK = ['hedge', 'owl', 'frog', 'mole', 'sq', 'fire', 'beaver', 'frog2', 'heron', 'duck', 'otter', 'moose', 'raccoon', 'magpie', 'mouse', 'badger'];
+    let earned = FK.filter(k => localStorage.getItem('wm_met_' + k) === '1').length;
+    earned += parseInt(localStorage.getItem('wm_tree_waters') || '0', 10);
+    if (localStorage.getItem('wm_story_all6') === '1') earned += 1;
+    if (localStorage.getItem('wm_ending_seen') === '1') earned += 1;
+    if (localStorage.getItem('wm_travel') === '1') earned += 1;
+    if (albumUnlocked < earned) albumUnlocked = earned;
+  }
   albumPlaced = new Set([...albumPlaced]
     .map(Number)
     .filter(i => Number.isInteger(i) && i >= 0 && i < albumUnlocked && i < STICKERS.length));
@@ -2875,6 +3029,18 @@ function grantStickerForWater() {
   showStickerReward(i);
   return i;
 }
+// v0.27.0 (живой тест): наклейка выдаётся и за ПЕРВУЮ победу у каждого жителя —
+// раньше за пройденных зверей наклеек не было вовсе (только за поливы Древа),
+// и у владельца «собрались не все» после всех 16 жителей.
+function grantSticker() { return grantStickerForWater(); }
+function metFriend(k) {
+  if (localStorage.getItem('wm_met_' + k) === '1') { localStorage.setItem('wm_met_' + k, '1'); return; }
+  localStorage.setItem('wm_met_' + k, '1');
+  grantSticker();
+  // v0.27.0: сюжетные гейты локаций — как на первой полянке
+  if (haveMetAllShoreFriends()) shoreGateCheck();
+  if (haveMetAllThicketFriends()) thicketGateCheck();
+}
 function setAlbumTestState(unlocked, placed = []) {
   albumUnlocked = Math.max(0, Math.min(STICKERS.length, unlocked));
   albumPlaced = new Set(placed.filter(i => i >= 0 && i < albumUnlocked));
@@ -2906,6 +3072,43 @@ const MEADOW_FRIEND_KEYS = ['wm_met_hedge', 'wm_met_owl', 'wm_met_frog', 'wm_met
 function haveMetAllMeadowFriends() {
   return MEADOW_FRIEND_KEYS.every(k => localStorage.getItem(k) === '1');
 }
+// v0.27.0: счётчики друзей и сюжетные гейты Локаций 2 и 3 — по образцу Локации 1
+const SHORE_FRIEND_KEYS = ['wm_met_beaver', 'wm_met_frog2', 'wm_met_heron', 'wm_met_duck', 'wm_met_otter'];
+const THICKET_FRIEND_KEYS = ['wm_met_moose', 'wm_met_raccoon', 'wm_met_magpie', 'wm_met_mouse', 'wm_met_badger'];
+function haveMetAllShoreFriends() {
+  return SHORE_FRIEND_KEYS.every(k => localStorage.getItem(k) === '1');
+}
+function haveMetAllThicketFriends() {
+  return THICKET_FRIEND_KEYS.every(k => localStorage.getItem(k) === '1');
+}
+// v0.27.0 (живой тест): арка в Чащу открывается ТОЛЬКО после всех 5 жителей
+// Речного берега (раньше со второй локации можно было сразу уйти на третью).
+function shoreGateCheck() {
+  if (!haveMetAllShoreFriends() || localStorage.getItem('wm_story_shore') === '1') return;
+  localStorage.setItem('wm_story_shore', '1');
+  grantSticker();
+  revealPortalL3(true);
+  setTimeout(() => {
+    if (gameState !== 'explore') return;
+    showStory({
+      emoji: '🏞️', voice: null,
+      text: 'Река благодарит тебя! Все речные друзья помогли, жемчужины засияли — и на том берегу выросла арка в Лесную чащу. Там ждут новые друзья и новые чудеса!',
+    });
+  }, 900);
+}
+// v0.27.0: эпилог Лесной чащи — после всех 5 жителей (до общего финала 16 друзей)
+function thicketGateCheck() {
+  if (!haveMetAllThicketFriends() || localStorage.getItem('wm_story_thicket') === '1') return;
+  localStorage.setItem('wm_story_thicket', '1');
+  grantSticker();
+  setTimeout(() => {
+    if (gameState !== 'explore') return;
+    showStory({
+      emoji: '🌲', voice: null,
+      text: 'Чаща проснулась! Каждая капелька зажгла свой огонёк — теперь по ночам лес светится, как звёздное небо. Все шестнадцать друзей помнят твою доброту!',
+    });
+  }, 900);
+}
 // v0.25.1 (живой тест): счётчик «Друзья: X из 6» в углу + стрелка на последнего
 // ненайденного зверька (раньше Светлячка было очень легко не заметить).
 const friendCountEl = document.getElementById('friendCount');
@@ -2920,9 +3123,11 @@ function refreshMapBadge() {
 }
 function updateFriendCount() {
   if (!friendCountEl) return;
-  const met = MEADOW_FRIEND_KEYS.filter(k => localStorage.getItem(k) === '1').length;
-  friendCountEl.textContent = met >= 6 ? '⭐ Все друзья найдены!' : '🐾 Друзья: ' + met + ' из 6';
-  friendCountEl.style.display = (gameState === 'explore' && curLoc === 0) ? 'block' : 'none';
+  const keys = curLoc === 0 ? MEADOW_FRIEND_KEYS : curLoc === 1 ? SHORE_FRIEND_KEYS : THICKET_FRIEND_KEYS;
+  const total = keys.length;
+  const met = keys.filter(k => localStorage.getItem(k) === '1').length;
+  friendCountEl.textContent = met >= total ? '⭐ Все друзья найдены!' : '🐾 Друзья: ' + met + ' из ' + total;
+  friendCountEl.style.display = (gameState === 'explore' && curLoc >= 0) ? 'block' : 'none';
 }
 const LAST_FRIEND_ARROW = {
   wm_met_hedge: { x: HEDGE_POS.x, y: 2.1, z: HEDGE_POS.z },
@@ -3303,7 +3508,7 @@ function celebrate() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_hedge', '1'); bumpWin('hedge');
+  metFriend('hedge'); bumpWin('hedge');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/hedge_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(HEDGE_POS.x, 1.4, HEDGE_POS.z), 14);
@@ -3469,7 +3674,7 @@ function celebrateOwl() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_owl', '1'); bumpWin('owl');
+  metFriend('owl'); bumpWin('owl');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/sova_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(OWL_POS.x, 1.6, OWL_POS.z), 14);
@@ -3525,6 +3730,8 @@ function openBridgeGame(shore) {
   // 5–6 лет: у речной Лягушки все 3 раунда (в т.ч. А-Б-В); 3–4 года: 2 раунда попроще
   bg.total = ageLevel() ? 4 : 3; // v0.25.1: единые раунды у всех игр
   bgEl.querySelector('.cg-title').textContent = bg.shore ? '🌺 Речные камушки' : '🐸 Волшебный мостик';
+  // v0.27.0 (живой тест): у речной Лягушки — свой фон и игровая зона СПРАВА (как на Л1)
+  bgEl.classList.toggle('shore', bg.shore);
   bgEl.style.display = 'flex';
   if (!bgEl.querySelector('.mg-exit')) makeExitButton(bgEl);
   speak('voice/frog_ask.mp3', { after: true });
@@ -3634,7 +3841,7 @@ function celebrateFrog(shore) {
   stopVoice();
   play('fanfare');
   const px = shore ? FROG2_POS : FROG_POS;
-  localStorage.setItem(shore ? 'wm_met_frog2' : 'wm_met_frog', '1'); bumpWin(shore ? 'frog2' : 'frog');
+  metFriend(shore ? 'frog2' : 'frog'); bumpWin(shore ? 'frog2' : 'frog');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak(shore ? 'voice/frog2_win.mp3' : 'voice/frog_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(px.x, 1.4, px.z), 14);
@@ -3838,7 +4045,7 @@ function celebrateMole() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_mole', '1'); bumpWin('mole');
+  metFriend('mole'); bumpWin('mole');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/mole_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(MOLE_POS.x, 1.4, MOLE_POS.z), 14);
@@ -4014,7 +4221,7 @@ function celebrateSq() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_sq', '1'); bumpWin('sq');
+  metFriend('sq'); bumpWin('sq');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/sq_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(SQRL_POS.x, 1.4, SQRL_POS.z), 14);
@@ -4199,7 +4406,7 @@ function celebrateFirefly() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_fire', '1'); bumpWin('fire');
+  metFriend('fire'); bumpWin('fire');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/svet_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(FIRE_POS.x, 1.4, FIRE_POS.z), 14);
@@ -4426,7 +4633,7 @@ function celebrateHeron() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_heron', '1'); bumpWin('heron');
+  metFriend('heron'); bumpWin('heron');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/heron_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(HERON_POS.x, 1.8, HERON_POS.z), 14);
@@ -4488,6 +4695,12 @@ function startDuckDialog() {
 function buildDuckRound() {
   dk.found = 0;
   dk.diffs = [];
+  // v0.27.0: у каждого раунда СВОЯ сцена пруда — искать интереснее
+  const sceneIdx = dk.round % 3;
+  dkLeft.classList.remove('dk-bg-0', 'dk-bg-1', 'dk-bg-2');
+  dkRight.classList.remove('dk-bg-0', 'dk-bg-1', 'dk-bg-2');
+  dkLeft.classList.add('dk-bg-' + sceneIdx);
+  dkRight.classList.add('dk-bg-' + sceneIdx);
   const idx = DK_POOL.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, dkCount());
   const base = [];
   idx.forEach((di, k) => base.push({ index: di, pick: k }));
@@ -4558,7 +4771,7 @@ function celebrateDuck() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_duck', '1'); bumpWin('duck');
+  metFriend('duck'); bumpWin('duck');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/duck_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(DUCK_POS.x, 1.6, DUCK_POS.z), 14);
@@ -4661,7 +4874,7 @@ function celebrateOtter() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_otter', '1'); bumpWin('otter');
+  metFriend('otter'); bumpWin('otter');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/otter_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(OTTER_POS.x, 1.5, OTTER_POS.z), 14);
@@ -4748,6 +4961,10 @@ function buildMooseRound() {
   const goal = document.createElement('span');
   goal.className = 'ms-goal'; goal.textContent = '🫐';
   goalCell.appendChild(goal);
+  // v0.27.0: следующая клетка тропинки мягко пульсирует — понятно, куда нажимать
+  msGrid.querySelectorAll('.ms-cell').forEach(c => c.classList.remove('next'));
+  const firstNext = msGrid.querySelector(`.ms-cell[data-r="${ms.path[1][0]}"][data-c="${ms.path[1][1]}"]`);
+  if (firstNext) firstNext.classList.add('next');
 }
 function mooseTap(cell, r, c) {
   if (gameState !== 'moosegame') return;
@@ -4760,9 +4977,18 @@ function mooseTap(cell, r, c) {
   if (isNext) {
     // шаг по тропинке
     play('pickup');
+    const prevCell = msGrid.querySelector(`.ms-cell[data-r="${mr}"][data-c="${mc}"]`);
+    if (prevCell) prevCell.classList.add('done');
     const marker = cell.parentElement.querySelector('.ms-marker');
     cell.appendChild(marker);
     ms.idx++;
+    // подсветка переезжает на следующую клеточку тропинки
+    msGrid.querySelectorAll('.ms-cell').forEach(c => c.classList.remove('next'));
+    const [nxr, nxc] = ms.path[ms.idx + 1] || [null, null];
+    if (nxr != null) {
+      const nx = msGrid.querySelector(`.ms-cell[data-r="${nxr}"][data-c="${nxc}"]`);
+      if (nx) nx.classList.add('next');
+    }
     if (ms.idx >= ms.path.length - 1) {
       // дошли до ягод!
       play('good');
@@ -4801,7 +5027,7 @@ function celebrateMoose() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_moose', '1'); bumpWin('moose');
+  metFriend('moose'); bumpWin('moose');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/moose_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(MOOSE_POS.x, 2.2, MOOSE_POS.z), 14);
@@ -4901,7 +5127,7 @@ function celebrateRaccoon() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_raccoon', '1'); bumpWin('raccoon');
+  metFriend('raccoon'); bumpWin('raccoon');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/raccoon_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(RACCOON_POS.x, 1.6, RACCOON_POS.z), 14);
@@ -5013,7 +5239,7 @@ function celebrateMagpie() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_magpie', '1'); bumpWin('magpie');
+  metFriend('magpie'); bumpWin('magpie');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/magpie_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(MAGPIE_POS.x, 1.7, MAGPIE_POS.z), 14);
@@ -5035,10 +5261,10 @@ const mwMsg = document.getElementById('mwMsg');
 const mwBoard = document.getElementById('mwBoard');
 const mwFinger = document.getElementById('mwFinger');
 // пары [лёгкий, тяжёлый] — тяжёлый всегда вторым
-const MW_PAIRS = [['🪶', '🎃'], ['🍎', '🍉'], ['🌰', '🍉'], ['🐭', '🐻'], ['🍓', '🍍'], ['🦋', '🦆']];
+const MW_PAIRS = [['🪶', '🎃'], ['🍎', '🍉'], ['🌰', '🍈'], ['🐭', '🐻'], ['🍓', '🍍'], ['🦋', '🦆'], ['🍇', '🎃'], ['🐜', '🐿️'], ['🍒', '🍈'], ['🧸', '🐻']];
 // тройки [.., .., самый тяжёлый] — тяжёлый всегда третьим
-const MW_TRIPLES = [['🍎', '🍌', '🍉'], ['🍒', '🍓', '🍍'], ['🐹', '🐰', '🐻'], ['🐝', '🐦', '🦆']];
-const mw = { round: 0, heavyIdx: 0, lastSet: null, lastAction: 0, slow: 0, fingerShown: false, answered: false };
+const MW_TRIPLES = [['🍎', '🍌', '🍉'], ['🍒', '🍓', '🍍'], ['🐹', '🐰', '🐻'], ['🐝', '🐦', '🦆'], ['🍇', '🍎', '🎃'], ['🐜', '🐭', '🦔'], ['🌰', '🍈', '🍉'], ['🦋', '🐿️', '🦆']];
+const mw = { round: 0, heavyIdx: 0, lastSet: null, usedPairs: new Set(), usedTriples: new Set(), lastAction: 0, slow: 0, fingerShown: false, answered: false };
 function mwRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
 function startMouseDialog() {
   gameState = 'dialog';
@@ -5058,8 +5284,11 @@ function buildMouseRound() {
   mw.answered = false;
   let items, heavyIdx;
   if (ageLevel()) {
-    let set = MW_TRIPLES[Math.floor(rand() * MW_TRIPLES.length)];
-    if (mw.lastSet && set[2] === mw.lastSet[2]) set = MW_TRIPLES[(MW_TRIPLES.indexOf(set) + 1) % MW_TRIPLES.length];
+    // v0.27.0: наборы в рамках одной игры НЕ повторяются, пока есть из чего выбрать
+    let pool = MW_TRIPLES.filter(s => !mw.usedTriples.has(s[2]));
+    if (!pool.length) { mw.usedTriples.clear(); pool = MW_TRIPLES; }
+    let set = pool[Math.floor(rand() * pool.length)];
+    mw.usedTriples.add(set[2]);
     mw.lastSet = set;
     items = [...set]; heavyIdx = 2;
     const order = [0, 1, 2].sort(() => rand() - 0.5);
@@ -5077,8 +5306,11 @@ function buildMouseRound() {
       mwBoard.appendChild(c);
     });
   } else {
-    let pair = MW_PAIRS[Math.floor(rand() * MW_PAIRS.length)];
-    if (mw.lastSet && pair[1] === mw.lastSet[1]) pair = MW_PAIRS[(MW_PAIRS.indexOf(pair) + 1) % MW_PAIRS.length];
+    // v0.27.0: пары в рамках одной игры НЕ повторяются, пока есть из чего выбрать
+    let pool = MW_PAIRS.filter(p => !mw.usedPairs.has(p[1]));
+    if (!pool.length) { mw.usedPairs.clear(); pool = MW_PAIRS; }
+    let pair = pool[Math.floor(rand() * pool.length)];
+    mw.usedPairs.add(pair[1]);
     mw.lastSet = pair;
     items = pair; heavyIdx = 1;
     // тяжёлый предмет — случайно на левой или правой чаше
@@ -5139,7 +5371,7 @@ function celebrateMouse() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_mouse', '1'); bumpWin('mouse');
+  metFriend('mouse'); bumpWin('mouse');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/mouse_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(MOUSE_POS.x, 1.4, MOUSE_POS.z), 14);
@@ -5161,8 +5393,8 @@ const bdMsg = document.getElementById('bdMsg');
 const bdBoard = document.getElementById('bdBoard');
 const bdTray = document.getElementById('bdTray');
 const bdFinger = document.getElementById('bdFinger');
-const BD_IMGS = ['art/puzzle-mushroom.webp', 'art/puzzle-daisy.webp'];
-const bd = { round: 0, n: 4, cols: 2, rows: 2, img: 0, selected: null, done: 0, lastAction: 0, slow: 0, fingerShown: false };
+const BD_IMGS = ['art/puzzle-mushroom.webp', 'art/puzzle-daisy.webp', 'art/puzzle-berries.webp', 'art/puzzle-frog.webp'];
+const bd = { round: 0, gameImg: 0, n: 4, cols: 2, rows: 2, img: 0, selected: null, done: 0, lastAction: 0, slow: 0, fingerShown: false };
 // v0.25.1: единые раунды — 3–4 года: 3 картинки (4,4,6 кусочков); 5–6: 4 (6,6,8,8)
 function bdSizes() { return ageLevel() ? [6, 6, 8, 8] : [4, 4, 6]; }
 function bdRounds() { return ageLevel() ? 4 : 3; }
@@ -5196,7 +5428,8 @@ function buildBadgerRound() {
   bd.n = bdSizes()[bd.round];
   bd.cols = bd.n === 4 ? 2 : bd.n === 6 ? 3 : 4;
   bd.rows = bd.n / bd.cols;
-  bd.img = bd.round % BD_IMGS.length;
+  // v0.27.0: картинки в рамках одной игры НЕ повторяются (разные пазлы каждый раунд)
+  bd.img = (bd.gameImg + bd.round) % BD_IMGS.length;
   bdBoard.style.gridTemplateColumns = `repeat(${bd.cols}, 1fr)`;
   bdBoard.style.gridTemplateRows = `repeat(${bd.rows}, 1fr)`;
   // пустые места (рамки)
@@ -5268,6 +5501,7 @@ function badgerSlotTap(slot, idx) {
 function openBadgerGame() {
   gameState = 'badgergame';
   bd.round = 0; bd.slow = 0; bd.fingerShown = false;
+  bd.gameImg = Math.floor(Math.random() * BD_IMGS.length); // v0.27.0: новая случайная картинка на игру
   bd.lastAction = elapsed;
   buildBadgerRound();
   bdEl.style.display = 'flex';
@@ -5282,7 +5516,7 @@ function celebrateBadger() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_badger', '1'); bumpWin('badger');
+  metFriend('badger'); bumpWin('badger');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/badger_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(BADGER_POS.x, 1.5, BADGER_POS.z), 14);
@@ -5304,7 +5538,7 @@ function celebrateBeaver() {
   onTaskDone();
   stopVoice();
   play('fanfare');
-  localStorage.setItem('wm_met_beaver', '1'); bumpWin('beaver');
+  metFriend('beaver'); bumpWin('beaver');
   setTimeout(() => play('drop'), 450);
   setTimeout(() => speak('voice/bobr_win.mp3'), 600);
   spawnBurst(new THREE.Vector3(BEAVER_POS.x, 1.4, BEAVER_POS.z), 14);
@@ -5355,7 +5589,7 @@ function showStory(s) {
   storyOv.style.display = 'flex';
   stopVoice();
   play('pop');
-  speak(s.voice);
+  if (s.voice) speak(s.voice); // v0.27.0: карточки могут быть и без голоса (голос запишем после)
 }
 
 // ============ ФИНАЛ: все 16 друзей собраны ============
@@ -5368,6 +5602,7 @@ function checkEnding() {
   if (localStorage.getItem('wm_ending_seen') === '1') return;
   if (!ALL_FRIENDS.every(k => localStorage.getItem('wm_met_' + k) === '1')) return;
   localStorage.setItem('wm_ending_seen', '1');
+  grantSticker();
   gameState = 'ending';
   endingOv.style.display = 'flex';
   stopVoice();
@@ -5474,8 +5709,37 @@ let ch2Run = 0;           // защита от повторного запуск
 let ch2Timers = [];
 let ch2Gather = [];       // плавное схождение жителей к Древу (в animate)
 let ch2Hops = new Map();  // радостные подскоки по битам
+// v0.27.0: свои нарисованные картинки на шторке путешествий (не системные эмодзи)
+const TRAVEL_ICONS = {
+  arch: '<svg viewBox="0 0 100 100" aria-hidden="true">'
+    + '<path d="M20 78 Q20 24 50 18 Q80 24 80 78" fill="none" stroke="#c9a35c" stroke-width="7" stroke-linecap="round"/>'
+    + '<path d="M26 78 Q26 32 50 27 Q74 32 74 78" fill="none" stroke="#ffe9b0" stroke-width="3.5" stroke-linecap="round"/>'
+    + '<circle cx="50" cy="15" r="6" fill="#ffd166"/><circle cx="50" cy="15" r="10" fill="none" stroke="#ffd166" stroke-width="2" opacity=".55"/>'
+    + '<circle cx="20" cy="20" r="3.4" fill="#ffd166"/><circle cx="80" cy="20" r="3.4" fill="#ffd166"/><circle cx="50" cy="8" r="3" fill="#ffe9b0"/>'
+    + '<path d="M24 80 Q50 66 76 80 L76 84 Q50 70 24 84 Z" fill="#8ed081"/>'
+    + '<g fill="#ff9fb2"><circle cx="26" cy="72" r="3.4"/><circle cx="74" cy="72" r="3.4"/><circle cx="50" cy="62" r="3"/></g>'
+    + '<g fill="#ffd166"><path d="M30 84 l3-6 3 6 Z"/><path d="M64 84 l3-6 3 6 Z"/></g>'
+    + '</svg>',
+  arch2: '<svg viewBox="0 0 100 100" aria-hidden="true">'
+    + '<path d="M20 78 Q20 24 50 18 Q80 24 80 78" fill="none" stroke="#8a6f4d" stroke-width="7" stroke-linecap="round"/>'
+    + '<path d="M26 78 Q26 32 50 27 Q74 32 74 78" fill="none" stroke="#d9e8c8" stroke-width="3.5" stroke-linecap="round"/>'
+    + '<circle cx="50" cy="15" r="6" fill="#ffd166"/><circle cx="50" cy="15" r="10" fill="none" stroke="#ffd166" stroke-width="2" opacity=".55"/>'
+    + '<path d="M24 80 Q50 66 76 80 L76 84 Q50 70 24 84 Z" fill="#5fbf7a"/>'
+    + '<g fill="#2f7d5c"><path d="M30 82 l0-10 l4 4 l0 6 Z" transform="translate(-8,-10) scale(.9)"/><path d="M60 82 l0-10 l4 4 l0 6 Z" transform="translate(2,-14) scale(1.05)"/><path d="M45 80 l0-8 l3.4 3.4 l0 4.6 Z" transform="translate(14,-4) scale(.85)"/></g>'
+    + '<g fill="#ffb3c7"><circle cx="27" cy="71" r="3.2"/><circle cx="71" cy="73" r="3.2"/></g>'
+    + '</svg>',
+  home: '<svg viewBox="0 0 100 100" aria-hidden="true">'
+    + '<path d="M50 18 L86 48 L78 48 L78 82 L22 82 L22 48 L14 48 Z" fill="#e8c39a" stroke="#a4703f" stroke-width="3"/>'
+    + '<path d="M50 18 L86 48 L72 48 L50 30 L28 48 L14 48 Z" fill="#c96f4a" stroke="#9c4f33" stroke-width="3" stroke-linejoin="round"/>'
+    + '<rect x="45" y="58" width="10" height="24" rx="3" fill="#8a5a3b"/>'
+    + '<circle cx="73" cy="68" r="4.6" fill="#ffd166" opacity=".9"/>'
+    + '<g fill="#8ed081"><circle cx="22" cy="80" r="5"/><circle cx="80" cy="76" r="6"/><circle cx="12" cy="74" r="4"/></g>'
+    + '<g fill="#ffd166"><circle cx="63" cy="16" r="3.4"/><circle cx="34" cy="13" r="3"/><circle cx="80" cy="22" r="2.8"/></g>'
+    + '</svg>',
+};
 function startChapter2() {
   ch2AfterCard = true;
+  if (localStorage.getItem('wm_choir_sticker') !== '1') { localStorage.setItem('wm_choir_sticker', '1'); grantSticker(); }
   showStory({ emoji: '🎵', voice: 'voice/story2_narr.mp3',
     text: 'Ты помог всем шестерым друзьям! Осталась одна мечта Древа: чтобы его звезда светила не только ему, а всей полянке. Нажимай «Дальше» — начинается самая дружная песня!' });
 }
@@ -5516,7 +5780,8 @@ function startChoirCeremony() {
 }
 function ch2Beats(my) {
   if (my !== ch2Run) return;
-  // каждый житель добавляет свой звук (подскок + облачко вспыхивает)
+  // v0.27.0 (живой тест): жителей слышно не было — добавляем НАСТОЯЩУЮ песенку:
+  // арпеджио колокольчиков между «голосами» жителей + финальный хоровой аккорд.
   const beats = [
     { name: 'hedge', sfx: () => play('pop') },
     { name: 'owl', sfx: () => play('good') },
@@ -5525,18 +5790,23 @@ function ch2Beats(my) {
     { name: 'sq', sfx: () => play('whoosh') },
     { name: 'fire', sfx: () => [523.25, 659.25, 783.99, 880].forEach((f, i) => playNote(f, { delay: i * 0.14, dur: 0.4 })) },
   ];
+  // мелодия хора: до-ми-соль-ля-соль-ми-до, под каждым «голосом» жителя — своя нотка
+  const SONG = [523.25, 659.25, 783.99, 880.0, 783.99, 659.25, 523.25, 659.25];
   beats.forEach((b, i) => {
     ch2Timers.push(setTimeout(() => {
       if (my !== ch2Run) return;
       const g = ch2Gather.find(c => c.name === b.name);
       if (g) ch2Hops.set(g.npc, 0.5);
       b.sfx();
+      playNote(SONG[i], { vol: 0.34, dur: 0.5 });
+      playNote(SONG[i] * 2, { vol: 0.16, delay: 0.12, dur: 0.5 });
     }, 900 * (i + 1)));
   });
   // финальный аккорд: звезда ЗАСИЯЛА для всех
   ch2Timers.push(setTimeout(() => {
     if (my !== ch2Run) return;
     play('fanfare');
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playNote(f, { vol: 0.3, delay: i * 0.1, dur: 1.1 }));
     setTimeout(() => play('drop'), 350);
     starLit = true;
     applyStarLit();
@@ -5984,7 +6254,10 @@ function travelTo(dest) {
   for (const w of wolves) { spawnPoof(w.g.position, 4); scene.remove(w.g); }
   wolves.length = 0;
   hideGuideArrow();
-  travelEmoji.textContent = dest === 2 ? '🌲' : dest === 1 ? '🌉' : '🏡';
+  // v0.27.0 (живой тест): вместо эмодзи «красного моста» — своя картинка волшебной
+  // арки (и свои картинки для чащи и дома), совпадающая с текстом сказки
+  travelEmoji.innerHTML = TRAVEL_ICONS[dest === 2 ? 'arch2' : dest === 1 ? 'arch' : 'home'];
+  if (!localStorage.getItem('wm_travel')) { localStorage.setItem('wm_travel', '1'); grantSticker(); }
   travelName.textContent = LOCS[dest].name;
   travelSub.textContent = LOCS[dest].sub;
   travelOv.style.display = 'flex';
@@ -6040,10 +6313,10 @@ const selectEl = document.getElementById('select');
 let selectSpoken = false;
 const muteBtn = document.getElementById('muteBtn');
 if (muteBtn) {
-  muteBtn.textContent = isMuted() ? '🔇' : '🔊';
+  muteBtn.classList.toggle('off', isMuted());
   muteBtn.addEventListener('click', () => {
     initAudio();
-    muteBtn.textContent = toggleMute() ? '🔇' : '🔊';
+    muteBtn.classList.toggle('off', toggleMute());
   });
 }
 // Большая кнопка «Начало»: понятна и тем, кто не умеет читать. Заодно это тот самый
@@ -6178,7 +6451,7 @@ let sessSec = 0, playSecUnsaved = 0, breakShown = false;
 document.getElementById('pauseMute').addEventListener('click', () => {
   initAudio();
   const m = toggleMute();
-  muteBtn.textContent = m ? '🔇' : '🔊';
+  muteBtn.classList.toggle('off', m);
   document.getElementById('pauseMute').firstChild.textContent = m ? '🔇' : '🔊';
   play('pop');
 });
@@ -6844,16 +7117,20 @@ function animate() {
     const inMinigame = gameState !== 'explore' && gameState !== 'intro' && gameState !== 'travel' && gameState !== 'loading';
     // счётчик друзей и бэдж карты обновляем раз в игровую секунду (дёшево)
     if (Math.floor(elapsed) !== lastFriendSec) { lastFriendSec = Math.floor(elapsed); updateFriendCount(); refreshMapBadge(); }
-  if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && !inMinigame && curLoc === 0 && Math.random() < dt * 0.15) spawnWolf();
+  // v0.27.0: щекотуны — на ВСЕХ локациях (по два на локацию, у каждой свой зверёк)
+  if (nightness > 0.7 && wolves.length < 2 && tickling <= 0 && gameState === 'explore' && !hiding && !inMinigame && Math.random() < dt * 0.15) {
+    spawnCritter(curLoc === 0 ? 'wolf' : curLoc === 1 ? 'otterling' : 'foxling', curLoc);
+  }
     if (tickleCooldown > 0) tickleCooldown -= dt;
     for (let wi = wolves.length - 1; wi >= 0; wi--) {
       const w = wolves[wi];
+      const wcx = LOCS[w.loc].x, wcz = LOCS[w.loc].z; // центр СВОЕЙ локации
       if (nightness < 0.5) {
-        const d = Math.hypot(w.g.position.x, w.g.position.z);
-        const ex = w.g.position.x / d, ez = w.g.position.z / d;
+        const d = Math.hypot(w.g.position.x - wcx, w.g.position.z - wcz);
+        const ex = (w.g.position.x - wcx) / d, ez = (w.g.position.z - wcz) / d;
         w.g.position.x += ex * 2.5 * dt; w.g.position.z += ez * 2.5 * dt;
         w.g.rotation.y = Math.atan2(ex, ez) - Math.PI / 2;
-        // у края полянки волк «растворяется», а не уходит в пустоту
+        // у края полянки щекотун «растворяется», а не уходит в пустоту
         if (d > ISLAND_R - 0.3) {
           spawnBurst(new THREE.Vector3(w.g.position.x, 0.7, w.g.position.z), 8);
           play('whoosh');
@@ -6887,9 +7164,9 @@ function animate() {
           const moved = Math.hypot(mdx, mdz);
           if (moved < sp * 0.35) w.stuckT = (w.stuckT || 0) + dt; else w.stuckT = Math.max(0, (w.stuckT || 0) - dt * 2);
           if (w.stuckT > 0.5) { w.stuckT = 0; w.avoidT = 0.85; w.avoidSign = rand() < 0.5 ? 1 : -1; }
-          // волк никогда не уходит за видимый край полянки
-          const dc = Math.hypot(w.g.position.x, w.g.position.z);
-          if (dc > 13.4) { const k = 13.4 / dc; w.g.position.x *= k; w.g.position.z *= k; }
+          // щекотун никогда не уходит за видимый край своей полянки
+          const dc = Math.hypot(w.g.position.x - wcx, w.g.position.z - wcz);
+          if (dc > 13.4) { const k = 13.4 / dc; w.g.position.x = wcx + (w.g.position.x - wcx) * k; w.g.position.z = wcz + (w.g.position.z - wcz) * k; }
           if (moved > 0.0008) w.g.rotation.y = Math.atan2(mdx, mdz) - Math.PI / 2;
           w.g.position.y = Math.abs(Math.sin(elapsed * 8)) * 0.08;
         } else {
@@ -6900,16 +7177,16 @@ function animate() {
         if (!w.vanishing) {
           w.g.position.y = 0;
           w.fadeT = (w.fadeT || 0) + dt;
-          const d = Math.hypot(w.g.position.x, w.g.position.z);
+          const d = Math.hypot(w.g.position.x - wcx, w.g.position.z - wcz);
           if (d > 0.001) {
-            const ex = w.g.position.x / d, ez = w.g.position.z / d;
+            const ex = (w.g.position.x - wcx) / d, ez = (w.g.position.z - wcz) / d;
             const sl = slideCollide(w.g.position.x + ex * 3 * dt, w.g.position.z + ez * 3 * dt);
             const mdx = sl[0] - w.g.position.x, mdz = sl[1] - w.g.position.z;
             w.g.position.x = sl[0]; w.g.position.z = sl[1];
             if (Math.hypot(mdx, mdz) > 0.0008) w.g.rotation.y = Math.atan2(mdx, mdz) - Math.PI / 2;
           }
-          const dc = Math.hypot(w.g.position.x, w.g.position.z);
-          if (dc > ISLAND_R - 0.6) { const k = (ISLAND_R - 0.6) / dc; w.g.position.x *= k; w.g.position.z *= k; }
+          const dc = Math.hypot(w.g.position.x - wcx, w.g.position.z - wcz);
+          if (dc > ISLAND_R - 0.6) { const k = (ISLAND_R - 0.6) / dc; w.g.position.x = wcx + (w.g.position.x - wcx) * k; w.g.position.z = wcz + (w.g.position.z - wcz) * k; }
           // недолго убегает — и эффектный «ПУФ!»: волчок-юла, облачка и салют искр
           if (w.fadeT > 1.2) {
             w.vanishing = true;
@@ -7084,7 +7361,16 @@ function animate() {
     otterBubble.position.y = 2.2 + Math.sin(elapsed * 2.2 + 0.8) * 0.08;
   }
   // огоньки в Лесной чаще — ночью разгораются ярче
-  for (const gl of thicketGlows) { if (gl.material) gl.material.opacity = 0.3 + nightness * 0.65; }
+  // v0.27.0 (живой тест): огоньки чащи ЛЕТАЮТ — мягкий дрейф по кругу и покачивание
+  for (const gl of thicketGlows) {
+    if (gl.material) gl.material.opacity = 0.3 + nightness * 0.65 + Math.sin(elapsed * 2.1 + (gl.userData.ph || 0)) * 0.1;
+    const gb = gl.userData;
+    gl.position.x = gb.bx + Math.cos(elapsed * 0.4 + gb.ph) * 1.6;
+    gl.position.z = gb.bz + Math.sin(elapsed * 0.33 + gb.ph * 1.7) * 1.4;
+    gl.position.y = gb.by + Math.sin(elapsed * 1.3 + gb.ph) * 0.35;
+    const k = 1 + Math.sin(elapsed * 2.3 + gb.ph) * 0.25;
+    gl.scale.setScalar(gb.s0 * k);
+  }
   // Лось: степенно покачивает головой, добро моргает
   moose.userData.head.rotation.y = Math.sin(elapsed * 0.7) * 0.16;
   moose.userData.head.rotation.z = Math.sin(elapsed * 0.45) * 0.04;
@@ -7771,7 +8057,7 @@ if (location.hash.indexOf('#shot') === 0) {
       }
       else if (kind === 'portal') {
         // волшебная арка у восточного края полянки (+ золотая стрелочка)
-        starLit = true; applyStarLit(); revealPortal(false);
+        starLit = true; applyStarLit(); revealPortal(false); revealPortalL3(false);
         showGuideArrowAt(portalL1.position.x, 3.5, portalL1.position.z, 'portal');
       }
       else if (kind === 'travel') {
@@ -7781,7 +8067,7 @@ if (location.hash.indexOf('#shot') === 0) {
       }
       else if (kind === 'l2' || kind === 'l2night') {
         // Локация 2: герой стоит у мостика, вид на Бобра и речку
-        starLit = true; applyStarLit(); revealPortal(false);
+        starLit = true; applyStarLit(); revealPortal(false); revealPortalL3(false);
         if (kind === 'l2night') dayT = 0.6;
         jumpToLoc(1);
         hero.position.set(LOC2.x - 1.8, 0, LOC2.z + 3.2);
@@ -7791,7 +8077,7 @@ if (location.hash.indexOf('#shot') === 0) {
       }
       else if (kind === 'l3' || kind === 'l3night') {
         // Локация 3 «Лесная чаща»: герой у южного края, вид на ёлки и полянку
-        starLit = true; applyStarLit(); revealPortal(false);
+        starLit = true; applyStarLit(); revealPortal(false); revealPortalL3(false);
         if (kind === 'l3night') dayT = 0.6;
         jumpToLoc(2);
         hero.position.set(LOC3.x - 1.0, 0, LOC3.z - 8.0);
@@ -7804,7 +8090,7 @@ if (location.hash.indexOf('#shot') === 0) {
         setInterval(() => console.log('DBG hp=' + hero.position.x.toFixed(2) + ',' + hero.position.z.toFixed(2) + ' cl=' + curLoc + ' gs=' + gameState), 1000);
         // настоящие маршруты: 'walk' — из дома к арке (потом travelTo), 'walk2' — с берега к арке,
         // 'walk3' — через мостик с западного берега на восточный
-        starLit = true; applyStarLit(); revealPortal(false);
+        starLit = true; applyStarLit(); revealPortal(false); revealPortalL3(false);
         if (kind === 'walk2') {
           jumpToLoc(1);
           hero.position.set(LOC2.x - 6, 0, LOC2.z + 3);
@@ -7826,7 +8112,7 @@ if (location.hash.indexOf('#shot') === 0) {
       else if (kind === 'walk4' || kind === 'walk5') {
         // маршруты QA: walk4 — с Речного берега через северную арку в чащу; walk5 — обратно
         setInterval(() => console.log('DBG hp=' + hero.position.x.toFixed(2) + ',' + hero.position.z.toFixed(2) + ' cl=' + curLoc + ' gs=' + gameState), 1000);
-        starLit = true; applyStarLit(); revealPortal(false);
+        starLit = true; applyStarLit(); revealPortal(false); revealPortalL3(false);
         if (kind === 'walk4') {
           jumpToLoc(1);
           hero.position.set(LOC2.x + 1.6, 0, LOC2.z + 10.8);
