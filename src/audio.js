@@ -6,6 +6,7 @@ let master = null;
 let windGain = null;
 let nightLevel = 0;
 let muted = localStorage.getItem('wm_muted') === '1';
+let gamePaused = false; // v0.27.1: альбом/пауза глушат ВСЕ звуки мира (но не звуки самого альбома)
 
 function ensureCtx() {
   if (ctx) return true;
@@ -24,8 +25,10 @@ function ensureCtx() {
 export function initAudio() {
   if (!ensureCtx()) return;
   // v0.26.3: Android WebView уводит контекст в 'interrupted' (не только 'suspended') —
-  // без resume() эффекты/синтез молчат до перезапуска
-  if (ctx.state === 'suspended' || ctx.state === 'interrupted') ctx.resume();
+  // без resume() эффекты/синтез молчат до перезапуска.
+  // v0.27.1 (живой тест): НЕ будить звук, пока игра на паузе/в альбоме — раньше каждый
+  // тап по альбому «просыпал» ветер и окружение.
+  if ((ctx.state === 'suspended' || ctx.state === 'interrupted') && !gamePaused) ctx.resume();
 }
 
 export function isMuted() { return muted; }
@@ -139,6 +142,13 @@ const SFX = {
 
 export function play(name) {
   // v0.27.0: эффекты тоже не должны молчать при 'interrupted' (телефон)
+  // v0.27.1: на паузе/в альбоме мир молчит; звуки САМОГО альбома идут через playUI
+  if (!ctx || muted || gamePaused) return;
+  const fn = SFX[name];
+  if (fn) fn();
+}
+// Звуки интерфейса альбома/меню — работают и на паузе (мир при этом молчит)
+export function playUI(name) {
   if (!ctx || muted) return;
   const fn = SFX[name];
   if (fn) fn();
@@ -149,7 +159,8 @@ export function play(name) {
 export function playNote(freq, { delay = 0, dur = 0.5, vol = 0.26 } = {}) {
   // v0.27.0: не требовать state==='running' (Android WebView даёт 'interrupted' —
   // из-за этого хор/мелодии молчали); resume уже зовётся из initAudio/каждого жеста
-  if (!ctx || muted) return;
+  // v0.27.1: на паузе/в альбоме мелодии мира тоже молчат
+  if (!ctx || muted || gamePaused) return;
   tone(freq, dur, { vol, delay, type: 'sine' });
   tone(freq * 2, dur * 0.55, { vol: vol * 0.3, delay, type: 'sine' });
 }
@@ -162,7 +173,7 @@ const voiceCache = {};
 let lastVoice = null;
 let voiceGen = 0;
 export function speak(file, opts = {}) {
-  if (muted) return;
+  if (muted || gamePaused) return; // v0.27.1: в альбоме/паузе отложенные реплики не звучат
   // v0.26.3: реплики — это HTMLAudio, им НЕ нужен работающий Web Audio-контекст.
   // Раньше при ctx.state !== 'running' (телефон, 'interrupted'/'suspended')
   // реплики молча выбрасывались — Крот/Белка «не разговаривали».
@@ -216,6 +227,7 @@ export function stopVoice() {
 export function voicePlaying() { return !!(lastVoice && !lastVoice.paused && !lastVoice.ended); }
 // Пауза всей игры: глушим Web Audio и ставим реплики на паузу
 export function setGamePaused(p) {
+  gamePaused = p;
   try { Object.values(voiceCache).forEach(a => { if (p) a.pause(); else if (a.duration && a.currentTime > 0 && a.currentTime < a.duration) a.play().catch(() => {}); }); } catch (e) {}
   try { if (ctx) { if (p) ctx.suspend(); else ctx.resume(); } } catch (e) {}
 }

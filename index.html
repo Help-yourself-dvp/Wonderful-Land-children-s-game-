@@ -261,11 +261,16 @@
       font-size: clamp(26px,4vw,40px); z-index: 2; line-height: 1;
     }
     .album-slot.locked { font-size: clamp(17px,2.7vw,26px); color: #789080; background: rgba(255,255,255,.36); border: 3px dotted rgba(89,108,88,.46); }
-    /* v0.25.2: собственные SVG-значки наклеек */
-    .album-slot svg, .album-sticker svg, .reward-sticker svg { width: 80%; height: 80%; display: block; }
-    .album-slot.ready { cursor: pointer; color: transparent; text-shadow: 0 0 0 rgba(255,255,255,.82); filter: grayscale(1); opacity: .68; background: rgba(255,255,255,.44); border: 3px dashed rgba(255,255,255,.92); box-shadow: 0 2px 8px rgba(66,97,68,.18); }
+    /* v0.27.1: наклейки — бейджи (круглый фон в самом SVG): слот без рамок */
+    .album-slot svg, .album-sticker svg, .reward-sticker svg { width: 96%; height: 96%; display: block; }
+    .album-slot { background: transparent; border: none; box-shadow: none; }
+    .album-slot.ready { cursor: pointer; opacity: .85; filter: none; }
+    .album-slot.ready svg { filter: saturate(.95) drop-shadow(0 2px 3px rgba(66,97,68,.25)); }
+    .album-slot.ready::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; border: 2.5px dashed rgba(255,255,255,.95); pointer-events: none; }
     /* приклеенная наклейка — ЯРКАЯ, с золотым колечком (живой тест: раньше выглядела как пустой макет) */
-    .album-slot.placed { filter: none; opacity: 1; background: #fffdf0; border: 3px solid #ffd166; box-shadow: 0 0 0 4px rgba(255,209,102,.55), 0 4px 14px rgba(90,60,20,.3); animation: stickerPop .34s ease-out; }
+    .album-slot.placed { opacity: 1; filter: none; }
+    .album-slot.placed svg { filter: drop-shadow(0 3px 4px rgba(90,60,20,.35)); }
+    .album-slot.placed::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 3px solid #ffd166; box-shadow: 0 0 0 4px rgba(255,209,102,.45), 0 4px 12px rgba(90,60,20,.28); pointer-events: none; animation: stickerPop .34s ease-out; }
     .album-slot.match { animation: albumMatch 1s ease-in-out infinite; opacity: 1; }
     .album-slot.gentle-no { animation: albumGentleNo .34s ease-out; }
     #albumHelp { text-align: center; color: #766149; font-size: clamp(11px,1.7vw,15px); font-weight: 800; min-height: 18px; padding: 2px 10px 0; line-height: 1.1; }
@@ -1522,7 +1527,7 @@
       .sq-msg, .st-msg, .ml-counter, .bv-label { height: clamp(12px, 3.4vh, 16px); font-size: clamp(10px, 2.8vh, 14px); }
     }
 
-    /* v0.26.2: наклейки КРУПНЕЕ (читаются и взрослому), сетка 3×2 проверена */
+    /* v0.26.2/v0.27.1: наклейки КРУПНЕЕ (читаются и взрослому), сетка 3×2 проверена */
     .album-slot {
       position: absolute; left: var(--x); top: var(--y);
       width: clamp(58px, 7.4vw, 74px); height: clamp(58px, 7.4vw, 74px);
@@ -1530,7 +1535,7 @@
       user-select: none; touch-action: manipulation; transition: transform .16s, box-shadow .16s, background .16s;
       z-index: 2; line-height: 1;
     }
-    .album-slot svg { width: 92%; height: 92%; }
+    .album-slot svg { width: 96%; height: 96%; }
     .album-sticker {
       position: relative; flex: 0 0 auto; width: clamp(50px, 6.4vw, 62px); height: clamp(50px, 6.4vw, 62px);
       border-radius: 50%; border: 3px solid #e4c985; background: #fff; display: flex; align-items: center; justify-content: center;

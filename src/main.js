@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused, voicePlaying } from './audio.js';
+import { initAudio, play, playUI, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused, voicePlaying } from './audio.js';
 // @capacitor/app регистрируется НАТИВНО (window.Capacitor.Plugins.App) после `cap sync`;
 // импортировать его в веб-бандл нельзя — он тянет динамический чанк, который ломает
 // file://-превью («Failed to fetch dynamically imported module»).
@@ -1390,13 +1390,22 @@ function revealPortalL3(withFx) {
   spawnBurst(new THREE.Vector3(portalL3.position.x, 1.6, portalL3.position.z), 16);
   play('drop');
 }
-portalL1.visible = starLit;
-portalL2.visible = starLit;
-{
-  const shoreDone = ['beaver', 'frog2', 'heron', 'duck', 'otter'].every(k => localStorage.getItem('wm_met_' + k) === '1');
-  portalL3.visible = starLit && shoreDone;
-  portalL3b.visible = starLit && shoreDone;
+// v0.27.1 (живой тест): у владельца с «пройденной игрой и 4 главами» арка в чащу
+// пропала — один из старых флагов wm_met_* отсутствовал в сохранении. Правило:
+// если игрок УЖЕ бывал в чаще (или прошёл её/финал) — арка остаётся, даже если
+// какой-то флаг знакомства потерялся.
+function reconcilePortals() {
+  const veteranL3 = localStorage.getItem('wm_visit_l3') === '1'
+    || localStorage.getItem('wm_story_thicket') === '1'
+    || localStorage.getItem('wm_ending_seen') === '1';
+  const shoreOk = ['beaver', 'frog2', 'heron', 'duck', 'otter'].every(k => localStorage.getItem('wm_met_' + k) === '1')
+    || veteranL3;
+  portalL1.visible = starLit;
+  portalL2.visible = starLit;
+  portalL3.visible = starLit && shoreOk;
+  portalL3b.visible = starLit && shoreOk;
 }
+reconcilePortals();
 
 // ----- ЛЕСНАЯ ЧАЩА (Локация 3): остров густого леса с ёлками, пеньками и грибами -----
 const thicketGlows = []; // огоньки-светлячки чаще (ночью ярче — в animate)
@@ -2719,64 +2728,177 @@ let tasksDone = parseInt(localStorage.getItem('wm_tasks') || '0', 10);
 // v0.25.2: СВОИ рисованные значки альбома (SVG) вместо системных эмодзи —
 // на всех Android выглядят одинаково. Каждый — простые формы 64×64.
 const STICKER_ICONS = {
-  drop: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 C32 8 14 32 14 43 a18 18 0 0 0 36 0 C50 32 32 8 32 8 Z" fill="#5ec8f2"/><circle cx="25" cy="42" r="4" fill="#dff3ff"/></svg>',
-  sprout: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 56 V26" stroke="#5a9e3e" stroke-width="5" stroke-linecap="round"/><path d="M32 42 C24 36 14 40 12 30 C22 30 28 36 32 42 Z" fill="#7ecb5f"/><path d="M32 34 C40 28 50 32 52 22 C42 22 36 28 32 34 Z" fill="#8fd07a"/></svg>',
-  apple: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 22 C28 20 27 16 29 12" stroke="#7a5230" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M46 34 a14 16 0 0 1 -28 0 a14 16 0 0 1 28 0 Z" fill="#e8563f"/><path d="M50 26 a14 16 0 0 1 -28 0 a14 16 0 0 1 28 0 Z" fill="#f2765f"/><circle cx="27" cy="32" r="4" fill="#ffd9c9"/></svg>',
-  hedgehog: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M22 36 L14 24 L22 20 L18 12 L30 14 L32 4 L38 16 L48 10 L44 22 L54 26 L44 34 L50 40 L40 42 L38 50 L30 44 L24 50 Z" fill="#a5763f"/><ellipse cx="31" cy="38" rx="9" ry="7" fill="#f2dfc0"/><circle cx="28" cy="36" r="1.8" fill="#3a2c1c"/><circle cx="35" cy="36" r="1.8" fill="#3a2c1c"/></svg>',
-  tree: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="28" y="42" width="8" height="16" rx="3" fill="#9a6b4f"/><circle cx="32" cy="34" r="14" fill="#6cbf6f"/><circle cx="24" cy="38" r="8" fill="#7ecb7f"/><circle cx="40" cy="38" r="8" fill="#5fb565"/><circle cx="32" cy="30" r="3" fill="#ffd166"/></svg>',
-  owl: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 34 a18 22 0 0 1 36 0 a18 22 0 0 1 -36 0 Z" fill="#a87f4e"/><circle cx="22" cy="30" r="7" fill="#fff"/><circle cx="42" cy="30" r="7" fill="#fff"/><circle cx="22" cy="30" r="3" fill="#2b2b2b"/><circle cx="42" cy="30" r="3" fill="#2b2b2b"/><path d="M32 38 L28 44 L36 44 Z" fill="#f2994c"/></svg>',
-  frog: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="36" r="17" fill="#5cb84a"/><circle cx="24" cy="24" r="6" fill="#5cb84a"/><circle cx="40" cy="24" r="6" fill="#5cb84a"/><circle cx="24" cy="24" r="4" fill="#fff"/><circle cx="40" cy="24" r="4" fill="#fff"/><circle cx="24" cy="24" r="2" fill="#2b2b2b"/><circle cx="40" cy="24" r="2" fill="#2b2b2b"/><path d="M24 40 Q32 46 40 40" stroke="#3f7a2e" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
-  carrot: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 52 L18 34 L46 34 Z" fill="#f2944c"/><path d="M32 34 C28 24 26 18 30 10" stroke="#6fbf5f" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M36 34 C36 24 40 18 38 8" stroke="#7ecb5f" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M21 36 L24 31 M27 36 L30 31 M33 36 L36 31 M39 36 L42 31" stroke="#d97a2e" stroke-width="2"/></svg>',
-  squirrel: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="28" cy="38" rx="12" ry="14" fill="#d9904a"/><path d="M38 34 C52 26 54 12 44 10 C40 22 34 28 30 32 Z" fill="#b96a2e"/><circle cx="26" cy="24" r="9" fill="#d9904a"/><circle cx="23" cy="23" r="2" fill="#3a2c1c"/><circle cx="29" cy="23" r="2" fill="#3a2c1c"/><circle cx="26" cy="28" r="1.6" fill="#3a2c1c"/><path d="M18 18 L12 8 L22 12 Z" fill="#d9904a"/></svg>',
-  firefly: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="16" fill="#ffe08a" opacity=".45"/><ellipse cx="32" cy="38" rx="10" ry="13" fill="#8a5a3b"/><path d="M22 32 C14 26 12 18 16 12 C22 20 26 26 24 34 Z" fill="#bfe3ff" opacity=".8"/><path d="M42 32 C50 26 52 18 48 12 C42 20 38 26 40 34 Z" fill="#bfe3ff" opacity=".8"/><circle cx="32" cy="24" r="7" fill="#6f452c"/><circle cx="29" cy="23" r="1.8" fill="#fff"/><circle cx="35" cy="23" r="1.8" fill="#fff"/></svg>',
-  star: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 L39 25 L59 25 L43 37 L49 57 L32 45 L15 57 L21 37 L5 25 L25 25 Z" fill="#ffd166"/></svg>',
-  rainbow: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 44 a24 24 0 0 1 48 0" stroke="#f28ba8" stroke-width="6" fill="none"/><path d="M13 44 a19 19 0 0 1 38 0" stroke="#f5b45e" stroke-width="6" fill="none"/><path d="M18 44 a14 14 0 0 1 28 0" stroke="#8fd694" stroke-width="6" fill="none"/><path d="M23 44 a9 9 0 0 1 18 0" stroke="#8fc3f0" stroke-width="6" fill="none"/></svg>',
-  note: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="22" cy="44" r="6" fill="#7d68a8"/><rect x="26" y="12" width="6" height="32" fill="#7d68a8"/><path d="M26 16 L46 10 L46 38" stroke="#7d68a8" stroke-width="5" fill="none"/><circle cx="40" cy="44" r="6" fill="#7d68a8"/></svg>',
-  brightstar: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 L37 24 L54 24 L40 34 L45 51 L32 40 L19 51 L24 34 L10 24 L27 24 Z" fill="#ffe08a"/><path d="M32 8 L33 2 M37 24 L46 18 M54 24 L60 25 M40 34 L48 38 M45 51 L50 58" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/></svg>',
-  moon: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M42 8 a24 24 0 1 0 16 38 A20 20 0 0 1 42 8 Z" fill="#f2d9a0"/><circle cx="50" cy="16" r="2.5" fill="#ffe9c4"/><circle cx="44" cy="28" r="1.8" fill="#ffe9c4"/></svg>',
-  song: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="16" cy="46" r="6" fill="#e26d8c"/><rect x="20" y="14" width="6" height="32" fill="#e26d8c"/><circle cx="42" cy="46" r="6" fill="#e26d8c"/><rect x="46" y="18" width="6" height="28" fill="#e26d8c"/><path d="M23 18 L46 22 M49 22 L23 18" stroke="#e26d8c" stroke-width="4" fill="none"/></svg>',
-  bell: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 30 L44 30 L42 44 A10 8 0 0 1 22 44 Z" fill="#f2c94c"/><rect x="18" y="28" width="28" height="6" rx="3" fill="#d9ad3a"/><circle cx="32" cy="52" r="5" fill="#d9ad3a"/><path d="M32 8 L34 14" stroke="#d9ad3a" stroke-width="4" stroke-linecap="round"/></svg>',
-  spark: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 C34 22 42 30 56 32 C42 34 34 42 32 56 C30 42 22 34 8 32 C22 30 30 22 32 8 Z" fill="#ffe9a8"/></svg>',
-  arch: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 52 V30 a18 18 0 0 1 36 0 V52" stroke="#8a5a3b" stroke-width="6" fill="none"/><path d="M14 52 V34 a18 18 0 0 1 36 0 V52" stroke="#7ba05a" stroke-width="3" fill="none"/><circle cx="32" cy="38" r="5" fill="#aef2ff" opacity=".8"/></svg>',
-  twig: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 56 C30 40 34 26 46 12" stroke="#8a6a4a" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="46" cy="14" rx="9" ry="5" fill="#7ecb5f" transform="rotate(-40 46 14)"/><ellipse cx="38" cy="26" rx="8" ry="4.5" fill="#8fd07a" transform="rotate(-40 38 26)"/><ellipse cx="28" cy="38" rx="7" ry="4" fill="#6fbf5f" transform="rotate(-40 28 38)"/></svg>',
-  lily: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="40" rx="20" ry="10" fill="#5fbf7a"/><path d="M32 40 L24 22 C28 20 36 20 40 22 Z" fill="#f28bb4"/><path d="M32 40 L14 32 C16 27 22 25 27 27 Z" fill="#f7a8c4"/><path d="M32 40 L50 32 C48 27 42 25 37 27 Z" fill="#f7a8c4"/><circle cx="32" cy="36" r="4" fill="#ffd166"/></svg>',
-  beaver: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="30" cy="36" rx="13" ry="15" fill="#8a5a3b"/><circle cx="28" cy="20" r="10" fill="#8a5a3b"/><rect x="25" y="28" width="3" height="6" fill="#fff"/><rect x="31" y="28" width="3" height="6" fill="#fff"/><circle cx="24" cy="18" r="1.8" fill="#2b2118"/><circle cx="32" cy="18" r="1.8" fill="#2b2118"/><ellipse cx="42" cy="46" rx="10" ry="6" fill="#6f452c" transform="rotate(30 42 46)"/></svg>',
-  log: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="32" rx="24" ry="14" fill="#b07b4f"/><ellipse cx="24" cy="32" rx="3" ry="13" fill="#8a5a3b"/><ellipse cx="38" cy="32" rx="3" ry="13" fill="#8a5a3b"/><ellipse cx="24" cy="32" rx="6" ry="10" fill="#d8a566"/><ellipse cx="24" cy="32" rx="3" ry="6" fill="#b07b4f"/></svg>',
-  stone: '<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="30" cy="38" rx="18" ry="13" fill="#9aa28c"/><ellipse cx="24" cy="34" rx="6" ry="4" fill="#c2c9b8" opacity=".8"/><ellipse cx="46" cy="46" rx="10" ry="8" fill="#7d8572"/></svg>',
+  // v0.27.1 (живой тест): все наклейки переработаны — единые тёплые круглые бейджи
+  // с золотым ободком и понятными крупными картинками.
+  hedgehog: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<g stroke="#7a5230" stroke-width="1.6">'
+    + '<path d="M14 36 L12 26 L18 24 L16 14 L26 18 L32 8 L38 18 L48 14 L46 24 L52 26 L50 36 L54 40 L46 44 L48 52 L38 48 L32 56 L26 48 L16 52 L18 44 L10 40 Z" fill="#b07b4f"/>'
+    + '</g><ellipse cx="32" cy="38" rx="10" ry="8" fill="#f2dfc0"/>'
+    + '<circle cx="28" cy="36" r="1.9" fill="#3a2c1c"/><circle cx="36" cy="36" r="1.9" fill="#3a2c1c"/>'
+    + '<circle cx="32" cy="42" r="1.7" fill="#3a2c1c"/></svg>',
+  owl: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M15 33 a17 20 0 0 1 34 0 a17 20 0 0 1 -34 0 Z" fill="#a87f4e"/>'
+    + '<path d="M12 30 L8 16 L20 22 Z" fill="#8a6a4a"/><path d="M52 30 L56 16 L44 22 Z" fill="#8a6a4a"/>'
+    + '<circle cx="23" cy="31" r="7" fill="#fff"/><circle cx="41" cy="31" r="7" fill="#fff"/>'
+    + '<circle cx="23" cy="31" r="3.2" fill="#2b2b2b"/><circle cx="41" cy="31" r="3.2" fill="#2b2b2b"/>'
+    + '<path d="M32 40 L28 45 L36 45 Z" fill="#f2994c"/></svg>',
+  frog: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<circle cx="32" cy="38" r="17" fill="#5cb84a"/>'
+    + '<circle cx="23" cy="25" r="6.5" fill="#5cb84a"/><circle cx="41" cy="25" r="6.5" fill="#5cb84a"/>'
+    + '<circle cx="23" cy="25" r="4.4" fill="#fff"/><circle cx="41" cy="25" r="4.4" fill="#fff"/>'
+    + '<circle cx="23" cy="25" r="2.2" fill="#2b2b2b"/><circle cx="41" cy="25" r="2.2" fill="#2b2b2b"/>'
+    + '<path d="M24 42 Q32 48 40 42" stroke="#3f7a2e" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="17" cy="45" r="2.6" fill="#f28bb4"/><circle cx="47" cy="45" r="2.6" fill="#f28bb4"/></svg>',
+  mole: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="32" cy="40" rx="18" ry="15" fill="#8a6a4a"/>'
+    + '<path d="M32 40 L22 22 L42 22 Z" fill="#c5a06a"/>'
+    + '<ellipse cx="32" cy="22" rx="6" ry="4.4" fill="#f2c9d0"/>'
+    + '<circle cx="28" cy="38" r="1.9" fill="#2b2118"/><circle cx="36" cy="38" r="1.9" fill="#2b2118"/>'
+    + '<path d="M22 47 Q32 51 42 47" stroke="#5c4030" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+  squirrel: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="28" cy="40" rx="12" ry="14" fill="#d9904a"/>'
+    + '<path d="M38 34 C54 26 56 10 44 9 C40 24 34 30 29 34 Z" fill="#b96a2e"/>'
+    + '<circle cx="26" cy="26" r="9" fill="#d9904a"/>'
+    + '<path d="M17 20 L9 9 L21 13 Z" fill="#d9904a"/>'
+    + '<circle cx="23" cy="25" r="2" fill="#3a2c1c"/><circle cx="29" cy="25" r="2" fill="#3a2c1c"/><circle cx="26" cy="30" r="1.6" fill="#3a2c1c"/>'
+    + '<ellipse cx="17" cy="34" rx="5" ry="7" fill="#f2dfc0"/></svg>',
+  firefly: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<circle cx="32" cy="36" r="17" fill="#ffe08a" opacity=".5"/>'
+    + '<ellipse cx="32" cy="40" rx="10" ry="12" fill="#6f452c"/>'
+    + '<path d="M21 33 C13 27 11 19 15 12 C21 20 26 27 24 35 Z" fill="#cfe8ff"/><path d="M43 33 C51 27 53 19 49 12 C43 20 38 27 40 35 Z" fill="#cfe8ff"/>'
+    + '<circle cx="32" cy="26" r="7" fill="#5c3a24"/>'
+    + '<circle cx="29" cy="25" r="1.8" fill="#fff"/><circle cx="35" cy="25" r="1.8" fill="#fff"/>'
+    + '<circle cx="32" cy="52" r="3.4" fill="#ffd166"/></svg>',
+  beaver: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="30" cy="38" rx="13" ry="15" fill="#8a5a3b"/>'
+    + '<circle cx="29" cy="22" r="10" fill="#8a5a3b"/>'
+    + '<rect x="26" y="30" width="3" height="6" rx="1.5" fill="#fff"/><rect x="32" y="30" width="3" height="6" rx="1.5" fill="#fff"/>'
+    + '<circle cx="25" cy="20" r="1.9" fill="#2b2118"/><circle cx="33" cy="20" r="1.9" fill="#2b2118"/>'
+    + '<circle cx="29" cy="26" r="1.7" fill="#2b2118"/>'
+    + '<ellipse cx="43" cy="47" rx="10" ry="6" fill="#6f452c" transform="rotate(30 43 47)"/>'
+    + '<path d="M8 12 h10 M8 16 h8" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/></svg>',
+  frog2: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<circle cx="32" cy="40" r="16" fill="#5cb84a"/>'
+    + '<circle cx="24" cy="27" r="6" fill="#5cb84a"/><circle cx="40" cy="27" r="6" fill="#5cb84a"/>'
+    + '<circle cx="24" cy="27" r="4" fill="#fff"/><circle cx="40" cy="27" r="4" fill="#fff"/>'
+    + '<circle cx="24" cy="27" r="2" fill="#2b2b2b"/><circle cx="40" cy="27" r="2" fill="#2b2b2b"/>'
+    + '<path d="M25 43 Q32 48 39 43" stroke="#3f7a2e" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    + '<g fill="#f28bb4"><ellipse cx="41" cy="17" rx="4.6" ry="2.6" transform="rotate(30 41 17)"/><ellipse cx="34" cy="14.4" rx="4.4" ry="2.5" transform="rotate(-25 34 14.4)"/></g>'
+    + '<circle cx="37.5" cy="16.5" r="2" fill="#ffd166"/></svg>',
+  heron: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="32" cy="28" rx="13" ry="11" fill="#fff"/>'
+    + '<circle cx="32" cy="16" r="8" fill="#fff"/>'
+    + '<path d="M39 17 L56 22 L39 21 Z" fill="#f2994c"/>'
+    + '<circle cx="34" cy="14" r="1.6" fill="#2b2b2b"/>'
+    + '<path d="M32 39 L30 54 M40 36 L41 54" stroke="#f2994c" stroke-width="3.4" stroke-linecap="round"/>'
+    + '<path d="M8 54 Q18 46 26 48" stroke="#5ec8f2" stroke-width="4" fill="none" stroke-linecap="round"/></svg>',
+  duck: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="34" cy="34" rx="14" ry="11" fill="#ffd166"/>'
+    + '<circle cx="26" cy="20" r="9" fill="#ffd166"/>'
+    + '<path d="M20 18 L8 20 L19 23 Z" fill="#f2994c"/>'
+    + '<circle cx="25" cy="18" r="2" fill="#2b2118"/>'
+    + '<path d="M10 50 Q24 44 38 47 Q50 49 56 46" stroke="#7ecbe8" stroke-width="5" fill="none" stroke-linecap="round"/></svg>',
+  otter: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="30" cy="38" rx="17" ry="11" fill="#8a6a4f"/>'
+    + '<circle cx="32" cy="18" r="9" fill="#8a6a4f"/>'
+    + '<ellipse cx="32" cy="24" rx="5.4" ry="4.4" fill="#e8d8c0"/>'
+    + '<circle cx="29" cy="16.6" r="1.8" fill="#2b2118"/><circle cx="35" cy="16.6" r="1.8" fill="#2b2118"/>'
+    + '<circle cx="32" cy="20.5" r="1.6" fill="#2b2118"/>'
+    + '<ellipse cx="13" cy="42" rx="7" ry="4" fill="#8a6a4f"/>'
+    + '<ellipse cx="48" cy="46" rx="9" ry="4.5" fill="#8a6a4f"/></svg>',
+  moose: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="32" cy="40" rx="13" ry="12" fill="#a5764b"/>'
+    + '<ellipse cx="32" cy="26" rx="11" ry="9" fill="#a5764b"/>'
+    + '<ellipse cx="32" cy="32" rx="7" ry="5.4" fill="#e8c9a0"/>'
+    + '<circle cx="28" cy="25" r="1.8" fill="#2b2118"/><circle cx="36" cy="25" r="1.8" fill="#2b2118"/>'
+    + '<path d="M21 18 L15 8 L24 14 Z M43 18 L49 8 L40 14 Z" fill="#8a5a3b"/>'
+    + '<path d="M15 8 Q12 12 17 15 M49 8 Q52 12 47 15" stroke="#8a5a3b" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    + '<path d="M20 15 Q14 17 15 20 M44 15 Q50 17 49 20" stroke="#8a5a3b" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>',
+  raccoon: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<circle cx="32" cy="34" r="17" fill="#9aa0a8"/>'
+    + '<path d="M14 14 L21 10 L27 14 Z" fill="#6f7478"/><path d="M50 14 L43 10 L37 14 Z" fill="#6f7478"/>'
+    + '<ellipse cx="32" cy="36" rx="9" ry="7" fill="#e8e4da"/>'
+    + '<ellipse cx="24" cy="32" rx="5.4" ry="8" fill="#2e2e34"/><ellipse cx="40" cy="32" rx="5.4" ry="8" fill="#2e2e34"/>'
+    + '<circle cx="25" cy="31" r="2" fill="#fff"/><circle cx="39" cy="31" r="2" fill="#fff"/>'
+    + '<circle cx="25" cy="31" r="1" fill="#2b2b2b"/><circle cx="39" cy="31" r="1" fill="#2b2b2b"/>'
+    + '<circle cx="32" cy="39" r="2" fill="#2e2e34"/>'
+    + '<path d="M16 50 Q20 43 26 45 M48 50 Q44 43 38 45" stroke="#9aa0a8" stroke-width="5" fill="none" stroke-linecap="round"/></svg>',
+  magpie: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="32" cy="28" rx="12" ry="10" fill="#fff"/>'
+    + '<circle cx="31" cy="15" r="8" fill="#2e2e34"/>'
+    + '<path d="M32 13 L52 8 L38 18 Z" fill="#2e2e34"/>'
+    + '<circle cx="32" cy="13.6" r="1.5" fill="#fff"/>'
+    + '<path d="M24 38 Q18 52 10 55 Q16 45 21 40 Z" fill="#2e2e34"/>'
+    + '<path d="M30 37 Q32 45 31 50" stroke="#2e2e34" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    + '<path d="M28 41 L36 44 L29 47 Z" fill="#7ecbe8"/></svg>',
+  mouse: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="32" cy="42" rx="14" ry="12" fill="#b9bdc4"/>'
+    + '<circle cx="18" cy="18" r="8" fill="#b9bdc4"/><circle cx="46" cy="18" r="8" fill="#b9bdc4"/>'
+    + '<circle cx="18" cy="18" r="4.4" fill="#f2b8c4"/><circle cx="46" cy="18" r="4.4" fill="#f2b8c4"/>'
+    + '<path d="M32 42 L32 26 a5 5 0 0 1 5 -5 a5 5 0 0 1 5 5 L42 42 Z" fill="#b9bdc4"/>'
+    + '<circle cx="26" cy="36" r="1.8" fill="#2b2b2b"/><circle cx="36" cy="36" r="1.8" fill="#2b2b2b"/>'
+    + '<circle cx="31" cy="42" r="2" fill="#f2b8c4"/>'
+    + '<path d="M22 54 Q28 50 34 52" stroke="#b9bdc4" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+  badger: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<ellipse cx="32" cy="38" rx="16" ry="13" fill="#8a8a92"/>'
+    + '<circle cx="32" cy="26" r="11" fill="#f2f0ea"/>'
+    + '<rect x="22" y="22" width="7" height="14" rx="3.4" fill="#2e2e34" transform="rotate(16 25 29)"/>'
+    + '<rect x="35" y="22" width="7" height="14" rx="3.4" fill="#2e2e34" transform="rotate(-16 39 29)"/>'
+    + '<rect x="28" y="14" width="8" height="6" rx="3" fill="#2e2e34"/>'
+    + '<circle cx="26" cy="27" r="1.8" fill="#141414"/><circle cx="38" cy="27" r="1.8" fill="#141414"/>'
+    + '<circle cx="32" cy="33" r="2" fill="#2e2e34"/>'
+    + '<circle cx="20" cy="18" r="4" fill="#2e2e34"/><circle cx="44" cy="18" r="4" fill="#2e2e34"/>'
+    + '<path d="M16 48 Q24 43 32 45" stroke="#8a8a92" stroke-width="5" fill="none" stroke-linecap="round"/></svg>',
+  drop: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M32 10 C32 10 14 32 14 43 a18 18 0 0 0 36 0 C50 32 32 10 32 10 Z" fill="#5ec8f2"/>'
+    + '<path d="M24 44 a8 8 0 0 1 8 -8" stroke="#dff3ff" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="25" cy="46" r="3" fill="#dff3ff" opacity=".9"/></svg>',
+  sprout: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M32 56 V30" stroke="#5a9e3e" stroke-width="5" stroke-linecap="round"/>'
+    + '<path d="M32 42 C22 37 12 41 10 30 C22 29 30 35 32 42 Z" fill="#7ecb5f"/>'
+    + '<path d="M32 33 C42 28 52 32 54 21 C42 20 34 26 32 33 Z" fill="#8fd07a"/>'
+    + '<path d="M22 56 h20" stroke="#8a6a4a" stroke-width="5" stroke-linecap="round"/></svg>',
+  tree: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<rect x="28" y="44" width="8" height="14" rx="3" fill="#9a6b4f"/>'
+    + '<circle cx="32" cy="36" r="13" fill="#6cbf6f"/><circle cx="24" cy="39" r="7.5" fill="#7ecb7f"/><circle cx="40" cy="39" r="7.5" fill="#5fb565"/>'
+    + '<path d="M32 8 L35 19 L46 19 L37 26 L40 38 L32 30 L24 38 L27 26 L18 19 L29 19 Z" fill="#ffd166"/>'
+    + '<circle cx="16" cy="12" r="2" fill="#ffe08a"/><circle cx="48" cy="10" r="1.7" fill="#ffe08a"/></svg>',
+  arch: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M18 50 V30 a14 16 0 0 1 28 0 V50" stroke="#a4703f" stroke-width="5" fill="none"/>'
+    + '<path d="M22 50 V33 a10 12 0 0 1 20 0 V50" stroke="#ffe9b0" stroke-width="2.6" fill="none"/>'
+    + '<circle cx="32" cy="38" r="4.6" fill="#aef2ff" opacity=".85"/>'
+    + '<path d="M18 50 Q32 44 46 50 L46 54 Q32 48 18 54 Z" fill="#8ed081"/>'
+    + '<circle cx="14" cy="24" r="2.2" fill="#ffd166"/><circle cx="50" cy="24" r="2.2" fill="#ffd166"/><circle cx="32" cy="16" r="2.6" fill="#ffd166"/></svg>',
+  song: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<circle cx="18" cy="46" r="6" fill="#e26d8c"/>'
+    + '<rect x="22" y="14" width="6" height="32" fill="#e26d8c"/>'
+    + '<path d="M28 18 L44 12 L44 42" stroke="#7d68a8" stroke-width="5" fill="none"/>'
+    + '<circle cx="38" cy="46" r="6" fill="#7d68a8"/>'
+    + '<path d="M10 20 q4 -4 8 0" stroke="#ffd166" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>',
+  star: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M32 9 L37 24 L53 24 L40 34 L45 50 L32 39 L19 50 L24 34 L11 24 L27 24 Z" fill="#ffd166"/>'
+    + '<path d="M32 9 L33 3 M37 24 L46 19 M53 24 L59 25 M40 34 L47 38 M45 50 L50 57 M19 50 L14 57 M24 34 L17 38 M11 24 L5 25 M27 24 L18 19" stroke="#ffb84d" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  bell: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M21 30 L43 30 L41 45 A9.5 8 0 0 1 23 45 Z" fill="#f2c94c"/>'
+    + '<rect x="18" y="27" width="28" height="6" rx="3" fill="#d9ad3a"/>'
+    + '<circle cx="32" cy="53" r="4.6" fill="#d9ad3a"/>'
+    + '<path d="M32 6 L35 15" stroke="#d9ad3a" stroke-width="4" stroke-linecap="round"/>'
+    + '<path d="M12 18 q5 -6 10 0 M42 18 q5 -6 10 0" stroke="#ffd166" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 64 64" aria-hidden="true">' + B + '<path d="M44 10 a23 23 0 1 0 12 36 A18 18 0 0 1 44 10 Z" fill="#f2d9a0"/>'
+    + '<circle cx="52" cy="18" r="2.4" fill="#ffe9c4"/><circle cx="45" cy="30" r="1.7" fill="#ffe9c4"/>'
+    + '<path d="M12 24 l1.6 4 4 1.6 -4 1.6 -1.6 4 -1.6 -4 -4 -1.6 4 -1.6 Z" fill="#ffd166"/>'
+    + '<path d="M50 44 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2 Z" fill="#ffe08a"/></svg>',
 };
 const STICKERS = [
-  { icon: 'drop', name: 'капелька' },
-  { icon: 'sprout', name: 'росток' },
-  { icon: 'apple', name: 'яблоко' },
+  // v0.27.1: порядок = путешествие ребёнка; наклейка выдаётся ЗА СВОЮ победу
   { icon: 'hedgehog', name: 'ёжик' },
-  { icon: 'tree', name: 'Древо' },
   { icon: 'owl', name: 'сова' },
   { icon: 'frog', name: 'лягушка' },
-  { icon: 'carrot', name: 'морковка' },
+  { icon: 'mole', name: 'крот' },
   { icon: 'squirrel', name: 'белочка' },
   { icon: 'firefly', name: 'светлячок' },
-  { icon: 'star', name: 'звезда' },
-  { icon: 'rainbow', name: 'радуга' },
-  // Глава 2: после обязательной истории остаётся целая необязательная страница.
-  { icon: 'note', name: 'нотка' },
-  { icon: 'brightstar', name: 'сияющая звезда' },
-  { icon: 'moon', name: 'луна' },
-  { icon: 'song', name: 'песенка' },
-  { icon: 'bell', name: 'колокольчик' },
-  { icon: 'spark', name: 'огонёк' },
-  { icon: 'arch', name: 'волшебная арка' },
-  { icon: 'twig', name: 'веточка' },
-  { icon: 'lily', name: 'кувшинка' },
   { icon: 'beaver', name: 'бобр' },
-  { icon: 'log', name: 'брёвнышко' },
-  { icon: 'stone', name: 'речной камушек' },
+  { icon: 'frog2', name: 'речная лягушка' },
+  { icon: 'heron', name: 'цапля' },
+  { icon: 'duck', name: 'утка' },
+  { icon: 'otter', name: 'выдра' },
+  { icon: 'moose', name: 'лось' },
+  { icon: 'raccoon', name: 'енот' },
+  { icon: 'magpie', name: 'сорока' },
+  { icon: 'mouse', name: 'мышка' },
+  { icon: 'badger', name: 'барсук' },
+  { icon: 'drop', name: 'капелька' },
+  { icon: 'sprout', name: 'росток' },
+  { icon: 'tree', name: 'Древо со звездой' },
+  { icon: 'arch', name: 'волшебная арка' },
+  { icon: 'song', name: 'песенка хора' },
+  { icon: 'star', name: 'звезда' },
+  { icon: 'bell', name: 'колокольчик' },
+  { icon: 'moon', name: 'луна' },
 ];
-// v0.25.1 (живой тест): 4 страницы по 6 наклеек — значки крупнее, внимание не расплывается
+// v0.27.1: страницы названы по локациям — альбом читается как карта путешествия
 const ALBUM_PAGES = [
-  { title: '1', name: 'Друзья Полянки', from: 0, to: 6 },
-  { title: '2', name: 'Друзья Полянки', from: 6, to: 12 },
-  { title: '3', name: 'Песня Древа', from: 12, to: 18 },
-  { title: '4', name: 'Песня Древа', from: 18, to: 24 },
+  { title: '1', name: 'Друзья полянки', from: 0, to: 6 },
+  { title: '2', name: 'Речной берег', from: 6, to: 12 },
+  { title: '3', name: 'Лесная чаща', from: 12, to: 18 },
+  { title: '4', name: 'Чудеса сказки', from: 18, to: 24 },
 ];
 const ALBUM_SCHEMA = '2';
 const albumEl = document.getElementById('album');
@@ -2790,10 +2912,18 @@ const albumBadge = document.getElementById('albumBadge');
 const stickerReward = document.getElementById('stickerReward');
 const rewardSticker = document.getElementById('rewardSticker');
 let albumUnlocked = 0;
+let albumGranted = new Set(); // v0.27.1: какие индексы наклеек ВЫДАНЫ (не только сколько)
 let albumPlaced = new Set();
 let selectedSticker = null;
 let activeAlbumPage = 0;
 let rewardTimer = 0;
+
+// v0.27.1: наклейка за победу у жителя — с ИКОНОЙ САМОГО жителя (понятно и красиво)
+const FRIEND_ICON = {
+  hedge: 'hedgehog', owl: 'owl', frog: 'frog', mole: 'mole', sq: 'squirrel', fire: 'firefly',
+  beaver: 'beaver', frog2: 'frog2', heron: 'heron', duck: 'duck', otter: 'otter',
+  moose: 'moose', raccoon: 'raccoon', magpie: 'magpie', mouse: 'mouse', badger: 'badger',
+};
 
 function safeAlbumArray(key) {
   try {
@@ -2806,6 +2936,9 @@ function loadAlbumProgress() {
   if (schema === ALBUM_SCHEMA) {
     albumUnlocked = parseInt(localStorage.getItem('wm_album_unlocked') || '0', 10);
     albumPlaced = new Set(safeAlbumArray('wm_album_placed'));
+    // v0.27.1: список выданных (старые сохранения: выдано всё от 0 до unlocked-1)
+    const g = safeAlbumArray('wm_album_granted');
+    albumGranted = g.length ? new Set(g) : new Set(Array.from({ length: albumUnlocked }, (_, i) => i));
   } else {
     // v0.17.1 и раньше: открывалась одна наклейка за три задания, а wm_album хранил
     // координаты только тех наклеек, которые ребёнок уже двигал по странице.
@@ -2831,21 +2964,25 @@ function loadAlbumProgress() {
     if (localStorage.getItem('wm_ending_seen') === '1') earned += 1;
     if (localStorage.getItem('wm_travel') === '1') earned += 1;
     if (albumUnlocked < earned) albumUnlocked = earned;
+    while (albumGranted.size < albumUnlocked) albumGranted.add(albumGranted.size);
   }
+  albumGranted = new Set([...albumGranted].map(Number)
+    .filter(i => Number.isInteger(i) && i >= 0 && i < STICKERS.length));
   albumPlaced = new Set([...albumPlaced]
     .map(Number)
-    .filter(i => Number.isInteger(i) && i >= 0 && i < albumUnlocked && i < STICKERS.length));
+    .filter(i => Number.isInteger(i) && i >= 0 && albumGranted.has(i) && i < STICKERS.length));
   saveAlbumProgress();
 }
 function saveAlbumProgress() {
   localStorage.setItem('wm_album_schema', ALBUM_SCHEMA);
   localStorage.setItem('wm_album_unlocked', String(albumUnlocked));
+  localStorage.setItem('wm_album_granted', JSON.stringify([...albumGranted].sort((a, b) => a - b)));
   localStorage.setItem('wm_album_placed', JSON.stringify([...albumPlaced].sort((a, b) => a - b)));
   updateAlbumBadge();
 }
 function pendingStickerCount() {
   let count = 0;
-  for (let i = 0; i < albumUnlocked; i++) if (!albumPlaced.has(i)) count++;
+  for (const i of albumGranted) if (!albumPlaced.has(i)) count++;
   return count;
 }
 function updateAlbumBadge() {
@@ -2871,21 +3008,21 @@ function pagePlacedCount(pageIndex) {
 function pagePendingCount(pageIndex) {
   const page = ALBUM_PAGES[pageIndex];
   let count = 0;
-  for (let i = page.from; i < Math.min(page.to, albumUnlocked); i++) if (!albumPlaced.has(i)) count++;
+  for (const i of albumGranted) if (i >= page.from && i < page.to && !albumPlaced.has(i)) count++;
   return count;
 }
 function albumStatusText() {
   const page = ALBUM_PAGES[activeAlbumPage];
   if (pagePlacedCount(activeAlbumPage) === page.to - page.from) return 'Страница собрана — получилась целая история!';
   if (pagePendingCount(activeAlbumPage) > 0) return 'Выбери наклейку внизу, а потом — её светлое место';
-  return 'Поливай Древо — следующая наклейка появится после полива';
+  return 'Помогай друзьям — за каждую победу появляется новая наклейка';
 }
 function renderAlbum(message = '') {
   if (!albumPageAvailable(activeAlbumPage)) activeAlbumPage = 0;
   const page = ALBUM_PAGES[activeAlbumPage];
   selectedSticker = selectedSticker !== null
     && selectedSticker >= page.from && selectedSticker < page.to
-    && selectedSticker < albumUnlocked && !albumPlaced.has(selectedSticker)
+    && albumGranted.has(selectedSticker) && !albumPlaced.has(selectedSticker)
     ? selectedSticker : null;
   albumSlots.innerHTML = '';
   stickerTray.innerHTML = '';
@@ -2901,7 +3038,7 @@ function renderAlbum(message = '') {
     if (!tab.disabled) tab.addEventListener('click', () => {
       activeAlbumPage = pageIndex;
       selectedSticker = null;
-      play('pop');
+      playUI('pop');
       renderAlbum();
     });
     albumTabs.appendChild(tab);
@@ -2924,7 +3061,7 @@ function renderAlbum(message = '') {
     const jx = ((i * 7) % 11) - 5, jy = ((i * 13) % 11) - 5;
     slot.style.setProperty('--x', (xs[col] + jx) + '%');
     slot.style.setProperty('--y', (ys[row] + jy) + '%');
-    if (i >= albumUnlocked) {
+    if (!albumGranted.has(i)) {
       slot.classList.add('locked');
       slot.textContent = '✦';
       slot.disabled = true;
@@ -2947,7 +3084,7 @@ function renderAlbum(message = '') {
     token.type = 'button';
     token.className = 'album-sticker';
     token.dataset.sticker = String(i);
-    if (i >= albumUnlocked) {
+    if (!albumGranted.has(i)) {
       token.classList.add('locked');
       token.textContent = '✦';
       token.disabled = true;
@@ -2968,18 +3105,18 @@ function renderAlbum(message = '') {
 }
 function selectAlbumSticker(i) {
   selectedSticker = selectedSticker === i ? null : i;
-  play('pickup');
+  playUI('pickup');
   renderAlbum(selectedSticker === null
     ? albumStatusText()
-    : `${STICKERS[i].emoji} Теперь найди такое же светлое место`);
+    : `${STICKERS[i].name} — найди такое же светлое место`);
 }
 function tryPlaceSticker(i, slot) {
   if (selectedSticker === null) {
     // Мягкая помощь для маленького ребёнка: тап по силуэту выбирает нужную наклейку,
     // но второй тап всё равно нужен, чтобы «приклеить» её осознанно.
     selectedSticker = i;
-    play('pickup');
-    renderAlbum(`${STICKERS[i].emoji} Наклейка выбрана — нажми на это место ещё раз`);
+    playUI('pickup');
+    renderAlbum(`Наклейка «${STICKERS[i].name}» выбрана — нажми на это место ещё раз`);
     return;
   }
   if (selectedSticker !== i) {
@@ -2987,27 +3124,27 @@ function tryPlaceSticker(i, slot) {
     const correct = albumSlots.querySelector(`[data-sticker="${selectedSticker}"]`);
     if (correct) correct.classList.add('match');
     albumHelp.textContent = 'Попробуй ещё — нужное место мерцает ✨';
-    play('bad');
+    playUI('bad');
     return;
   }
   const sticker = STICKERS[i];
   albumPlaced.add(i);
   selectedSticker = null;
   saveAlbumProgress();
-  play('good');
+  playUI('good');
   renderAlbum('Наклейка на своём месте!');
   stickerConfetti(slot); // v0.26: праздничное конфетти при приклеивании
 }
 function openAlbum() {
   selectedSticker = null;
-  const firstWaiting = STICKERS.findIndex((_, i) => i < albumUnlocked && !albumPlaced.has(i));
+  const firstWaiting = STICKERS.findIndex((_, i) => albumGranted.has(i) && !albumPlaced.has(i));
   if (firstWaiting >= 0) activeAlbumPage = ALBUM_PAGES.findIndex(p => firstWaiting >= p.from && firstWaiting < p.to);
   renderAlbum();
   albumEl.style.display = 'block';
   // v0.26.2 (живой тест): альбом полностью ставит мир и звук на паузу
   stopVoice();
   setGamePaused(true);
-  play('pop');
+  playUI('pop');
 }
 function closeAlbum() {
   selectedSticker = null;
@@ -3022,27 +3159,34 @@ function showStickerReward(i) {
   clearTimeout(rewardTimer);
   rewardTimer = setTimeout(() => stickerReward.classList.remove('show'), 3200);
 }
-function grantStickerForWater() {
-  if (albumUnlocked >= STICKERS.length) return null;
-  const i = albumUnlocked++;
+// v0.27.1 (живой тест): наклейки выдаются ЗА СВОИ события — победа у жителя даёт
+// наклейку С ЭТИМ ЖЕ жителем (понятно ребёнку), полив — капельку/росток и т.д.
+function grantSticker(icon) {
+  if (albumGranted.size >= STICKERS.length) return null;
+  let i = STICKERS.findIndex((s, idx) => s.icon === icon && !albumGranted.has(idx));
+  if (i < 0) i = STICKERS.findIndex((s, idx) => !albumGranted.has(idx));
+  if (i < 0) return null;
+  albumGranted.add(i);
+  albumUnlocked = Math.max(albumUnlocked, i + 1);
   saveAlbumProgress();
   showStickerReward(i);
   return i;
 }
-// v0.27.0 (живой тест): наклейка выдаётся и за ПЕРВУЮ победу у каждого жителя —
-// раньше за пройденных зверей наклеек не было вовсе (только за поливы Древа),
-// и у владельца «собрались не все» после всех 16 жителей.
-function grantSticker() { return grantStickerForWater(); }
+const WATER_ICONS = ['drop', 'sprout', 'tree', 'star', 'bell'];
+function grantStickerForWater() {
+  return grantSticker(WATER_ICONS[Math.max(0, Math.min(treeWaters - 1, WATER_ICONS.length - 1))]);
+}
 function metFriend(k) {
   if (localStorage.getItem('wm_met_' + k) === '1') { localStorage.setItem('wm_met_' + k, '1'); return; }
   localStorage.setItem('wm_met_' + k, '1');
-  grantSticker();
+  grantSticker(FRIEND_ICON[k] || 'star');
   // v0.27.0: сюжетные гейты локаций — как на первой полянке
   if (haveMetAllShoreFriends()) shoreGateCheck();
   if (haveMetAllThicketFriends()) thicketGateCheck();
 }
 function setAlbumTestState(unlocked, placed = []) {
   albumUnlocked = Math.max(0, Math.min(STICKERS.length, unlocked));
+  albumGranted = new Set(Array.from({ length: albumUnlocked }, (_, i) => i));
   albumPlaced = new Set(placed.filter(i => i >= 0 && i < albumUnlocked));
   saveAlbumProgress();
 }
@@ -3086,7 +3230,7 @@ function haveMetAllThicketFriends() {
 function shoreGateCheck() {
   if (!haveMetAllShoreFriends() || localStorage.getItem('wm_story_shore') === '1') return;
   localStorage.setItem('wm_story_shore', '1');
-  grantSticker();
+  reconcilePortals();
   revealPortalL3(true);
   setTimeout(() => {
     if (gameState !== 'explore') return;
@@ -3100,7 +3244,7 @@ function shoreGateCheck() {
 function thicketGateCheck() {
   if (!haveMetAllThicketFriends() || localStorage.getItem('wm_story_thicket') === '1') return;
   localStorage.setItem('wm_story_thicket', '1');
-  grantSticker();
+  reconcilePortals();
   setTimeout(() => {
     if (gameState !== 'explore') return;
     showStory({
@@ -5602,7 +5746,7 @@ function checkEnding() {
   if (localStorage.getItem('wm_ending_seen') === '1') return;
   if (!ALL_FRIENDS.every(k => localStorage.getItem('wm_met_' + k) === '1')) return;
   localStorage.setItem('wm_ending_seen', '1');
-  grantSticker();
+  grantSticker('moon'); // финал
   gameState = 'ending';
   endingOv.style.display = 'flex';
   stopVoice();
@@ -5739,7 +5883,7 @@ const TRAVEL_ICONS = {
 };
 function startChapter2() {
   ch2AfterCard = true;
-  if (localStorage.getItem('wm_choir_sticker') !== '1') { localStorage.setItem('wm_choir_sticker', '1'); grantSticker(); }
+  if (localStorage.getItem('wm_choir_sticker') !== '1') { localStorage.setItem('wm_choir_sticker', '1'); grantSticker('song'); }
   showStory({ emoji: '🎵', voice: 'voice/story2_narr.mp3',
     text: 'Ты помог всем шестерым друзьям! Осталась одна мечта Древа: чтобы его звезда светила не только ему, а всей полянке. Нажимай «Дальше» — начинается самая дружная песня!' });
 }
@@ -6257,7 +6401,7 @@ function travelTo(dest) {
   // v0.27.0 (живой тест): вместо эмодзи «красного моста» — своя картинка волшебной
   // арки (и свои картинки для чащи и дома), совпадающая с текстом сказки
   travelEmoji.innerHTML = TRAVEL_ICONS[dest === 2 ? 'arch2' : dest === 1 ? 'arch' : 'home'];
-  if (!localStorage.getItem('wm_travel')) { localStorage.setItem('wm_travel', '1'); grantSticker(); }
+  if (!localStorage.getItem('wm_travel')) { localStorage.setItem('wm_travel', '1'); grantSticker('arch'); }
   travelName.textContent = LOCS[dest].name;
   travelSub.textContent = LOCS[dest].sub;
   travelOv.style.display = 'flex';
@@ -6515,7 +6659,7 @@ function openParent() {
     statRow('🐦 Сорока — побед', wins('magpie')) +
     statRow('🐭 Мышка — побед', wins('mouse')) +
     statRow('🦡 Барсук — побед', wins('badger')) +
-    statRow('📖 Наклейки в альбоме', 'открыто ' + albumUnlocked + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
+    statRow('📖 Наклейки в альбоме', 'выдано ' + albumGranted.size + ', на местах ' + albumPlaced.size + ' из ' + STICKERS.length) +
     statRow('💧 Капельки сейчас', dropsCount) +
     statRow('🌳 Древо Желаний', 'стадия ' + treeStage + ' из 3 (поливов: ' + treeWaters + ')') +
     statRow('📗 Сказка: «Корешок-ручеёк»', s1) +
