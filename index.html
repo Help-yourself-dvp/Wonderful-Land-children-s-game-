@@ -998,9 +998,11 @@
       background: #7ecbe8 url('./art/heron-fish-size.webp') center / cover no-repeat;
       box-shadow: inset 0 0 30px rgba(40,70,30,.25); overflow: hidden;
     }
-    .hg-pool { position: absolute; left: 40%; right: 4%; top: 42%; height: 24%; display: flex; align-items: flex-end; justify-content: center; gap: clamp(8px, 1.6vw, 18px); }
+    .hg-pool { position: absolute; left: 40%; right: 4%; top: 40%; height: 30%; display: flex; align-items: flex-end; justify-content: center; gap: clamp(8px, 1.6vw, 18px); }
+    /* v0.27.2 (живой тест): ВСЕ рыбы одной формы и одного цвета — размер виден сразу:
+       ширина и высота растут вместе (aspect-ratio постоянный), как матрёшки */
     .hg-fish {
-      position: relative; height: 100%; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      position: relative; height: auto; aspect-ratio: 2 / 1; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
       filter: drop-shadow(0 4px 4px rgba(0,0,0,.22)); transition: transform .25s ease;
     }
     .hg-fish .fbody {
@@ -1019,11 +1021,11 @@
     .hg-fish .ftail { position: absolute; left: -16%; top: 22%; width: 32%; height: 52%; clip-path: polygon(100% 0, 0 22%, 45% 50%, 0 78%, 100% 100%); background: var(--f-color); }
     .hg-fish .feye { position: absolute; right: 16%; top: 26%; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #2b2118; }
     .hg-fish .feye::after { content: ''; position: absolute; left: 16%; top: 12%; width: 40%; height: 40%; border-radius: 50%; background: #fff; }
-    .hg-fish.s1 { width: clamp(30px, 5vh, 40px); }
-    .hg-fish.s2 { width: clamp(38px, 6.4vh, 50px); }
-    .hg-fish.s3 { width: clamp(46px, 7.8vh, 60px); }
-    .hg-fish.s4 { width: clamp(54px, 9.2vh, 70px); }
-    .hg-fish.s5 { width: clamp(62px, 10.6vh, 80px); }
+    .hg-fish.s1 { width: clamp(44px, 7.5vh, 58px); }
+    .hg-fish.s2 { width: clamp(56px, 9.5vh, 72px); }
+    .hg-fish.s3 { width: clamp(68px, 11.5vh, 88px); }
+    .hg-fish.s4 { width: clamp(80px, 13.5vh, 104px); }
+    .hg-fish.s5 { width: clamp(94px, 16vh, 122px); }
     .hg-fish.glow { animation: basketGlow .7s ease-in-out infinite alternate; }
     .hg-fish.shake { animation: mgShake .4s ease; }
     .hg-fish.done { cursor: default; }
@@ -1043,8 +1045,12 @@
     /* v0.27.1: детали УКРУПНЕНЫ — для ребёнка 3–5 лет искать мелочи непосильно */
     .dk-el { position: absolute; transform: translate(-50%, -50%); font-size: clamp(40px, 8vh, 62px); line-height: 1; pointer-events: none; filter: drop-shadow(0 3px 3px rgba(0,0,0,.22)); }
     .dk-el.circle { width: clamp(56px, 9.5vh, 74px); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 16px rgba(255,240,150,.85); }
-    .dk-mark { position: absolute; transform: translate(-50%, -50%); width: clamp(48px, 8vh, 64px); aspect-ratio: 1; border-radius: 50%; border: 5px solid #ffd166; background: rgba(255,209,102,.35); animation: cgItemIn .4s cubic-bezier(.34,1.56,.64,1) both; pointer-events: none; }
-    .dk-glow { position: absolute; transform: translate(-50%, -50%); width: clamp(52px, 8.6vh, 70px); aspect-ratio: 1; border-radius: 50%; border: 4px dashed #ffd166; animation: basketGlow .7s ease-in-out infinite alternate; pointer-events: none; }
+    /* v0.27.2 (живой тест): старые анимации затирали translate(-50%,-50%) —
+       кружок ложился В СТОРОНЕ от отличия. Теперь свои анимации с сохранением сдвига */
+    .dk-mark { position: absolute; transform: translate(-50%, -50%); width: clamp(48px, 8vh, 64px); aspect-ratio: 1; border-radius: 50%; border: 5px solid #ffd166; background: rgba(255,209,102,.35); animation: dkMarkIn .4s cubic-bezier(.34,1.56,.64,1) both; pointer-events: none; }
+    .dk-glow { position: absolute; transform: translate(-50%, -50%); width: clamp(52px, 8.6vh, 70px); aspect-ratio: 1; border-radius: 50%; border: 4px dashed #ffd166; animation: dkGlowPulse .7s ease-in-out infinite alternate; pointer-events: none; }
+    @keyframes dkMarkIn { from { transform: translate(-50%, -50%) scale(.2); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+    @keyframes dkGlowPulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.12); } }
     /* Выдра: зверь и следы */
     .ot-field {
       position: relative; width: 100%; aspect-ratio: 16/9; height: auto;
@@ -1142,8 +1148,8 @@
       box-shadow: inset 0 0 30px rgba(30,60,30,.25); overflow: hidden;
     }
     .rc-q {
-      position: absolute; left: 5%; top: 16%; width: clamp(104px, 20vh, 146px); aspect-ratio: 1;
-      display: flex; align-items: center; justify-content: center; font-size: clamp(68px, 14vh, 102px);
+      position: absolute; left: 5%; top: 16%; width: clamp(108px, 21vh, 150px); aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center; font-size: clamp(74px, 15vh, 108px);
       background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.92); border-radius: 50%;
       box-shadow: 0 6px 14px rgba(60,80,40,.22);
     }
@@ -1154,15 +1160,15 @@
       box-shadow: inset 0 -5px 0 rgba(0,0,0,.08), 0 5px 12px rgba(60,80,40,.2);
       -webkit-tap-highlight-color: transparent; transition: transform .15s; padding: 0;
     }
-    /* тень — чёрный силуэт эмодзи (v0.27.0: крупнее — было мелко) */
-    .rc-shade .rc-em { font-size: clamp(60px, 13vh, 96px); line-height: 1; filter: brightness(0) drop-shadow(0 4px 3px rgba(0,0,0,.18)); }
+    /* v0.27.2 (живой тест): тень всё ещё мелкая — теперь почти во всю карточку */
+    .rc-shade .rc-em { font-size: clamp(78px, 15.5vh, 118px); line-height: 1; filter: brightness(0) drop-shadow(0 4px 3px rgba(0,0,0,.18)); }
     .rc-shade.right { animation: cgJump .5s ease; }
     .rc-shade.glow { box-shadow: 0 0 0 4px #ffd166; animation: basketGlow .7s ease-in-out infinite alternate; }
     .rc-shade.shake { animation: mgShake .4s ease; }
     @media (max-height: 480px) {
       .rc-field { height: min(56vh, 320px); }
-      .rc-q { width: clamp(72px, 17vh, 96px); font-size: clamp(46px, 11vh, 62px); }
-      .rc-shade .rc-em { font-size: clamp(40px, 10vh, 54px); }
+      .rc-q { width: clamp(76px, 19vh, 100px); font-size: clamp(52px, 12vh, 70px); }
+      .rc-shade .rc-em { font-size: clamp(52px, 12.5vh, 72px); }
     }
     /* ============ СОРОКА: «ЧТО ЛИШНЕЕ?» (Локация 3) ============ */
     #magpiegame {
@@ -1217,7 +1223,7 @@
       background: radial-gradient(ellipse at 50% 20%, #f5e6c8, #c98a4e 70%);
       border: 4px solid rgba(255,235,200,.55); border-radius: 46% 46% 40% 40% / 12% 12% 88% 88%;
       display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
-      font-size: clamp(64px, 13vh, 100px); line-height: 1;
+      font-size: clamp(72px, 14.5vh, 112px); line-height: 1;
       box-shadow: inset 0 -8px 0 rgba(60,30,10,.25), 0 8px 14px rgba(60,40,20,.3);
       -webkit-tap-highlight-color: transparent; transition: transform .2s;
     }
@@ -1230,7 +1236,7 @@
     .mw-card {
       background: rgba(255,255,255,.72); border: 3px solid rgba(255,255,255,.95); border-radius: 18px; cursor: pointer;
       display: flex; align-items: center; justify-content: center; padding: 0;
-      font-size: clamp(60px, 12vh, 92px); line-height: 1;
+      font-size: clamp(76px, 14.5vh, 116px); line-height: 1; /* v0.27.2: крупнее — не напрягают глаза */
       box-shadow: inset 0 -6px 0 rgba(0,0,0,.08), 0 6px 12px rgba(60,80,40,.22);
       -webkit-tap-highlight-color: transparent; transition: transform .15s;
     }
@@ -1239,8 +1245,8 @@
     .mw-card.shake { animation: mgShake .4s ease; }
     @media (max-height: 480px) {
       .mw-field { height: min(56vh, 320px); }
-      .mw-pan { width: clamp(64px, 16vh, 92px); font-size: clamp(34px, 9vh, 52px); }
-      .mw-card { font-size: clamp(30px, 8.5vh, 44px); border-radius: 13px; }
+      .mw-pan { width: clamp(68px, 17vh, 96px); font-size: clamp(46px, 12vh, 64px); }
+      .mw-card { font-size: clamp(50px, 11.5vh, 68px); border-radius: 13px; }
     }
     /* ============ БАРСУК: «СЛОЖИ КАРТИНКУ» (Локация 3, пазл) ============ */
     #badgergame {

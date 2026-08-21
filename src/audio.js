@@ -172,6 +172,25 @@ export function playNote(freq, { delay = 0, dur = 0.5, vol = 0.26 } = {}) {
 const voiceCache = {};
 let lastVoice = null;
 let voiceGen = 0;
+// v0.27.2 (живой тест: Крот/Мышь «не разговаривали», Утка обрывалась на полуслове):
+// voicePlaying() смотрит на флаг проигрывания, но HTMLAudio при старте декодирует
+// файл — в этот момент paused===true, и таймер «открыть игру» срабатывал ДО начала
+// звука. Теперь голос резервирует время по ДЛИТЕЛЬНОСТИ файла (voiceBusyUntil),
+// и игра ждёт ровно столько, сколько длится реплика (+ цепочки after).
+let voiceBusyUntil = 0;
+function markVoice(a) {
+  if (!a._metaHooked) {
+    a._metaHooked = true;
+    a.addEventListener('loadedmetadata', () => {
+      a._dur = (Number.isFinite(a.duration) && a.duration > 0.3) ? a.duration * 1000 : 0;
+      if (a._startAt) voiceBusyUntil = Math.max(voiceBusyUntil, a._startAt + (a._dur || 3200));
+    });
+  }
+  a._startAt = performance.now();
+  const d = a._dur || 3200;
+  voiceBusyUntil = Math.max(performance.now(), voiceBusyUntil) + d;
+}
+export function voiceBusy() { return performance.now() < voiceBusyUntil; }
 export function speak(file, opts = {}) {
   if (muted || gamePaused) return; // v0.27.1: в альбоме/паузе отложенные реплики не звучат
   // v0.26.3: реплики — это HTMLAudio, им НЕ нужен работающий Web Audio-контекст.
@@ -190,20 +209,22 @@ export function speak(file, opts = {}) {
     const chainNext = (src) => {
       const b = voiceCache[opts.then] || (voiceCache[opts.then] = new Audio(opts.then));
       b.muted = muted; b.volume = 0.95;
+      voiceBusyUntil += 3200; // v0.27.2: заранее резервируем время на следующую реплику
       const onEnd2 = () => {
         src.removeEventListener('ended', onEnd2);
         if (gen === voiceGen) {
-          try { b.currentTime = 0; b.play().catch(() => {}); lastVoice = b; } catch (e) {}
+          try { b.currentTime = 0; b.play().catch(() => {}); lastVoice = b; markVoice(b); } catch (e) {}
         }
       };
       src.addEventListener('ended', onEnd2);
     };
     if (opts.after && lastVoice && !lastVoice.paused && !lastVoice.ended) {
       const cur = lastVoice;
+      voiceBusyUntil += 3200; // v0.27.2: резерв на эту реплику (точная длительность добавится при старте)
       const onEnd = () => {
         cur.removeEventListener('ended', onEnd);
         if (gen === voiceGen) {
-          try { a.currentTime = 0; a.play().catch(() => {}); lastVoice = a; } catch (e) {}
+          try { a.currentTime = 0; a.play().catch(() => {}); lastVoice = a; markVoice(a); } catch (e) {}
           if (opts.then) chainNext(a);
         }
       };
@@ -215,12 +236,28 @@ export function speak(file, opts = {}) {
     a.currentTime = 0;
     a.play().catch(() => {});
     lastVoice = a;
+    markVoice(a);
     if (opts.then) chainNext(a);
+  } catch (e) {}
+}
+// Реплика интерфейса (например, карточка отдыха): звучит и на паузе мира
+export function speakUI(file) {
+  if (muted) return;
+  try {
+    let a = voiceCache[file];
+    if (!a) { a = new Audio(file); voiceCache[file] = a; }
+    a.muted = muted; a.volume = 0.95;
+    stopVoice();
+    a.currentTime = 0;
+    a.play().catch(() => {});
+    lastVoice = a;
+    markVoice(a);
   } catch (e) {}
 }
 export function stopVoice() {
   voiceGen++;
   lastVoice = null;
+  voiceBusyUntil = 0;
   for (const k in voiceCache) { try { voiceCache[k].pause(); voiceCache[k].currentTime = 0; } catch (e) {} }
 }
 // Уже слышно ли что-то

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initAudio, play, playUI, playNote, setNight, toggleMute, isMuted, speak, stopVoice, setGamePaused, voicePlaying } from './audio.js';
+import { initAudio, play, playUI, playNote, setNight, toggleMute, isMuted, speak, speakUI, stopVoice, setGamePaused, voicePlaying, voiceBusy } from './audio.js';
 // @capacitor/app регистрируется НАТИВНО (window.Capacitor.Plugins.App) после `cap sync`;
 // импортировать его в веб-бандл нельзя — он тянет динамический чанк, который ломает
 // file://-превью («Failed to fetch dynamically imported module»).
@@ -1756,52 +1756,66 @@ scene.add(otterBubble);
 // v0.24: первый житель чащи. Добрый великан с большими рогами, моргает и
 // мягко качает головой. Игра — своя, не повторяет Л1/Л2 (тропинка-лабиринт).
 function makeMoose() {
+  // v0.27.2 (живой тест): «лось на лося не похож» — пересобран по-настоящему:
+  // высокие ноги, горбатая спина, длинная свисающая морда, БОЛЬШИЕ лопатообразные рога.
   const g = new THREE.Group();
   const bodyG = new THREE.Group();
-  const fur = L(0x8a5a3b), furD = L(0x6f452c), cream = L(0xe8d2ae), antlerC = L(0xd8b98a);
-  // крупное тело
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 16), fur);
-  body.position.y = 0.98; body.scale.set(1.25, 1.05, 0.95); body.castShadow = true;
-  // высокая шея и голова
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.6, 10), fur);
-  neck.position.set(0, 1.55, 0.2); neck.rotation.x = 0.18;
-  const head = new THREE.Group();
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), fur);
-  skull.position.y = 0;
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 12), cream);
-  muzzle.position.set(0, -0.08, 0.22); muzzle.scale.set(1.05, 0.8, 1.1);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), furD);
-  nose.position.set(0, 0.0, 0.4);
-  const eyeGeo = new THREE.SphereGeometry(0.05, 10, 10);
-  const eyeM = new THREE.MeshBasicMaterial({ color: 0x3a2418 });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.13, 0.1, 0.24);
-  const eyeR = eyeL.clone(); eyeR.position.x = 0.13;
-  const glGeo = new THREE.SphereGeometry(0.018, 8, 8);
-  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.11, 0.13, 0.285);
-  const glR = glL.clone(); glR.position.x = 0.11;
-  // большие уши
-  const earGeo = new THREE.SphereGeometry(0.13, 10, 10);
-  const earL = new THREE.Mesh(earGeo, furD); earL.position.set(-0.2, 0.2, 0.02); earL.scale.set(1.1, 1.6, 0.45);
-  const earR = earL.clone(); earR.position.x = 0.2;
-  // ветвистые рога
-  const antlerGeo = new THREE.CylinderGeometry(0.045, 0.06, 0.55, 6);
-  const antlerL = new THREE.Mesh(antlerGeo, antlerC); antlerL.position.set(-0.14, 0.42, 0); antlerL.rotation.z = 0.5;
-  const antlerR = antlerL.clone(); antlerR.position.x = 0.14; antlerR.rotation.z = -0.5;
-  const tineGeo = new THREE.CylinderGeometry(0.032, 0.045, 0.34, 6);
-  const t1 = new THREE.Mesh(tineGeo, antlerC); t1.position.set(-0.26, 0.62, 0); t1.rotation.z = 0.75;
-  const t2 = new THREE.Mesh(tineGeo, antlerC); t2.position.set(0.26, 0.62, 0); t2.rotation.z = -0.75;
-  head.add(skull, muzzle, nose, eyeL, eyeR, glL, glR, earL, earR, antlerL, antlerR, t1, t2);
-  head.position.y = 1.98;
-  bodyG.add(body, neck, head);
-  // длинные ноги
-  const legGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.95, 8);
-  const legs = [[-0.28, 0.42], [0.28, 0.42], [-0.22, 0.4], [0.22, 0.4]].map(([x, z], i) => {
+  const fur = L(0x8a5a3b), furD = L(0x5f3d24), cream = L(0xdcc09a), antlerC = L(0xd8c9a8);
+  // длинные ноги (лось — высокий)
+  const legGeo = new THREE.CylinderGeometry(0.1, 0.13, 1.25, 8);
+  const legs = [[-0.34, -0.45], [0.34, -0.45], [-0.34, 0.45], [0.34, 0.45]].map(([x, z]) => {
     const l = new THREE.Mesh(legGeo, furD);
-    l.position.set(x, 0.5, z - (i < 2 ? 0.1 : -0.12));
+    l.position.set(x, 0.62, z);
     return l;
   });
   bodyG.add(...legs);
+  // туловище с высокой холкой-горбом
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 18, 16), fur);
+  body.position.set(0, 1.45, -0.15); body.scale.set(1.1, 0.95, 1.35); body.castShadow = true;
+  const hump = new THREE.Mesh(new THREE.SphereGeometry(0.44, 14, 12), fur);
+  hump.position.set(0, 1.78, -0.3); hump.scale.set(0.9, 0.9, 1.0);
+  bodyG.add(body, hump);
+  // шея вперёд-вверх
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.62, 10), fur);
+  neck.position.set(0, 1.75, 0.6); neck.rotation.x = 0.55;
+  bodyG.add(neck);
+  // голова с длинной свисающей мордой — главный признак лося
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 16), fur);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), cream);
+  muzzle.position.set(0, -0.1, 0.34); muzzle.scale.set(0.9, 0.75, 1.35);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), furD);
+  nose.position.set(0, -0.1, 0.62);
+  const dewlap = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), furD);
+  dewlap.position.set(0, -0.42, 0.3); dewlap.scale.set(0.6, 1.5, 0.5);
+  const eyeGeo = new THREE.SphereGeometry(0.05, 10, 10);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x241610 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.15, 0.12, 0.24);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.15;
+  const glGeo = new THREE.SphereGeometry(0.018, 8, 8);
+  const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.13, 0.15, 0.285);
+  const glR = glL.clone(); glR.position.x = 0.13;
+  const earGeo = new THREE.SphereGeometry(0.12, 10, 10);
+  const earL = new THREE.Mesh(earGeo, furD); earL.position.set(-0.22, 0.22, -0.02); earL.scale.set(1.15, 1.6, 0.4);
+  const earR = earL.clone(); earR.position.x = 0.22;
+  // БОЛЬШИЕ рога-лопаты с отростками
+  const antlerGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.5, 8);
+  const antlerL = new THREE.Mesh(antlerGeo, antlerC);
+  antlerL.position.set(-0.15, 0.42, -0.04); antlerL.rotation.z = 0.55; antlerL.rotation.x = -0.1;
+  const antlerR = antlerL.clone(); antlerR.position.x = 0.15; antlerR.rotation.z = -0.55; antlerR.rotation.x = 0.1;
+  const tineGeo = new THREE.CylinderGeometry(0.035, 0.05, 0.4, 6);
+  const t1L = new THREE.Mesh(tineGeo, antlerC); t1L.position.set(-0.32, 0.66, -0.08); t1L.rotation.z = 0.95;
+  const t1R = t1L.clone(); t1R.position.x = 0.32; t1R.rotation.z = -0.95;
+  const t2L = new THREE.Mesh(tineGeo, antlerC); t2L.position.set(-0.27, 0.78, 0.1); t2L.rotation.z = 1.75; t2L.rotation.x = -0.45;
+  const t2R = t2L.clone(); t2R.position.x = 0.27; t2R.rotation.z = -1.75; t2R.rotation.x = 0.45;
+  head.add(skull, muzzle, nose, dewlap, eyeL, eyeR, glL, glR, earL, earR, antlerL, antlerR, t1L, t1R, t2L, t2R);
+  head.position.y = 2.12;
+  bodyG.add(head);
+  // хвостик
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), cream);
+  tail.position.set(0, 1.5, -0.95);
+  bodyG.add(tail);
   g.add(bodyG);
   g.userData = { body: bodyG, head, eyes: [eyeL, eyeR], glints: [glL, glR] };
   return g;
@@ -1813,7 +1827,7 @@ moose.position.set(MOOSE_POS.x, 0, MOOSE_POS.z);
 moose.rotation.y = Math.atan2(LOC3.x - MOOSE_POS.x, LOC3.z - MOOSE_POS.z);
 scene.add(moose);
 obstacles.push({ x: MOOSE_POS.x, z: MOOSE_POS.z, r: 0.7 });
-moose.scale.setScalar(1.3); // v0.27.0: крупнее (живой тест — зверята Л3 были мелкими)
+moose.scale.setScalar(1.5); // v0.27.2: крупнее — лось должен быть ВЕЛИКАНОМ полянки
 const mooseBubble = makeBubbleSprite('🫐', 0.95);
 mooseBubble.position.set(MOOSE_POS.x, 3.2, MOOSE_POS.z);
 scene.add(mooseBubble);
@@ -1828,39 +1842,42 @@ function makeRaccoon() {
   body.position.y = 0.52; body.scale.set(0.95, 1.05, 0.85); body.castShadow = true;
   const belly = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), cream);
   belly.position.set(0, 0.46, 0.22); belly.scale.set(0.8, 0.95, 0.55);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), fur);
-  head.position.set(0, 0.94, 0.1); head.castShadow = true;
-  // фирменная полосатая маска: два тёмных «очка» вокруг глаз
-  const maskGeo = new THREE.SphereGeometry(0.11, 10, 10);
-  const maskL = new THREE.Mesh(maskGeo, L(maskC)); maskL.position.set(-0.12, 0.95, 0.3); maskL.scale.set(1, 0.8, 0.6);
-  const maskR = maskL.clone(); maskR.position.x = 0.12;
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), cream);
-  muzzle.position.set(0, 0.84, 0.3); muzzle.scale.set(1, 0.8, 0.8);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), L(0x2b2118));
-  nose.position.set(0, 0.87, 0.42);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), fur);
+  head.position.set(0, 0.94, 0.12); head.castShadow = true;
+  // белая мордочка, тёмная «маска» ПОВЕРХ глаз сплошной полосой (как у настоящего енота)
+  const facePatch = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 12), cream);
+  facePatch.position.set(0, 0.9, 0.24); facePatch.scale.set(0.9, 0.7, 0.7);
+  const mask = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.12), L(maskC));
+  mask.position.set(0, 0.97, 0.27);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), cream);
+  muzzle.position.set(0, 0.84, 0.34); muzzle.scale.set(1, 0.8, 0.8);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), L(0x2b2118));
+  nose.position.set(0, 0.86, 0.46);
   const eyeGeo = new THREE.SphereGeometry(0.045, 10, 10);
   const eyeM = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.11, 0.98, 0.33);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(-0.11, 0.98, 0.35);
   const eyeR = eyeL.clone(); eyeR.position.x = 0.11;
   const glGeo = new THREE.SphereGeometry(0.016, 6, 6);
   const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.09, 1.0, 0.375);
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(-0.09, 1.0, 0.395);
   const glR = glL.clone(); glR.position.x = 0.09;
   const earGeo = new THREE.SphereGeometry(0.09, 10, 10);
   const earL = new THREE.Mesh(earGeo, furD); earL.position.set(-0.2, 1.14, 0.02);
   const earR = earL.clone(); earR.position.x = 0.2;
-  // пышный хвост с тёмными кольцами (4 сегмента)
+  // v0.27.2 (живой тест): «палка на спине» — хвост был тонкой прямой колбаской.
+  // Теперь ТОЛСТЫЙ пушистый хвост с кольцами, поднятый дугой за спиной.
   const tailSegs = [];
-  for (let i = 0; i < 4; i++) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.14 - i * 0.015, 12, 12), i % 2 ? furD : fur);
-    s.position.set(0, 0.5 - i * 0.05, -0.32 - i * 0.13);
-    s.scale.set(0.8, 0.8, 0.75);
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), i % 2 ? furD : fur);
+    s.position.set(0, 0.52 + t * 0.62, -0.34 - t * 0.3);
+    s.scale.set(0.95, 0.95, 0.9);
     tailSegs.push(s);
   }
   const pawGeo = new THREE.SphereGeometry(0.1, 10, 10);
   const pawL = new THREE.Mesh(pawGeo, furD); pawL.position.set(-0.22, 0.24, 0.26);
   const pawR = pawL.clone(); pawR.position.x = 0.22;
-  bodyG.add(body, belly, head, maskL, maskR, muzzle, nose, eyeL, eyeR, glL, glR, earL, earR, ...tailSegs, pawL, pawR);
+  bodyG.add(body, belly, head, facePatch, mask, muzzle, nose, eyeL, eyeR, glL, glR, earL, earR, ...tailSegs, pawL, pawR);
   g.add(bodyG);
   g.userData = { body: bodyG, tailSegs, eyes: [eyeL, eyeR], glints: [glL, glR] };
   return g;
@@ -1872,7 +1889,7 @@ raccoon.position.set(RACCOON_POS.x, 0, RACCOON_POS.z);
 raccoon.rotation.y = Math.atan2(LOC3.x - RACCOON_POS.x, LOC3.z - RACCOON_POS.z);
 scene.add(raccoon);
 obstacles.push({ x: RACCOON_POS.x, z: RACCOON_POS.z, r: 0.6 });
-raccoon.scale.setScalar(1.3);
+raccoon.scale.setScalar(1.5);
 const raccoonBubble = makeBubbleSprite('🌑', 0.9);
 raccoonBubble.position.set(RACCOON_POS.x, 2.3, RACCOON_POS.z);
 scene.add(raccoonBubble);
@@ -1933,7 +1950,7 @@ magpie.position.set(MAGPIE_POS.x, 0, MAGPIE_POS.z);
 magpie.rotation.y = Math.atan2(LOC3.x - MAGPIE_POS.x, LOC3.z - MAGPIE_POS.z);
 scene.add(magpie);
 obstacles.push({ x: MAGPIE_POS.x, z: MAGPIE_POS.z, r: 0.5 });
-magpie.scale.setScalar(1.3);
+magpie.scale.setScalar(1.45);
 const magpieBubble = makeBubbleSprite('🔍', 0.85);
 magpieBubble.position.set(MAGPIE_POS.x, 2.2, MAGPIE_POS.z);
 scene.add(magpieBubble);
@@ -1985,7 +2002,7 @@ mouse.position.set(MOUSE_POS.x, 0, MOUSE_POS.z);
 mouse.rotation.y = Math.atan2(LOC3.x - MOUSE_POS.x, LOC3.z - MOUSE_POS.z);
 scene.add(mouse);
 obstacles.push({ x: MOUSE_POS.x, z: MOUSE_POS.z, r: 0.45 });
-mouse.scale.setScalar(1.35);
+mouse.scale.setScalar(1.5);
 const mouseBubble = makeBubbleSprite('⚖️', 0.85);
 mouseBubble.position.set(MOUSE_POS.x, 1.9, MOUSE_POS.z);
 scene.add(mouseBubble);
@@ -2045,7 +2062,7 @@ badger.position.set(BADGER_POS.x, 0, BADGER_POS.z);
 badger.rotation.y = Math.atan2(LOC3.x - BADGER_POS.x, LOC3.z - BADGER_POS.z);
 scene.add(badger);
 obstacles.push({ x: BADGER_POS.x, z: BADGER_POS.z, r: 0.55 });
-badger.scale.setScalar(1.4);
+badger.scale.setScalar(1.55);
 const badgerBubble = makeBubbleSprite('🧩', 0.9);
 badgerBubble.position.set(BADGER_POS.x, 2.0, BADGER_POS.z);
 scene.add(badgerBubble);
@@ -2212,6 +2229,163 @@ scene.add(frog2Bubble);
 // v0.26: увеличенные «зоны тапа» вокруг NPC (невидимые сферы внутри групп) —
 // детям проще попадать пальцем; raycast находит их через intersectObject(npc, true).
 // СТАВИТСЯ ПОСЛЕ создания ВСЕХ жителей (frog2 создаётся позже бобра и Л3-жителей!).
+const ambientButterflies = []; // v0.27.2: порхающие бабочки — «жизнь» на Л2 и Л3
+{
+  // ============ v0.27.2: НАПОЛНЕННОСТЬ Л2 И Л3 ============
+  // Живой тест: локации выглядели «пустой комнатой с игрушками». Добавляем
+  // плотную декоративную природу: деревья, кусты, цветы, камни, лодочку, папоротники.
+  const addFlower = (x, z, color, s = 1) => {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.038, 0.36, 6), L(0x5aa860));
+    stem.position.set(x, 0.18, z);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), L(color));
+    head.position.set(x, 0.42, z); head.scale.set(s, 0.68 * s, s);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+    core.position.set(x, 0.44, z);
+    scene.add(stem, head, core);
+  };
+  const addGrass = (x, z, s = 1) => {
+    for (let i = 0; i < 3; i++) {
+      const t = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42 + i * 0.08, 5), L(i % 2 ? 0x7ecb5f : 0x6fbf5f));
+      t.position.set(x + (i - 1) * 0.1, 0.2 + i * 0.04, z);
+      t.scale.set(s, s, s);
+      scene.add(t);
+    }
+  };
+  const addPebble = (x, z, r) => {
+    const p = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), L(0xb9c1c9));
+    p.position.set(x, r * 0.4, z); p.scale.y = 0.75; p.castShadow = true;
+    scene.add(p);
+  };
+  const addButterfly = (x, y, z, r, ph) => {
+    const g = new THREE.Group();
+    const wm = new THREE.MeshBasicMaterial({ color: 0xf7a8c9, side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
+    const wl = new THREE.Mesh(new THREE.CircleGeometry(0.13, 8), wm);
+    wl.position.x = -0.11; wl.rotation.z = 0.35;
+    const wr = wl.clone(); wr.position.x = 0.11; wr.rotation.z = -0.35;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.025, 0.14, 2, 4), new THREE.MeshBasicMaterial({ color: 0x5b5348 }));
+    body.rotation.z = Math.PI / 2;
+    g.add(wl, wr, body);
+    g.position.set(x, y, z);
+    g.userData = { bx: x, by: y, bz: z, r, ph, wl, wr };
+    scene.add(g);
+    ambientButterflies.push(g);
+  };
+
+  // ----- Речной берег (Л2) -----
+  // плакучая ива на западном берегу
+  {
+    const tx = LOC2.x - 7.6, tz = LOC2.z - 6.6;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 1.9, 10), L(0x7a5230));
+    trunk.position.set(tx, 0.95, tz); trunk.castShadow = true;
+    const crownM = L(0x6fbf5f);
+    const c1 = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), crownM); c1.position.set(tx, 2.15, tz);
+    const c2 = new THREE.Mesh(new THREE.SphereGeometry(0.65, 12, 10), L(0x7ecb7f)); c2.position.set(tx - 0.5, 2.3, tz + 0.25);
+    const c3 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), L(0x5fb565)); c3.position.set(tx + 0.45, 2.25, tz - 0.2);
+    scene.add(trunk, c1, c2, c3);
+    obstacles.push({ x: tx, z: tz, r: 0.5 });
+  }
+  // две берёзки на востоке и северо-западе
+  for (const [bx, bz, bs] of [[LOC2.x + 8.9, LOC2.z + 6.9, 1.0], [LOC2.x - 10.2, LOC2.z + 2.2, 0.8]]) {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 2.0, 8), L(0xe8e4d8));
+    trunk.position.set(bx, 1.0, bz);
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), L(0x8fd07a));
+    crown.position.set(bx, 2.35, bz); crown.scale.set(1, 0.85, 1);
+    scene.add(trunk, crown);
+    obstacles.push({ x: bx, z: bz, r: 0.35 });
+  }
+  // цветы по берегам
+  [[LOC2.x - 9.6, LOC2.z - 2.6, 0xf28bb4], [LOC2.x - 11.1, LOC2.z - 5.2, 0xfff3b0],
+   [LOC2.x + 9.7, LOC2.z - 4.4, 0xf5b45e], [LOC2.x + 9.4, LOC2.z - 1.3, 0xc9a0dc],
+   [LOC2.x - 10.1, LOC2.z + 5.6, 0xf28bb4], [LOC2.x - 8.1, LOC2.z + 1.9, 0x8fc3f0],
+   [LOC2.x + 7.9, LOC2.z + 4.7, 0xff9fb2], [LOC2.x - 6.9, LOC2.z + 7.3, 0x8fd694]].forEach(([x, z, c]) => addFlower(x, z, c));
+  // кустики травы
+  [[LOC2.x - 8.4, LOC2.z + 6.4], [LOC2.x + 8.2, LOC2.z - 6.0], [LOC2.x + 4.9, LOC2.z - 8.9], [LOC2.x - 7.3, LOC2.z - 8.1]].forEach(([x, z]) => addGrass(x, z));
+  // камушки у воды
+  [[LOC2.x - 2.7, LOC2.z + 3.5, 0.24], [LOC2.x - 3.1, LOC2.z + 4.3, 0.17], [LOC2.x + 3.7, LOC2.z - 5.9, 0.22], [LOC2.x + 4.3, LOC2.z - 7.1, 0.15]].forEach(([x, z, r]) => addPebble(x, z, r));
+  // рыбацкая лодочка на воде (декор, на неё не зайти)
+  {
+    const bx = LOC2.x - 1.6, bz = LOC2.z - 8.4;
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.62), L(0x8a5a3b));
+    hull.position.set(bx, 0.18, bz); hull.rotation.y = 0.35;
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.55), L(0xa4703f));
+    rim.position.set(bx, 0.36, bz); rim.rotation.y = 0.35;
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.5), L(0x6f452c));
+    seat.position.set(bx + 0.1, 0.6, bz); seat.rotation.y = 0.35;
+    scene.add(hull, rim, seat);
+  }
+  // бабочки над берегом
+  addButterfly(LOC2.x + 0.6, 1.25, LOC2.z - 6.4, 1.3, 0.4);
+  addButterfly(LOC2.x + 5.6, 1.45, LOC2.z + 6.8, 1.0, 2.1);
+  addButterfly(LOC2.x - 6.2, 1.3, LOC2.z - 2.6, 0.85, 4.0);
+
+  // ----- Лесная чаща (Л3) -----
+  // ещё две ёлочки внутри поляны
+  {
+    const mk = (x, z, s) => {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.7, 8), L(0x6f452c));
+      trunk.position.y = 0.35; g.add(trunk);
+      const greens = [0x2f6b45, 0x3d8352, 0x4d9460];
+      greens.forEach((c, i) => {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.85 - i * 0.2, 1.05, 10), L(c));
+        cone.position.y = 0.75 + i * 0.62; cone.castShadow = true;
+        g.add(cone);
+      });
+      g.position.set(x, 0, z); g.scale.setScalar(s);
+      scene.add(g);
+      obstacles.push({ x, z, r: 0.5 });
+    };
+    mk(LOC3.x - 5.6, LOC3.z - 8.0, 0.95);
+    mk(LOC3.x + 8.9, LOC3.z + 0.7, 1.1);
+  }
+  // папоротники (три пучка листьев)
+  const addFern = (x, z) => {
+    for (let i = 0; i < 4; i++) {
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.55, 5), L(i % 2 ? 0x5fb565 : 0x6fbf5f));
+      leaf.position.set(x + (i - 1.5) * 0.22, 0.22, z + (i % 2 ? 0.1 : -0.1));
+      leaf.rotation.z = (i - 1.5) * 0.55;
+      scene.add(leaf);
+    }
+  };
+  [[LOC3.x - 3.3, LOC3.z + 4.9], [LOC3.x + 5.9, LOC3.z + 6.3], [LOC3.x + 9.5, LOC3.z - 3.5], [LOC3.x - 8.9, LOC3.z - 2.3]].forEach(([x, z]) => addFern(x, z));
+  // лесные цветы
+  [[LOC3.x - 6.9, LOC3.z + 0.5, 0xb39ddb], [LOC3.x - 9.9, LOC3.z + 3.5, 0xf28bb4], [LOC3.x + 8.9, LOC3.z + 8.3, 0x8fc3f0],
+   [LOC3.x - 4.9, LOC3.z - 9.1, 0xfff3b0], [LOC3.x + 0.7, LOC3.z + 9.9, 0xff9fb2], [LOC3.x + 9.7, LOC3.z - 5.9, 0xc9a0dc]].forEach(([x, z, c]) => addFlower(x, z, c));
+  // упавшее бревно во мху
+  {
+    const bx = LOC3.x - 7.5, bz = LOC3.z - 3.9;
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 2.6, 12), L(0x8a5a3b));
+    log.rotation.z = Math.PI / 2; log.rotation.y = 0.4;
+    log.position.set(bx, 0.32, bz); log.castShadow = true;
+    const moss = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), L(0x6fbf5f));
+    moss.position.set(bx + 0.5, 0.5, bz + 0.1); moss.scale.set(1.2, 0.5, 0.9);
+    scene.add(log, moss);
+    obstacles.push({ x: bx, z: bz, r: 0.7 });
+  }
+  // россыпь грибочков двумя семейками
+  const addShroom = (x, z, s) => {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.3, 8), L(0xf2e3c9));
+    stem.position.set(x, 0.15, z);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), L(0xc98d5a));
+    cap.position.set(x, 0.3, z); cap.scale.set(s, 0.7 * s, s);
+    scene.add(stem, cap);
+  };
+  [[LOC3.x + 1.9, LOC3.z + 4.7, 1.0], [LOC3.x + 2.6, LOC3.z + 5.4, 0.7], [LOC3.x + 1.4, LOC3.z + 5.6, 0.55],
+   [LOC3.x - 1.7, LOC3.z + 7.5, 0.9], [LOC3.x - 1.0, LOC3.z + 8.0, 0.6]].forEach(([x, z, s]) => addShroom(x, z, s));
+  // валуны
+  [[LOC3.x + 6.7, LOC3.z - 8.9, 0.55], [LOC3.x - 6.5, LOC3.z + 9.5, 0.6]].forEach(([x, z, r]) => {
+    const rock = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), L(0x9aa28c));
+    rock.position.set(x, r * 0.35, z); rock.scale.y = 0.8; rock.castShadow = true;
+    scene.add(rock);
+    obstacles.push({ x, z, r: r + 0.1 });
+  });
+  // трава и бабочки чащи
+  [[LOC3.x - 4.6, LOC3.z - 3.8], [LOC3.x + 3.4, LOC3.z + 8.6], [LOC3.x + 8.1, LOC3.z + 3.4]].forEach(([x, z]) => addGrass(x, z));
+  addButterfly(LOC3.x + 1.3, 1.35, LOC3.z + 3.3, 1.3, 1.2);
+  addButterfly(LOC3.x - 4.7, 1.5, LOC3.z - 3.5, 0.9, 3.3);
+  addButterfly(LOC3.x + 6.9, 1.4, LOC3.z + 5.7, 1.1, 5.1);
+}
+
 {
   const HIT_PADS = [
     [hedgehog, 0.95, 0.7], [owl, 0.95, 0.9], [frog, 0.9, 0.5], [mole, 1.0, 0.8],
@@ -4037,14 +4211,17 @@ const MOLE_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
 // поэтому таймеры «открыть игру через N мс» обрывали озвучку. Теперь игра/поле
 // ждут, пока голос договорит (с запасом: если звук выключен или не пошёл — откроется сразу).
 let waitVoiceToken = 0;
-function waitVoiceThen(fn, minMs = 700, maxMs = 9000) {
+function waitVoiceThen(fn, minMs = 700, maxMs = 16000) {
+  // v0.27.2: ждём по ЗАРЕЗЕРВИРОВАННОМУ времени голоса (voiceBusy), а не по флагу
+  // проигрывания — иначе игра открывалась, пока mp3 ещё декодировался (Крот/Мышь
+  // «молчали», Утка обрывалась на полуслове).
   const my = ++waitVoiceToken;
   const t0 = performance.now();
   const step = () => {
     if (my !== waitVoiceToken) return;
     const waited = performance.now() - t0;
     if (waited < minMs) { setTimeout(step, 120); return; }
-    if (voicePlaying() && waited < maxMs) { setTimeout(step, 120); return; }
+    if (voiceBusy() && waited < maxMs) { setTimeout(step, 120); return; }
     fn();
   };
   setTimeout(step, 120);
@@ -4067,7 +4244,7 @@ function startMoleDialog() {
   const dx = MOLE_POS.x - hero.position.x, dz = MOLE_POS.z - hero.position.z;
   hero.rotation.y = Math.atan2(dx, dz);
   // v0.26.3: открываем игру только когда Крот договорил (не по секундомеру)
-  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, moleSpecialRun ? 1500 : 800, moleSpecialRun ? 11000 : 9000);
+  waitVoiceThen(() => { if (gameState === 'dialog' && my === dialogToken) openMoleGame(); }, moleSpecialRun ? 1500 : 800, moleSpecialRun ? 16000 : 16000);
 }
 function makeMoleHole() {
   const hole = document.createElement('div');
@@ -4704,10 +4881,11 @@ const hgMsg = document.getElementById('hgMsg');
 const hgPool = document.getElementById('hgPool');
 const hgLine = document.getElementById('hgLine');
 const hgFinger = document.getElementById('hgFinger');
-const FISH_COLORS = [['#f28ba8', '#d96f92'], ['#f5b45e', '#d98e3a'], ['#8fc3f0', '#5f9fd8'], ['#8fd694', '#5fb968'], ['#c9a0dc', '#a97fc4']];
+// v0.27.2: рыбы ВСЕГДА одного цвета — сравнивается только РАЗМЕР
+const FISH_COLORS = [['#f2994c', '#c96f2e']];
 const hg = { sizes: [], next: 0, got: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
 function hgN() { return ageLevel() ? 5 : 3; }
-function hgRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
+function hgRounds() { return ageLevel() ? 3 : 2; } // v0.27.2: меньше раундов — посильно ребёнку (как у Утки)
 function startHeronDialog() {
   gameState = 'dialog';
   const my = ++dialogToken;
@@ -4729,7 +4907,7 @@ function buildHeronRound() {
   sizes.forEach(sz => {
     const f = document.createElement('div');
     f.className = 'hg-fish s' + sz;
-    const [c1, c2] = FISH_COLORS[Math.floor(Math.random() * FISH_COLORS.length)];
+    const [c1, c2] = FISH_COLORS[0]; // v0.27.2: единый цвет — виден только размер
     f.style.setProperty('--f-color', c1);
     f.style.setProperty('--f-light', c1);
     f.style.setProperty('--f-dark', c2);
@@ -4865,7 +5043,7 @@ function buildDuckRound() {
   dk.diffs = idx.map(di => ({ x: DK_POOL[di].x, y: DK_POOL[di].y, found: false }));
   dkRenderPanel(dkLeft, leftV);
   dkRenderPanel(dkRight, rightV);
-  dkMsg.innerHTML = '🦆 Найди отличия' + dotsHTML(dkRounds(), dk.round);
+  dkMsg.innerHTML = '🦆 Найди ' + dkCount() + ' отличия' + dotsHTML(dkRounds(), dk.round);
 }
 function duckTap(clientX, clientY) {
   const rect = dkRight.getBoundingClientRect();
@@ -4873,7 +5051,7 @@ function duckTap(clientX, clientY) {
   const py = (clientY - rect.top) / rect.height * 100;
   for (const d of dk.diffs) {
     if (d.found) continue;
-    if (Math.hypot(px - d.x, py - d.y) < 15) { // v0.27.1: зона попадания шире — детским пальцем проще
+    if (Math.hypot(px - d.x, py - d.y) < 17) { // v0.27.1+: зона попадания шире — детским пальцем проще
       d.found = true; dk.found++;
       play('good');
       const mark = document.createElement('span');
@@ -6844,11 +7022,14 @@ function showBreak() {
   setGamePaused(true);
   dayT = 0.62; // по ГДД: наступает ночь — полянка засыпает вместе с малышом
   breakOv.style.display = 'flex';
-  play('pop');
+  playUI('pop');
+  // v0.27.2 (живой тест): ребёнок не читает — карточку озвучивает диктор
+  speakUI('voice/break.mp3');
 }
 document.getElementById('breakOk').addEventListener('click', () => {
   breakOv.style.display = 'none';
   paused = false;
+  stopVoice();
   setGamePaused(false);
   sessSec = 0; // полный новый интервал после отдыха
   play('good');
@@ -6918,7 +7099,7 @@ function startIntro() {
   introVoiceEnded = false;
   const ivChk = setInterval(() => {
     if (gameState !== 'intro') { clearInterval(ivChk); return; }
-    if (!voicePlaying()) { introVoiceEnded = true; clearInterval(ivChk); }
+    if (!voiceBusy()) { introVoiceEnded = true; clearInterval(ivChk); }
   }, 250);
   document.getElementById('skipIntro').style.display = 'block';
 }
@@ -7511,6 +7692,18 @@ function animate() {
     otterBubble.position.y = 2.2 + Math.sin(elapsed * 2.2 + 0.8) * 0.08;
   }
   // огоньки в Лесной чаще — ночью разгораются ярче
+  // v0.27.2: бабочки порхают — кружат, взлетают-опускаются и машут крылышками
+  for (const bf of ambientButterflies) {
+    const u = bf.userData;
+    bf.position.x = u.bx + Math.cos(elapsed * 0.6 + u.ph) * u.r;
+    bf.position.z = u.bz + Math.sin(elapsed * 0.5 + u.ph * 1.3) * u.r;
+    bf.position.y = u.by + Math.sin(elapsed * 1.4 + u.ph) * 0.3;
+    const f = Math.abs(Math.sin(elapsed * 14 + u.ph));
+    u.wl.scale.x = 0.55 + f * 0.9;
+    u.wr.scale.x = 0.55 + f * 0.9;
+    u.wl.scale.y = 0.5 + f * 0.7;
+    u.wr.scale.y = 0.5 + f * 0.7;
+  }
   // v0.27.0 (живой тест): огоньки чащи ЛЕТАЮТ — мягкий дрейф по кругу и покачивание
   for (const gl of thicketGlows) {
     if (gl.material) gl.material.opacity = 0.3 + nightness * 0.65 + Math.sin(elapsed * 2.1 + (gl.userData.ph || 0)) * 0.1;
@@ -7767,7 +7960,7 @@ function animate() {
     // v0.26.3: ждём конца реплики про большое поле — и только потом строим его
     if (ml.waitingField) {
       const said = ml.fieldSaidAt > 0 && (performance.now() - ml.fieldSaidAt) > 600;
-      if (!voicePlaying() && said) {
+      if (!voiceBusy() && said) {
         ml.waitingField = false;
         buildMoleField(true);
         ml.lastAction = elapsed;
@@ -7810,8 +8003,8 @@ function animate() {
     const idle = elapsed - hg.lastAction;
     const next = [...hgPool.querySelectorAll('.hg-fish')].find(f =>
       !f.dataset.done && parseInt((f.className.match(/s(\d)/) || [])[1], 10) === hg.next);
-    if (next && idle > 20) next.classList.add('glow');
-    if (next && idle > 28 && !hg.fingerShown) {
+    if (next && idle > 8) next.classList.add('glow');
+    if (next && idle > 14 && !hg.fingerShown) {
       hg.fingerShown = true;
       const r = next.getBoundingClientRect();
       hgFinger.style.left = (r.left + r.width / 2 - 14) + 'px';
