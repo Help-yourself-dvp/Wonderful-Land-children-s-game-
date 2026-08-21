@@ -991,6 +991,6 @@ ComfyUI/Blender, искать видеокарту, регистрировать
 2. `npm run build` без ошибок; `python3 tools/build_preview.py` собирает одно-файловое превью.
 3. Playwright на 1280×800 и 812×375: 0 ошибок страницы/консоли, нет overflowX на экранах мини-игр.
 4. Доки (README, RELEASE_NOTES, ОПИСАНИЕ, ГДД, ЧЕКЛИСТ, AI_GUIDE) обновлены и закоммичены.
-5. Пуш в `arena/01a00f6f-...`; Actions стартует по `workflow_dispatch` с `publish_release=true` и `release_target=<полный SHA>`.
+5. Пуш в ВЕТКУ СЕССИИ (сейчас `arena/01a0138e-wonderful-land-children-s-game`; имя меняется от сессии к сессии — сверять с `git branch --show-current`). Actions стартует по `workflow_dispatch` с `publish_release=true` и `release_target=<полный SHA>`.
 6. В CI шаг «Verify APK signature fingerprint» сравнивает отпечаток с эталоном `50:7E:7D:84:69:A2:8B:7B:8A:91:B7:85:B9:BA:6B:AA:93:4D:91:97:87:79:A7:FF:02:F8:F7:ED:A3:DA:85:5B`.
 7. После успеха: `gh release view vX.Y.Z --json assets` подтверждает APK; ссылки в README/ЧЕКЛИСТЕ ведут на выложенный файл.
