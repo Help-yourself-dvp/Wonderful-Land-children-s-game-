@@ -1040,10 +1040,11 @@
     .dk-panel.dk-bg-0 { background-image: url('./art/duck-pond-differences.webp'); }
     .dk-panel.dk-bg-1 { background-image: url('./art/duck-pond-differences-b.webp'); }
     .dk-panel.dk-bg-2 { background-image: url('./art/duck-pond-differences-c.webp'); }
-    .dk-el { position: absolute; transform: translate(-50%, -50%); font-size: clamp(32px, 6.2vh, 48px); line-height: 1; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
-    .dk-el.circle { width: clamp(44px, 7vh, 58px); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 14px rgba(255,240,150,.8); }
-    .dk-mark { position: absolute; transform: translate(-50%, -50%); width: clamp(40px, 7vh, 56px); aspect-ratio: 1; border-radius: 50%; border: 5px solid #ffd166; background: rgba(255,209,102,.35); animation: cgItemIn .4s cubic-bezier(.34,1.56,.64,1) both; pointer-events: none; }
-    .dk-glow { position: absolute; transform: translate(-50%, -50%); width: clamp(44px, 7.5vh, 60px); aspect-ratio: 1; border-radius: 50%; border: 4px dashed #ffd166; animation: basketGlow .7s ease-in-out infinite alternate; pointer-events: none; }
+    /* v0.27.1: детали УКРУПНЕНЫ — для ребёнка 3–5 лет искать мелочи непосильно */
+    .dk-el { position: absolute; transform: translate(-50%, -50%); font-size: clamp(40px, 8vh, 62px); line-height: 1; pointer-events: none; filter: drop-shadow(0 3px 3px rgba(0,0,0,.22)); }
+    .dk-el.circle { width: clamp(56px, 9.5vh, 74px); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 16px rgba(255,240,150,.85); }
+    .dk-mark { position: absolute; transform: translate(-50%, -50%); width: clamp(48px, 8vh, 64px); aspect-ratio: 1; border-radius: 50%; border: 5px solid #ffd166; background: rgba(255,209,102,.35); animation: cgItemIn .4s cubic-bezier(.34,1.56,.64,1) both; pointer-events: none; }
+    .dk-glow { position: absolute; transform: translate(-50%, -50%); width: clamp(52px, 8.6vh, 70px); aspect-ratio: 1; border-radius: 50%; border: 4px dashed #ffd166; animation: basketGlow .7s ease-in-out infinite alternate; pointer-events: none; }
     /* Выдра: зверь и следы */
     .ot-field {
       position: relative; width: 100%; aspect-ratio: 16/9; height: auto;

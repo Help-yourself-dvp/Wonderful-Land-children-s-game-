@@ -4808,7 +4808,10 @@ const DK_POOL = [
 ];
 const dk = { diffs: [], found: 0, round: 0, lastAction: 0, slow: 0, fingerShown: false };
 function dkCount() { return ageLevel() ? 3 : 2; }
-function dkRounds() { return ageLevel() ? 4 : 3; } // v0.25.1: единые раунды
+// v0.27.1 (живой тест): игра должна быть посильна ребёнку — раундов меньше,
+// детали крупнее (CSS), подсказки раньше (animate). «Единые раунды 3/4» здесь
+// отменены решением владельца: у 3–4 лет — 2 раунда, у 5–6 — 3.
+function dkRounds() { return ageLevel() ? 3 : 2; }
 function dkRenderPanel(panel, variant) {
   panel.querySelectorAll('.dk-el, .dk-mark, .dk-glow').forEach(el => el.remove());
   for (let di = 0; di < DK_POOL.length; di++) {
@@ -4867,7 +4870,7 @@ function duckTap(clientX, clientY) {
   const py = (clientY - rect.top) / rect.height * 100;
   for (const d of dk.diffs) {
     if (d.found) continue;
-    if (Math.hypot(px - d.x, py - d.y) < 13) {
+    if (Math.hypot(px - d.x, py - d.y) < 15) { // v0.27.1: зона попадания шире — детским пальцем проще
       d.found = true; dk.found++;
       play('good');
       const mark = document.createElement('span');
@@ -7815,9 +7818,10 @@ function animate() {
   }
   // --- ПОДСКАЗКИ В ИГРЕ «НАЙДИ ОТЛИЧИЯ» (Утка) ---
   if (gameState === 'duckgame') {
+    // v0.27.1 (живой тест): подсказки РАНЬШЕ — малыш не должен застревать
     const idle = elapsed - dk.lastAction;
     const un = dk.diffs.find(d => !d.found);
-    if (un && idle > 20) {
+    if (un && idle > 8) {
       dkRight.querySelectorAll('.dk-glow').forEach(e => e.remove());
       const g = document.createElement('span');
       g.className = 'dk-glow';
@@ -7825,7 +7829,7 @@ function animate() {
       g.style.top = un.y + '%';
       dkRight.appendChild(g);
     }
-    if (un && idle > 28 && !dk.fingerShown) {
+    if (un && idle > 14 && !dk.fingerShown) {
       dk.fingerShown = true;
       const rect = dkRight.getBoundingClientRect();
       dkFinger.style.left = (rect.left + rect.width * un.x / 100) + 'px';
