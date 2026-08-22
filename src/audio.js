@@ -203,42 +203,58 @@ export function speak(file, opts = {}) {
     if (!a) { a = new Audio(file); voiceCache[file] = a; }
     a.muted = muted;
     a.volume = opts.vol != null ? opts.vol : 0.95;
-    let gen = voiceGen;
-    // opts.then: следующая реплика цепочкой после ЭТОЙ (иначе два {after:true}
-    // привязались бы к одному и тому же текущему звуку и заговорили одновременно).
-    const chainNext = (src) => {
-      const b = voiceCache[opts.then] || (voiceCache[opts.then] = new Audio(opts.then));
-      b.muted = muted; b.volume = 0.95;
-      voiceBusyUntil += 3200; // v0.27.2: заранее резервируем время на следующую реплику
-      const onEnd2 = () => {
-        src.removeEventListener('ended', onEnd2);
-        if (gen === voiceGen) {
-          try { b.currentTime = 0; b.play().catch(() => {}); lastVoice = b; markVoice(b); } catch (e) {}
-        }
-      };
-      src.addEventListener('ended', onEnd2);
+    const myGen = voiceGen;
+    const playNow = (gen) => {
+      try {
+        a.currentTime = 0;
+        a.play().catch(() => {});
+        lastVoice = a;
+        markVoice(a);
+        if (opts.then) queueAfter(a, opts.then, gen);
+      } catch (e) {}
     };
-    if (opts.after && lastVoice && !lastVoice.paused && !lastVoice.ended) {
+    // v0.27.3 (живой тест: Сорока/Мышь/Барсук «молчали», игра открывалась тихо):
+    // старая проверка требовала !lastVoice.paused, но во время декодирования mp3
+    // paused===true — цепочка «приветствие → задание» разваливалась, а первая
+    // реплика убивалась. Теперь after-реплика ВСЕГДА встаёт в очередь за текущей.
+    if (opts.after && lastVoice && !lastVoice.ended) {
       const cur = lastVoice;
-      voiceBusyUntil += 3200; // v0.27.2: резерв на эту реплику (точная длительность добавится при старте)
-      const onEnd = () => {
-        cur.removeEventListener('ended', onEnd);
-        if (gen === voiceGen) {
-          try { a.currentTime = 0; a.play().catch(() => {}); lastVoice = a; markVoice(a); } catch (e) {}
-          if (opts.then) chainNext(a);
-        }
+      voiceBusyUntil += 3200; // резерв на эту реплику (точная длительность добавится при старте)
+      let fired = false;
+      const done = () => {
+        if (fired) return;
+        fired = true;
+        clearTimeout(wd);
+        cur.removeEventListener('ended', done);
+        if (myGen === voiceGen) playNow(myGen);
       };
-      cur.addEventListener('ended', onEnd);
+      // страховка: если событие 'ended' не пришло (сбой декодера) — проигрываем сами
+      const wd = setTimeout(done, 14000);
+      cur.addEventListener('ended', done);
       return;
     }
     stopVoice();
-    gen = voiceGen; // поколение после гашения: цепочка then должна выжить
-    a.currentTime = 0;
-    a.play().catch(() => {});
-    lastVoice = a;
-    markVoice(a);
-    if (opts.then) chainNext(a);
+    const gen = voiceGen; // поколение после гашения: цепочка then должна выжить
+    playNow(gen);
+    return;
   } catch (e) {}
+}
+function queueAfter(src, file, gen) {
+  const b = voiceCache[file] || (voiceCache[file] = new Audio(file));
+  b.muted = muted; b.volume = 0.95;
+  voiceBusyUntil += 3200; // заранее резервируем время на следующую реплику
+  let fired = false;
+  const onEnd2 = () => {
+    if (fired) return;
+    fired = true;
+    clearTimeout(wd2);
+    src.removeEventListener('ended', onEnd2);
+    if (gen === voiceGen) {
+      try { b.currentTime = 0; b.play().catch(() => {}); lastVoice = b; markVoice(b); } catch (e) {}
+    }
+  };
+  const wd2 = setTimeout(onEnd2, 14000);
+  src.addEventListener('ended', onEnd2);
 }
 // Реплика интерфейса (например, карточка отдыха): звучит и на паузе мира
 export function speakUI(file) {

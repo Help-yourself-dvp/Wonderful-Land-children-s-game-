@@ -1518,9 +1518,11 @@ const thicketGlows = []; // огоньки-светлячки чаще (ночь
 // а вокруг каждой локации — кольца ёлок: лес заполняет пустоту, но зайти нельзя
 // (навигация и так ограничена островом, ёлки стоят за его радиусом).
 {
-  const plain = new THREE.Mesh(new THREE.PlaneGeometry(520, 520), L(0x3f6b3a));
+  // v0.27.3 (живой тест): подложка была 520×520 от z=0 — Л3 на z=300 оставалась
+  // «в голубом небе». Теперь земля тянется под все три локации.
+  const plain = new THREE.Mesh(new THREE.PlaneGeometry(620, 980), L(0x3f6b3a));
   plain.rotation.x = -Math.PI / 2;
-  plain.position.y = -1.85;
+  plain.position.set(0, -1.85, 150);
   scene.add(plain);
   const makePine = (x, z, s) => {
     const g = new THREE.Group();
@@ -1763,21 +1765,22 @@ function makeMoose() {
   const fur = L(0x8a5a3b), furD = L(0x5f3d24), cream = L(0xdcc09a), antlerC = L(0xd8c9a8);
   // длинные ноги (лось — высокий)
   const legGeo = new THREE.CylinderGeometry(0.1, 0.13, 1.25, 8);
-  const legs = [[-0.34, -0.45], [0.34, -0.45], [-0.34, 0.45], [0.34, 0.45]].map(([x, z]) => {
+  const legs = [[-0.33, -0.5], [0.33, -0.5], [-0.33, 0.5], [0.33, 0.5]].map(([x, z]) => {
     const l = new THREE.Mesh(legGeo, furD);
     l.position.set(x, 0.62, z);
     return l;
   });
   bodyG.add(...legs);
-  // туловище с высокой холкой-горбом
+  // туловище, вытянутое вдоль тела; холка — низкая, позади шеи
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 18, 16), fur);
-  body.position.set(0, 1.45, -0.15); body.scale.set(1.1, 0.95, 1.35); body.castShadow = true;
-  const hump = new THREE.Mesh(new THREE.SphereGeometry(0.44, 14, 12), fur);
-  hump.position.set(0, 1.78, -0.3); hump.scale.set(0.9, 0.9, 1.0);
+  body.position.set(0, 1.42, 0.1); body.scale.set(1.05, 0.92, 1.45); body.castShadow = true;
+  const hump = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), fur);
+  hump.position.set(0, 1.7, -0.32); hump.scale.set(0.75, 0.55, 0.75);
   bodyG.add(body, hump);
-  // шея вперёд-вверх
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.62, 10), fur);
-  neck.position.set(0, 1.75, 0.6); neck.rotation.x = 0.55;
+  // v0.27.3 (живой тест): «голова посередине спины» — шея ВПЕРЁД-вверх,
+  // голова на груди перед телом, а не над спиной
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.72, 10), fur);
+  neck.position.set(0, 1.6, 0.72); neck.rotation.x = 0.75;
   bodyG.add(neck);
   // голова с длинной свисающей мордой — главный признак лося
   const head = new THREE.Group();
@@ -1810,7 +1813,9 @@ function makeMoose() {
   const t2L = new THREE.Mesh(tineGeo, antlerC); t2L.position.set(-0.27, 0.78, 0.1); t2L.rotation.z = 1.75; t2L.rotation.x = -0.45;
   const t2R = t2L.clone(); t2R.position.x = 0.27; t2R.rotation.z = -1.75; t2R.rotation.x = 0.45;
   head.add(skull, muzzle, nose, dewlap, eyeL, eyeR, glL, glR, earL, earR, antlerL, antlerR, t1L, t1R, t2L, t2R);
-  head.position.y = 2.12;
+  // голова ВПЕРЕДИ тела (перед грудью), рога — над ней
+  head.position.y = 2.06;
+  head.position.z = 1.0;
   bodyG.add(head);
   // хвостик
   const tail = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), cream);
@@ -1829,7 +1834,7 @@ scene.add(moose);
 obstacles.push({ x: MOOSE_POS.x, z: MOOSE_POS.z, r: 0.7 });
 moose.scale.setScalar(1.5); // v0.27.2: крупнее — лось должен быть ВЕЛИКАНОМ полянки
 const mooseBubble = makeBubbleSprite('🫐', 0.95);
-mooseBubble.position.set(MOOSE_POS.x, 3.2, MOOSE_POS.z);
+mooseBubble.position.set(MOOSE_POS.x, 4.6, MOOSE_POS.z); // v0.27.3: выше — лось стал крупнее
 scene.add(mooseBubble);
 
 // ============ ЕНОТ (Локация 3: «Чья тень?») ============
@@ -1891,7 +1896,7 @@ scene.add(raccoon);
 obstacles.push({ x: RACCOON_POS.x, z: RACCOON_POS.z, r: 0.6 });
 raccoon.scale.setScalar(1.5);
 const raccoonBubble = makeBubbleSprite('🌑', 0.9);
-raccoonBubble.position.set(RACCOON_POS.x, 2.3, RACCOON_POS.z);
+raccoonBubble.position.set(RACCOON_POS.x, 3.0, RACCOON_POS.z);
 scene.add(raccoonBubble);
 
 // ============ СОРОКА (Локация 3: «Что лишнее?») ============
@@ -1952,7 +1957,7 @@ scene.add(magpie);
 obstacles.push({ x: MAGPIE_POS.x, z: MAGPIE_POS.z, r: 0.5 });
 magpie.scale.setScalar(1.45);
 const magpieBubble = makeBubbleSprite('🔍', 0.85);
-magpieBubble.position.set(MAGPIE_POS.x, 2.2, MAGPIE_POS.z);
+magpieBubble.position.set(MAGPIE_POS.x, 2.9, MAGPIE_POS.z);
 scene.add(magpieBubble);
 
 // ============ МЫШКА (Локация 3: «Весёлые весы») ============
@@ -2004,53 +2009,67 @@ scene.add(mouse);
 obstacles.push({ x: MOUSE_POS.x, z: MOUSE_POS.z, r: 0.45 });
 mouse.scale.setScalar(1.5);
 const mouseBubble = makeBubbleSprite('⚖️', 0.85);
-mouseBubble.position.set(MOUSE_POS.x, 1.9, MOUSE_POS.z);
+mouseBubble.position.set(MOUSE_POS.x, 2.6, MOUSE_POS.z);
 scene.add(mouseBubble);
 
 // ============ БАРСУК (Локация 3: «Сложи картинку») ============
 // v0.24: пятый житель чащи. Серое тело, чёрно-белая полосатая мордочка.
 function makeBadger() {
-  // v0.27.0 (живой тест): «барсук на барсука не похож» — пересобран по-настоящему:
-  // приземистое тело, широкая белая голова с двумя ЧЁРНЫМИ полосами через глаза,
-  // чёрные лапки, полосатая спинка.
+  // v0.27.3 (живой тест): «какое-то чудовище» — пересобран заново: приземистое
+  // серое тельце, крупная белая морда с ДВУМЯ толстыми чёрными полосами через
+  // глаза, белые щёчки, чёрные лапки и носик. Классический добрый барсук.
   const g = new THREE.Group();
   const bodyG = new THREE.Group();
-  const grey = L(0x8a8a92), dark = L(0x2e2e34), white = L(0xf2f0ea);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 16), grey);
-  body.position.y = 0.42; body.scale.set(1.25, 0.85, 0.9); body.castShadow = true;
-  const backStripe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.78), white);
-  backStripe.position.set(0, 0.72, -0.08);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 14), white);
-  head.position.set(0.3, 0.66, 0.12); head.scale.set(1.05, 0.9, 1.15);
-  // две широкие чёрные полосы: от носа через глаза к ушам
-  const stripeGeo = new THREE.BoxGeometry(0.1, 0.055, 0.5);
+  const grey = L(0x8f9096), greyB = L(0xb9bbc1), dark = L(0x2e2e34), white = L(0xf5f3ee);
+  // приземистое широкое тело
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.44, 16, 14), grey);
+  body.position.set(0, 0.46, 0); body.scale.set(1.35, 0.85, 1.0); body.castShadow = true;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), greyB);
+  belly.position.set(0, 0.36, 0.14); belly.scale.set(1.2, 0.7, 0.9);
+  // крупная белая голова впереди
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 14), white);
+  head.position.set(0.16, 0.74, 0.26); head.scale.set(1.05, 0.92, 1.15);
+  // две толстые чёрные полосы: от носа через глаза к ушам
+  const stripeGeo = new THREE.BoxGeometry(0.1, 0.075, 0.5);
   const stripeL = new THREE.Mesh(stripeGeo, dark);
-  stripeL.position.set(0.34, 0.74, 0.2); stripeL.rotation.x = -0.42;
-  const stripeR = stripeL.clone(); stripeR.position.x = 0.46; stripeR.position.y = 0.74; stripeR.position.z = 0.2;
-  const crown = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.24), dark);
-  crown.position.set(0.4, 0.9, 0.02); crown.rotation.x = -0.15;
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), dark);
-  nose.position.set(0.46, 0.6, 0.42);
+  stripeL.position.set(0.1, 0.76, 0.34); stripeL.rotation.x = -0.5; stripeL.rotation.y = 0.14;
+  const stripeR = new THREE.Mesh(stripeGeo, dark);
+  stripeR.position.set(0.36, 0.76, 0.34); stripeR.rotation.x = -0.5; stripeR.rotation.y = -0.14;
+  // тёмная «шапочка» на макушке
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.22), dark);
+  crown.position.set(0.23, 0.93, 0.1);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), dark);
+  nose.position.set(0.26, 0.66, 0.52);
+  // глаза — тёмные, в полосах, с белыми бликами
   const eyeGeo = new THREE.SphereGeometry(0.045, 10, 10);
   const eyeM = new THREE.MeshBasicMaterial({ color: 0x141414 });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(0.34, 0.74, 0.34);
-  const eyeR = eyeL.clone(); eyeR.position.x = 0.46;
+  const eyeL = new THREE.Mesh(eyeGeo, eyeM); eyeL.position.set(0.12, 0.78, 0.42);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeM); eyeR.position.set(0.36, 0.78, 0.42);
   const glGeo = new THREE.SphereGeometry(0.016, 6, 6);
   const glM = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(0.36, 0.755, 0.375);
-  const glR = glL.clone(); glR.position.x = 0.44;
-  const earGeo = new THREE.SphereGeometry(0.075, 10, 8);
-  const earL = new THREE.Mesh(earGeo, dark); earL.position.set(0.3, 0.92, 0.02);
-  const earR = earL.clone(); earR.position.x = 0.5;
-  const earTipL = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), white);
-  earTipL.position.set(0.31, 0.945, 0.02);
-  const earTipR = earTipL.clone(); earTipR.position.x = 0.49;
+  const glL = new THREE.Mesh(glGeo, glM); glL.position.set(0.14, 0.795, 0.455);
+  const glR = new THREE.Mesh(glGeo, glM); glR.position.set(0.34, 0.795, 0.455);
+  // маленькие круглые ушки: тёмные с белой серединкой
+  const earGeo = new THREE.SphereGeometry(0.08, 10, 8);
+  const earL = new THREE.Mesh(earGeo, dark); earL.position.set(0.1, 0.96, 0.14);
+  const earR = new THREE.Mesh(earGeo, dark); earR.position.set(0.4, 0.96, 0.14);
+  const earInGeo = new THREE.SphereGeometry(0.038, 8, 8);
+  const earInL = new THREE.Mesh(earInGeo, white); earInL.position.set(0.1, 0.97, 0.16);
+  const earInR = new THREE.Mesh(earInGeo, white); earInR.position.set(0.4, 0.97, 0.16);
+  // белые щёчки по бокам морды
+  const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), white);
+  cheekL.position.set(-0.02, 0.66, 0.4); cheekL.scale.set(0.8, 0.6, 0.6);
+  const cheekR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), white);
+  cheekR.position.set(0.52, 0.66, 0.4); cheekR.scale.set(0.8, 0.6, 0.6);
+  // чёрные лапки
   const pawGeo = new THREE.SphereGeometry(0.11, 10, 10);
-  const pawL = new THREE.Mesh(pawGeo, dark); pawL.position.set(0.12, 0.14, 0.3);
-  const pawR = pawL.clone(); pawR.position.x = 0.44;
-  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.22, 4, 8), grey);
-  tail.position.set(-0.52, 0.5, 0); tail.rotation.z = 0.5;
-  bodyG.add(body, backStripe, head, stripeL, stripeR, crown, nose, eyeL, eyeR, glL, glR, earL, earR, earTipL, earTipR, pawL, pawR, tail);
+  const pawL = new THREE.Mesh(pawGeo, dark); pawL.position.set(-0.24, 0.13, 0.22);
+  const pawR = new THREE.Mesh(pawGeo, dark); pawR.position.set(0.42, 0.13, 0.22);
+  // короткий хвостик
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.24, 4, 8), grey);
+  tail.position.set(-0.52, 0.5, -0.02); tail.rotation.z = 0.4;
+  bodyG.add(body, belly, head, stripeL, stripeR, crown, nose, eyeL, eyeR, glL, glR,
+    earL, earR, earInL, earInR, cheekL, cheekR, pawL, pawR, tail);
   g.add(bodyG);
   g.userData = { body: bodyG, eyes: [eyeL, eyeR], glints: [glL, glR] };
   return g;
@@ -2064,7 +2083,7 @@ scene.add(badger);
 obstacles.push({ x: BADGER_POS.x, z: BADGER_POS.z, r: 0.55 });
 badger.scale.setScalar(1.55);
 const badgerBubble = makeBubbleSprite('🧩', 0.9);
-badgerBubble.position.set(BADGER_POS.x, 2.0, BADGER_POS.z);
+badgerBubble.position.set(BADGER_POS.x, 2.5, BADGER_POS.z);
 scene.add(badgerBubble);
 const beaverBubTex = {
   puzzle: beaverBubble.material.map,
@@ -3874,6 +3893,9 @@ function openCountGame() {
   cg.total = ageLevel() ? 4 : 3;
   cgEl.style.display = 'flex';
   if (!cgEl.querySelector('.mg-exit')) makeExitButton(cgEl);
+  // v0.27.3 (живой тест): у Совы не было точек прогресса — добавляем как у всех
+  const dots = document.getElementById('cgDots');
+  if (dots) dots.innerHTML = dotsHTML(cg.total, 0);
   buildCountRound();
 }
 
@@ -3888,6 +3910,8 @@ let cgLastEmoji = null;
 let cgLastN = null;
 function buildCountRound() {
   cg.round++;
+  const dots = document.getElementById('cgDots');
+  if (dots) dots.innerHTML = dotsHTML(cg.total, Math.min(cg.round, cg.total));
   cg.answered = false;
   cg.fingerShown = false;
   cg.lastAction = elapsed;
