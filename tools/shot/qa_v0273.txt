@@ -1,5 +1,0 @@
-OK  [screens] world-tablet
-OK  [screens] world-phone
-OK  [screens] hedge-tablet
-OK  [screens] hedge-phone
-OK  [screens] owl-tablet
